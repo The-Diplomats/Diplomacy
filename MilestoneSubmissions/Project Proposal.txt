@@ -1,0 +1,66 @@
+LAB 8
+Scribe: Nathaniel Blucher
+
+10/22/2026
+
+1. Team Number
+011-6
+
+2. Team name
+The Diplomats
+
+3. Team Members
+Name:                  Git hub username:            Email:
+Nathaniel Blucher      Nabls869                     Nabl2869@colorado.edu
+Deven Chen             learner559                   Deven.Chen@colorado.edu
+Brynne Geittmann       brynnegeittmann              Brynne.Geittmann@colorado.edu
+Rez Haleem             rezwanhaleem                 Rez.Haleem@colorado.edu
+Justin Kurtz           jkurtz950                    jkurtz950@gmail.com
+
+4. Application Name
+Diplomacy Online
+
+5. Application Description
+Diplomacy Online is a web-based version of the 1950s board game Diplomacy. It will be an online multiplayer strategy game for 2-7 players that includes a chat for game-based communication. Players compete to capture 18 supply centers across the board through negotiation, strategic maneuvering, and betrayal. It will also be possible for players to play against an AI, which will communicate via the chat and strategize like a human player.
+
+This application will allow friends to have fun together even across different time zones. Diplomacy is a turn-based game and is easily able to be played online over a longer period of time.
+
+
+6. Audience
+Our target audience is people who enjoy strategy-based board games, especially those interested in negotiation, teamwork, and competition. The ideal users are teenagers and adults who enjoy multiplayer games and want to play Diplomacy with friends or other players online.
+Our application solves the problem of needing to gather multiple people in person to play Diplomacy. Players will be able to join games from different devices, communicate through an in-game chat, form alliances, and submit orders without needing a physical board. AI opponents will also allow users to play when there are not enough human players available.
+We aim to make the application easy to use for both new and experienced players. The interface will include a clear game board, simple navigation, readable text, and straightforward controls for submitting orders and communicating with other players. This will help make the game accessible and enjoyable for users with different levels of experience.
+
+7. Vision Statement
+For people who enjoy strategy-based board games and want to play with others online, our application provides an interactive multiplayer version of Diplomacy that allows players to compete, negotiate, and form alliances from anywhere. Unlike traditional board games that require players to meet in person, our application offers online multiplayer gameplay, in-game communication, and AI opponents to make the game more accessible and convenient.
+
+8. Version Control info
+https://github.com/The-Diplomats/Diplomacy
+
+9. Development Methodology
+We will be using Agile Scrum and Kanban methodologies.
+
+10. Communication Plan
+We will be using Discord to communicate with each other. We also have emails and phone numbers as backups.
+
+11. Meeting Plan
+With TA: Mondays 3:15 Pm, Zoom
+Team Only: Thursday 4:00 Pm, Discord Meeting
+
+12. Use Case Diagram
+See project MilestoneSubmissions directory.
+
+13. Wireframes
+See project MilestoneSubmissions directory.
+
+
+Extra credit:
+User information needs to be secure - store hashed passwords and ensure that our game's database uses a foreign key for the users database
+
+Sql Injections could be possible in login and registration. This would be high risk because it doesn’t take that much knowledge to log in as users you shouldn’t - make every data entry point parameterized.
+
+AI may be costly in both money and computation - use Ollama for local AI compute while temporarily giving up a desktop computer for resources as well as limiting the time a turn can take or the chat can be open for
+
+Because it’s an online multiplayer game, we have to prepare for the fact that some players may get heated and act in poor conduct - We should add a way for players to block each other so they won’t be paired in games.
+
+Because it’s a multiplayer game and we don’t want to have players take turns as each other or take bad actions - We need a way to properly authenticate users, likely using session cookies that need to be 32 bit.
