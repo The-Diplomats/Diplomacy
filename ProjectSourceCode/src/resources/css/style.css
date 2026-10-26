@@ -1,0 +1,26 @@
+
+/* Diplomacy Board Styling */
+
+.board-container {
+    text-align: center;
+    padding: 20px;
+}
+
+.board-container h1 {
+    margin-bottom: 20px;
+}
+
+#selectedTerritory {
+    margin-bottom: 20px;
+}
+
+#gameBoard {
+    display: block;
+    width: 1448px;
+    height: 1086px;
+    margin: 20px auto;
+}
+
+area {
+    cursor: pointer;
+}
