@@ -1,0 +1,30 @@
+<section class="card">
+  <h1>Create your account</h1>
+  <h2>Diplomacy Online Registration</h2>
+
+  <form action="/register" method="POST">
+    <div class="field {{#if errors.name}}has-error{{/if}}">
+      <label for="name">Full name</label>
+      <input id="name" name="name" type="text" value="{{values.name}}" required>
+    </div>
+
+    <div class="field {{#if errors.email}}has-error{{/if}}">
+      <label for="email">Email</label>
+      <input id="email" name="email" type="email" value="{{values.email}}" required>
+    </div>
+
+    <div class="field {{#if errors.password}}has-error{{/if}}">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" minlength="8" required>
+    </div>
+
+    <div class="field {{#if errors.confirm}}has-error{{/if}}">
+      <label for="confirm">Confirm password</label>
+      <input id="confirm" name="confirm" type="password" required>
+    </div>
+
+    <button type="submit">Create account</button>
+  </form>
+
+  <p class="alt">Already have an account? <a href="/login">Log in</a></p>
+</section>
