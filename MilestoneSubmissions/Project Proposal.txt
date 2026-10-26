@@ -54,13 +54,29 @@ See project MilestoneSubmissions directory.
 See project MilestoneSubmissions directory.
 
 
-Extra credit:
-User information needs to be secure - store hashed passwords and ensure that our game's database uses a foreign key for the users database
+Extra Credit: Project Risk Analysis
 
-Sql Injections could be possible in login and registration. This would be high risk because it doesn’t take that much knowledge to log in as users you shouldn’t - make every data entry point parameterized.
+1. User Data Security
+Severity: High
+Risk: User information could be exposed if passwords or database relationships are not properly secured.
+Mitigation: Store hashed passwords, use appropriate database constraints, and protect sensitive user information.
 
-AI may be costly in both money and computation - use Ollama for local AI compute while temporarily giving up a desktop computer for resources as well as limiting the time a turn can take or the chat can be open for
+2. SQL Injection
+Severity: High
+Risk: Attackers could manipulate database queries through login, registration, or other user inputs.
+Mitigation: Use parameterized SQL queries for all database operations and validate user inputs.
 
-Because it’s an online multiplayer game, we have to prepare for the fact that some players may get heated and act in poor conduct - We should add a way for players to block each other so they won’t be paired in games.
+3. AI Resource Usage
+Severity: Medium
+Risk: AI opponents may require significant computing resources or introduce additional costs.
+Mitigation: Use Ollama to run AI models locally, limit AI processing time, and manage available computing resources.
 
-Because it’s a multiplayer game and we don’t want to have players take turns as each other or take bad actions - We need a way to properly authenticate users, likely using session cookies that need to be 32 bit.
+4. Player Misconduct
+Severity: Medium
+Risk: Players may behave inappropriately or harass other users during multiplayer games.
+Mitigation: Implement player blocking and consider reporting functionality to improve player safety.
+
+5. User Authentication
+Severity: High
+Risk: Players could gain unauthorized access to accounts or attempt to submit turns on behalf of other players.
+Mitigation: Implement secure authentication using properly configured sessions and secure session cookies.
