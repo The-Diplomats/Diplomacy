@@ -64,7 +64,48 @@ sequenceDiagram
 
 Backend stays responsive. Worker does the slow stuff. Players don't notice.
 
-### 2.2 Why OpenAPI contract instead of just defining routes?
+### 2.2 Why TypeScript instead of plain JavaScript (like the labs)?
+
+**Before (plain JS, lab pattern):**
+
+```mermaid
+sequenceDiagram
+    participant A as Teammate A edits BoardState
+    participant R as Repo
+    participant B as Teammate B uses BoardState
+    A->>R: rename BoardState.units to .pieces
+    R->>B: PR merged, code still parses fine
+    B->>B: push to dev, no CI failures
+    Note over B: Runtime: "Cannot read .units of undefined"<br/>Found by: another teammate, 2 days later
+```
+
+A shared-type change in a monorepo without compile-time types ripples silently to every consumer. The failure happens at runtime, usually in a different workstream than the one that caused it, often days later.
+
+**After (TypeScript):**
+
+```mermaid
+sequenceDiagram
+    participant A as Teammate A edits BoardState
+    participant TS as tsc in CI
+    participant B as Teammate B's PR
+    A->>TS: rename BoardState.units to .pieces
+    TS->>B: 7 call sites flagged across apps/backend, apps/frontend, apps/worker
+    Note over B: PR cannot merge until<br/>consumers are updated or type is restored
+```
+
+The compiler surfaces every consumer in CI before the PR merges. For 5 people simultaneously changing shared packages (`contracts`, `adjudicator`, `game-types`), this is the difference between "it works on my machine" and "it worked when the whole team pushed it."
+
+**Three concrete payoffs beyond the renamed-field example:**
+
+1. **OpenAPI codegen (next section) only pays off with TS.** Kubb generates typed React Query hooks like `useSubmitOrders({ orders: Order[] })`. In plain JS, you'd still call the hook, but the editor can't autocomplete the payload shape and the compiler can't catch typos. The whole contract-first architecture degrades to "generated code is decoration."
+
+2. **The adjudicator is intricate-typed logic.** `BoardState`, `Order`, `Resolution`, `SupportChain`, `DislodgedUnit`, `ConvoyRoute`, each with multiple variants. The TS compiler catches "I passed a build order to the retreat resolver" before DATC tests even run.
+
+3. **Refactor safety for 5 people on shared packages.** Rename a field in `packages/game-types` and the TypeScript compiler shows every file that breaks across all three apps + three packages. In JS, you grep carefully and hope.
+
+**Cost:** one `tsc --watch` process in dev, slightly slower iteration on exploratory code (occasional "the compiler is yelling at me"), one additional ramp-up topic for teammates less familiar with TypeScript. Standard tradeoff for a monorepo at team scale.
+
+### 2.3 Why OpenAPI contract instead of just defining routes?
 
 **Before (sequential, no shared contract):**
 
@@ -94,7 +135,7 @@ flowchart LR
 
 Backend and frontend work in parallel from day 1. Runtime validator at the API boundary catches any drift between code and spec. Teammates on frontend don't block on teammates on backend.
 
-### 2.3 Why 3 cloud envs instead of 1?
+### 2.4 Why 3 cloud envs instead of 1?
 
 **Before (one env):**
 
@@ -122,7 +163,7 @@ flowchart LR
 
 Bad merges land in dev. Stage proves the release pipeline works. Prod only moves after a human approves.
 
-### 2.4 Why monorepo + shared packages?
+### 2.5 Why monorepo + shared packages?
 
 **Before (one `src/`, 5 people):**
 
@@ -160,7 +201,7 @@ flowchart TB
 
 Each teammate owns a workstream. Shared pieces (contracts, adjudicator, game-types) live in `packages/` where a type change ripples with TypeScript compiler safety to every consumer. In the lab scaffold's single `src/`, the same ripple is "hope you grepped carefully."
 
-### 2.5 Why Redis AND Postgres (not just Postgres)?
+### 2.6 Why Redis AND Postgres (not just Postgres)?
 
 Two separate things both want Redis, so we add one Redis and let both use it:
 
@@ -169,7 +210,7 @@ Two separate things both want Redis, so we add one Redis and let both use it:
 
 Both roles are purpose-built for Redis. Postgres can technically do either, poorly.
 
-### 2.6 What we kept vs changed
+### 2.7 What we kept vs changed
 
 **Kept from the lab stack:**
 - Node + Express + pg-promise + PostgreSQL (the backbone)
@@ -192,7 +233,7 @@ Both roles are purpose-built for Redis. Postgres can technically do either, poor
 - Microservices (we have 3 processes, not 30)
 - Module federation, service mesh, distributed tracing (100-engineer-org stuff)
 
-### 2.7 TL;DR
+### 2.8 TL;DR
 
 Every architectural piece exists to satisfy a specific thing the proposal committed us to:
 
@@ -201,6 +242,7 @@ Every architectural piece exists to satisfy a specific thing the proposal commit
 - Skip the 3-env pipeline, one bad merge breaks the demo URL.
 - Skip the monorepo, 5 people merge-conflict their way through 4 weeks.
 - Skip Redis, deadlines evaporate on every deploy.
+- Skip TypeScript, shared-package changes break at runtime days later.
 
 Starting with the right shape costs ~2 days of solo scaffolding at the start of M1 and saves the whole team from retrofitting these pieces one at a time under deadline pressure.
 
