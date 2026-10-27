@@ -1,0 +1,47 @@
+Diplomacy Group Project – Meeting Notes
+Date: October 26, 2026
+Course: CSCI 3308 – Software Development Methods
+Meeting Type: Weekly TA Review
+
+1. Team Contributions
+- All team members have completed their first commit.
+- One member created the initial repository, PR template, and Discord notifications.
+- A team member began working on the registration page.
+- Each member explained their initial contributions to the TA.
+
+2. Weekly Grading Criteria
+GitHub
+- All completed functionality must be pushed to GitHub.
+- Ready-to-integrate features should be merged into the main branch.
+- Pull requests and merge conflicts should be resolved before each weekly meeting.
+Functionality
+- The team must demonstrate working functionality during future meetings.
+- A team member should be prepared to share their screen and demonstrate the application.
+Project Board
+- The next lab will cover creating and maintaining a project board.
+- Starting next week, the team is expected to have an updated project board tracking tasks and progress.
+Release Notes
+- Release notes should document major changes to the repository.
+- They should summarize new functionality, updates, and improvements.
+- Release notes are expected for each weekly review.
+Meeting Minutes
+- Meeting notes must be recorded for every meeting.
+
+3. Individual Grading
+Each team member will be evaluated on:
+- Attendance at the weekly TA meeting.
+- Completing at least three commits by next week's meeting.
+
+4. Action Items
+Task	Responsible	Deadline
+Upload today's meeting minutes	Meeting note-taker	
+Complete at least 3 commits per person	All members	Next meeting
+Push completed functionality to GitHub	All members	Before next meeting
+Resolve PRs and merge conflicts	Team	Before next meeting
+Create and update project board	Team	Next week
+Prepare release notes	Team	Next meeting
+Prepare functionality demonstration	Team	Next meeting
+
+5. Additional Information
+- Detailed grading criteria are available on the course project page.
+- The TA expects the team to be prepared with the required materials before every weekly meeting.
