@@ -292,7 +292,7 @@ ProjectSourceCode/
 │   └── worker/      BullMQ consumer for jobs
 ├── packages/
 │   ├── contracts/   OpenAPI spec + generated types + Socket.IO event types
-│   ├── adjudicator/ Pure JS Diplomacy rules engine
+│   ├── adjudicator/ Pure-function Diplomacy rules engine (TS)
 │   └── game-types/  Shared TS types + classic-map.json
 ├── platform/
 │   └── docker/      Shared Dockerfile bases
@@ -425,16 +425,25 @@ sequenceDiagram
     participant RD as Redis (BullMQ)
     participant WK as Worker
     participant PG as Postgres
+    Note over BE,RD: Deadline job enqueued at phase start<br/>(delay = phase_length_seconds, default 24h)
     P->>BE: PUT /orders (save-as-you-go)
     BE->>PG: UPSERT orders
     P->>BE: POST /ready
     BE->>PG: INSERT phase_readiness
-    BE->>RD: cancel current resolve-phase job
-    BE->>RD: schedule resolve-phase (30s delay)
-    Note over RD: grace window
-    P->>BE: POST /skip-grace (all players vote)
-    BE->>RD: cancel grace job
-    BE->>RD: schedule resolve-phase (0 delay)
+    BE->>BE: check: all affected players ready?
+    alt not yet all ready
+        Note over BE: no scheduler change
+    else all affected ready
+        BE->>RD: cancel pending deadline job
+        BE->>RD: schedule resolve-phase (30s grace delay)
+        Note over RD: grace window open
+        P->>BE: POST /skip-grace (last voter)
+        BE->>BE: check: all affected also skip-grace?
+        alt unanimous skip-grace
+            BE->>RD: cancel grace job
+            BE->>RD: schedule resolve-phase (0 delay, immediate)
+        end
+    end
     RD->>WK: fire resolve-phase job
     WK->>PG: begin transaction
     WK->>PG: load phase + orders + board
@@ -445,6 +454,17 @@ sequenceDiagram
     RD->>BE: pub/sub broadcast
     BE->>P: emit phase:resolved via WebSocket
 ```
+
+**Idempotency guard (correctness, not optimization):**
+
+BullMQ guarantees "at least once" delivery, a job can run more than once if a worker loses its lock or crashes mid-processing, and `queue.remove()` cannot cancel a job that is already in the `active` state. The handler therefore cannot assume one-shot execution. On entry it runs:
+
+```sql
+BEGIN;
+SELECT 1 FROM phases WHERE id = $1 AND resolved_at IS NULL FOR UPDATE;
+```
+
+If the row is missing or already resolved, the handler commits and returns a no-op. Otherwise it computes the new state and writes `resolved_at = NOW()` in the same transaction. Two concurrent workers racing on the same phase serialize at the row lock, and only the winner writes. The `queue.remove()` calls in the flow above are best-effort optimizations to avoid redundant worker wakeups, they are not the correctness mechanism.
 
 **Resolution triggers (in priority order):**
 
@@ -503,9 +523,11 @@ flowchart LR
 - `game:<id>`, all players in a game (public events + public chat)
 - `game:<id>:player:<player_id>`, single player (private DMs addressed to them)
 
-**Auth**: HTTP session cookie flows into the WS handshake via `io.engine.use(sessionMiddleware)`. One auth system end-to-end.
+**Auth**: HTTP session cookie flows into the WS handshake via `io.engine.use(sessionMiddleware)`. One auth system end-to-end. The frontend and backend run on **subdomains of a single apex domain** (`app.<apex>` and `api.<apex>`), so the session cookie is set on `.<apex>` with `SameSite=Lax` instead of the permissive `SameSite=None`. Browser enforces same-site semantics at the request layer, which blocks the vast majority of CSRF and CSWSH attempts before they ever reach the backend. As defense-in-depth, Socket.IO is still configured with an explicit `allowRequest` handler that validates the `Origin` header against the known frontend origins per env, rejecting unknown origins with HTTP 403 before the upgrade completes. The same allowlist is used by the REST CORS config so there is one source of truth.
 
 **Transport**: WebSocket only (no polling fallback). Avoids sticky load balancing requirements.
+
+**Reconnect state recovery**: Socket.IO's auto-reconnect only re-establishes the connection; it does not replay events that fired during the dead window. On successful reconnect, the client calls `queryClient.invalidateQueries(['game', id])` which triggers a TanStack Query refetch of the current phase + board + messages via REST. This brings the client back to the authoritative server state before any new WS events arrive. The server does not maintain a per-client event log, so there is no replay channel to subscribe to, the authoritative state is always Postgres, surfaced via GET.
 
 **Reconnection**: client retries 10 times with exponential backoff; surfaces a sonner toast on exhaustion.
 
@@ -594,14 +616,14 @@ For each decision below, the **recommended** choice is what we plan to implement
 | Icons | **lucide-react** | 1,400+ icons; Shadcn default | none | Heroicons | Official Tailwind pairing | Smaller set |
 | Toasts | **sonner** | Modern; 5KB; works with Tailwind | Newer, slightly less flexible | react-hot-toast | Battle-tested | Dated styling defaults |
 | Queue library | **BullMQ** | TS-native; cancellation by ID (needed for grace); de-facto Node standard | Needs Redis | pg-boss | Postgres-only; one fewer service | Smaller community; less feature-complete |
-| Postgres version | **16** | Current stable; better perf defaults | Minor divergence from lab image (14) | 14 (lab default) | Matches labs exactly | Missing LZ4 TOAST, newer JSON path |
+| Postgres version | **16** | Supported through 2028; better perf defaults than 14 (LZ4 TOAST, `pg_stat_io`); well-covered by Neon and tooling | Not the newest (18 is current as of 2025); minor divergence from lab image 14 | 14 (lab default) | Matches labs exactly | Missing LZ4 TOAST, older JSON path, dated defaults |
 | Migration tool | **node-pg-migrate** | Node-native; zero infra; SQL migrations | Migration directory on us | Flyway | Battle-tested industry standard | Pulls JVM into Docker |
 | Pooling | **pg-promise + pgBouncer** | Scales with replicas without exhausting max_connections | Transaction-mode quirks | pg-promise built-in pool only | Zero extra infra | Can exhaust max_connections at scale |
 | Mock servers | **Postman (dev) + MSW (frontend tests)** | Both worlds: shared team mock URL + in-browser test mocks | Two mock sources to maintain | Postman only | One source | Loses frontend-test mocking without HTTP |
 | Monorepo | **pnpm workspaces** | Fast installs, strict hoisting (prevents phantom deps), first-class monorepo support, works great with Turborepo later if needed | One more tool to install locally; diverges slightly from the labs' npm defaults | npm workspaces | Lab-aligned; zero new tool to install | Slower installs; looser hoisting lets phantom deps slip in |
 | Monorepo task runner | **Make + pnpm scripts** | Universal; no new DSL; `pnpm -r` fans out across workspaces | Verbose per-target scripts | Turborepo | Build caching; task orchestration | New tool; config overhead |
 | Compose organization | **Single docker-compose.yaml** | Simplest | Dev tweaks mix with service def | Base + override files | Clean prod-like split | Two files to understand |
-| Node base image | **node:20-alpine** | Smaller; works with our pure-JS deps | musl can break some native deps | node:20 (Debian-slim) | Works with every native dep | Larger image |
+| Node base image | **node:24-alpine** | LTS through April 2028 (longest window); newer V8; built-in WebSocket client; explicit resource management (`using` keyword helps with pg connection pools); smaller than Debian-slim | musl can break some native deps (not an issue for our pure-JS stack) | node:22-alpine | Previous LTS (through April 2027); deeper Stack Overflow backlog | Shorter support window; older V8 |
 | Secrets handling | **.env per app locally; GH env secrets in cloud** | Lab convention; built-in approval gates | none | Doppler free tier | Cloud secret manager; audit log | New signup; cloud dep |
 | CI structure | **Flat per-concern workflows** | Easy to grep; one file per concern | Setup duplication across workflows | Reusable via workflow_call | DRY; shared steps across workflows | Indirection; more files |
 | Change detection | **Labeler + dorny/paths-filter** | GH-native; branch protection stays happy | More per-workflow config | Trigger-level path filters | Simpler config | Breaks branch protection on required skipped checks |
@@ -634,9 +656,9 @@ Other decisions are more locked (e.g., Express 5 matches the lab stack directly;
 |---|---|
 | **SQL injection** | pg-promise parameterized queries exclusively; no string concatenation. express-openapi-validator rejects malformed input before it reaches handlers. |
 | **Password storage** | bcryptjs with cost factor 10+. Never log passwords. |
-| **Session hijacking** | HTTP-only cookies; `SameSite=None; Secure` (HTTPS enforced in all envs). Sessions stored in Postgres (survives backend restarts). |
+| **Session hijacking** | HTTP-only cookies; `SameSite=Lax; Secure` cookie scoped to `.<apex>` so frontend subdomain and api subdomain share one same-site context (HTTPS enforced in all envs). Sessions stored in Postgres (survives backend restarts). |
 | **XSS** | React auto-escapes by default. No `dangerouslySetInnerHTML` on user input. Content Security Policy header via helmet. |
-| **CSRF** | SameSite cookie attribute as primary defense. Explicit CSRF tokens if we add state-changing GET requests (we don't). |
+| **CSRF** | `SameSite=Lax` on the session cookie is the primary defense (browser enforced): the cookie is only sent on top-level navigations and same-site subresource requests. Defense-in-depth: strict `Origin` header check on both REST (CORS) and WebSocket (`allowRequest`) handshakes. CSRF tokens are optional given the SameSite=Lax baseline; we add them only if we introduce a cross-site workflow that requires `SameSite=None`. |
 | **Rate limiting** | express-rate-limit backed by Redis, 30 messages/min per player per game on chat. Future expansion to other endpoints. |
 | **OAuth** | PKCE flow via openid-client. State parameter validated server-side. Nonce for ID token replay protection. |
 | **Secrets** | Never committed. `.env` gitignored; cloud env values in GH environment secrets with reviewer gate on prod. |
@@ -696,16 +718,17 @@ See the full week-by-week breakdown in the implementation plan. Summary:
 | **Adjudicator correctness**, writing a Diplomacy rules engine from scratch is famously edge-case heavy (60+ DATC cases) | High | Treat as isolated math library; port DATC cases from day 1; each PR touching adjudicator must keep DATC green; one file per DATC section maps to milestone progress |
 | **4-week timeline is 3.25x the per-week velocity of a semester plan** | High | Explicit ship-list vs stretch-list per week; clear slip order so cuts aren't improvised at the last moment |
 | **AI quality** on local Ollama may be poor | Medium | Acceptance threshold is "AI submits legal orders consistently," not "AI plays well." Fallback to all-Hold if 3 retries fail. Context pack can be iteratively improved |
-| **User authentication / data security** | High | bcryptjs, parameterized queries, SameSite cookies, HTTPS everywhere, OAuth via standard OIDC flow |
+| **User authentication / data security** | High | bcryptjs, parameterized queries, `SameSite=Lax` cookies on a shared apex domain, HTTPS everywhere, OAuth via standard OIDC flow |
 | **Cross-env config drift** | Medium | GH env secrets + ACA environment separation prevent values leaking. Infrastructure identical across envs (only values differ) |
-| **Teammate schedule disruption** (illness, etc.) | Medium | WS-4 holds flex-support role across all streams. WS-1 (adjudicator) is pure JS and self-contained, easy for any stream to help with |
+| **Teammate schedule disruption** (illness, etc.) | Medium | WS-4 holds flex-support role across all streams. WS-1 (adjudicator) is pure-function TypeScript with no I/O, so it's self-contained and easy for any stream to help with |
 | **Compose startup complexity** | Low | WS-4 scaffolds everything in M1; teammates don't touch framework config |
 
 ---
 
 ## 19. Open Questions
 
-- Final deploy URLs for each env (TBD during M1 Azure standup)
+- Apex domain to purchase for the SameSite=Lax cookie scope (e.g. `diplomats.app`, `diplomacy-game.online`), subdomain scheme per env (e.g. `app.diplomats.app` / `api.diplomats.app` for prod, `app.dev.diplomats.app` / `api.dev.diplomats.app` for dev)
+- Final deploy URLs for each env (TBD during M1 Azure standup, once apex domain is chosen)
 - Specific `llama3.1:8b` or `llama3.1:8b-q4_K_M` for grading demo (depends on grading-machine specs)
 - Whether to add Google/GitHub OAuth alongside Microsoft (parked post-MVP)
 - Whether to display a global "Diplomacy clock" (world year, not real time) prominently in the UI (nice-to-have)
@@ -730,4 +753,5 @@ Append-only. Record *when* a decision was finalized, *who* approved, *why* over 
 | 2026-10-27 | Initial tech stack per section 14 | Pending team review | See per-row Pros/Cons |
 | 2026-10-27 | 3 isolated cloud envs (dev/stage/prod) on Azure Container Apps | Pending team review | Scale-to-zero + queue-triggered scaling via KEDA + generous free tier |
 | 2026-10-27 | Microsoft OAuth added as additional (not replacement) login method | Pending team review | University students have Microsoft accounts; one-click signup; openid-client lets us add Google/GitHub later |
+| 2026-10-27 | Shared apex domain across env + `SameSite=Lax` session cookie | Pending team review | CDN frontend + API backend on subdomains of one apex (e.g. `app.diplomats.app` + `api.diplomats.app`) lets us use `SameSite=Lax`, which is browser-enforced CSRF/CSWSH defense. Avoids the fragile `SameSite=None` + CSRF-tokens-everywhere discipline required when apps live on unrelated domains. Cost: ~$12/yr apex + 30 min DNS. Alternative considered and rejected: `SameSite=None` + strict Origin allowlist + CSRF tokens on every state-changing endpoint, which works but has more runtime security surface. |
 | | | | |
