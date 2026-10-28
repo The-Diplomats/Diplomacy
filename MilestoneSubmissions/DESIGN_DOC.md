@@ -217,11 +217,11 @@ Both roles are purpose-built for Redis. Postgres can technically do either, poor
 ### 2.7 What we kept vs changed
 
 **Kept from the lab stack:**
-- Node + Express + pg-promise + PostgreSQL (the backbone)
+- Node + Express + PostgreSQL (the backbone)
 - bcryptjs + express-session (lab auth pattern)
 - Mocha + Chai (lab testing)
 - Docker Compose for local dev
-- Raw SQL for schema (just incremental via node-pg-migrate)
+- Incremental schema evolution via committed SQL files
 
 **Added for what the proposal commits to:**
 - React SPA + Vite (interactive board + chat; Handlebars can't do that)
@@ -423,7 +423,7 @@ Schema defined in TypeScript at `packages/db/src/schema.ts` (Drizzle ORM) — si
 
 ## 8. API Design
 
-OpenAPI 3.1 contract-first. Spec lives at `packages/contracts/api/public/openapi.yaml`. All endpoints validated at runtime (request + response) by `express-openapi-validator`. The validator is mounted on `/api` only; the Socket.IO handshake path `/socket.io/` and health endpoints are intentionally outside its scope. Spec paths are mount-relative (e.g., `/games/:id` in the spec → `/api/games/:id` on the wire). The Kubb-generated client sets its baseURL to `/api` to match.
+OpenAPI 3.1 contract-first. Spec lives at `packages/contracts/api/public/openapi.yaml`. All endpoints validated at runtime (request + response) by `express-openapi-validator`. The validator is mounted on `/api` only; the Socket.IO handshake path `/socket.io/` and health endpoints are intentionally outside its scope. Spec paths use OpenAPI path-template syntax and are mount-relative (e.g., `/games/{id}` in the spec → `/api/games/123` on the wire). The Kubb-generated client sets its baseURL to `/api` to match.
 
 ### Endpoint summary
 
@@ -535,14 +535,21 @@ sequenceDiagram
 
 **Idempotency guard (correctness, not optimization):**
 
-BullMQ guarantees "at least once" delivery, a job can run more than once if a worker loses its lock or crashes mid-processing, and `queue.remove()` cannot cancel a job that is already in the `active` state. The handler therefore cannot assume one-shot execution. On entry it runs:
+BullMQ guarantees "at least once" delivery; a job can run after `queue.remove()` fails (job already `active`), so the handler cannot assume one-shot execution *or* trigger freshness. The job payload carries `{ phaseId, trigger: 'grace' | 'immediate' | 'deadline' }`. On entry:
 
 ```sql
 BEGIN;
-SELECT 1 FROM phases WHERE id = $1 AND resolved_at IS NULL FOR UPDATE;
+SELECT resolved_at, deadline_at FROM phases WHERE id = $1 FOR UPDATE;
+
+-- If resolved_at IS NOT NULL → commit no-op.
+-- Else re-derive the trigger's current validity:
+--   trigger = 'grace'     → recompute all-affected-ready; if false, no-op (stale).
+--   trigger = 'immediate' → recompute all-affected skip-grace; if false, no-op.
+--   trigger = 'deadline'  → require NOW() >= deadline_at; else no-op.
+-- Otherwise resolve and write resolved_at = NOW().
 ```
 
-If the row is missing or already resolved, the handler commits and returns a no-op. Otherwise it computes the new state and writes `resolved_at = NOW()` in the same transaction. Two concurrent workers racing on the same phase serialize at the row lock, and only the winner writes. The `queue.remove()` calls in the flow above are best-effort optimizations to avoid redundant worker wakeups, they are not the correctness mechanism.
+The row lock serializes concurrent workers; the trigger-freshness check prevents a stale grace or deadline from resolving against invalidated state. `queue.remove()` calls remain best-effort optimizations.
 
 **Deadline computation (per phase type):**
 
@@ -597,10 +604,10 @@ sequenceDiagram
         WK->>OLL: retry with "previous was invalid: X" (up to 3 total)
     end
     alt all retries exhausted
-        WK->>PG: write all-Hold orders, mark Ready + Skip-grace
+        WK->>PG: write phase-default orders (§10), mark Ready + Skip-grace
     else success
         WK->>PG: write orders via same path humans use
-        WK->>PG: insert chat messages
+        WK->>PG: send chat via shared messageService.sendFromAi()<br/>(same validation + per-game rate limits as human path)
         WK->>RD: publish message:new via @socket.io/redis-emitter
         WK->>PG: insert ai_memory rows (strategic notes)
         WK->>PG: insert phase_readiness (Ready + Skip-grace)
@@ -609,11 +616,11 @@ sequenceDiagram
 
 **Why stateless workers + stateful DB**: the AI's "memory" lives entirely in Postgres (chat log, past orders, `ai_memory`). No in-memory agent, no per-game process. Scales trivially via BullMQ worker replicas.
 
-**Broadcast path for AI-authored chat**: the worker uses `@socket.io/redis-emitter` to publish `message:new` after inserting chat rows. The backend's `@socket.io/redis-adapter` fans the event out to all connected WS clients. This is the same cross-process pattern §10 uses for `phase:resolved`, just applied to chat too, so live clients see AI chat without having to refetch.
+**Broadcast path for AI-authored chat**: the worker uses `@socket.io/redis-emitter` to publish `message:new` **scoped to the target room**. Public messages (`to_player_id IS NULL`) go to `game:<id>`; private 1:1 DMs go only to `game:<id>:player:<to_player_id>`. The backend authorizes each socket's room joins against game membership at connection time, so a client cannot subscribe to another player's DM room. The `@socket.io/redis-adapter` on each backend replica then delivers the event only to sockets in the target room. This is the same cross-process pattern §10 uses for `phase:resolved`, just applied to chat too, so live clients see AI chat without having to refetch — and private chat stays private.
 
 **Idempotency guard (same shape as §10):**
 
-Jobs are enqueued with deterministic `jobId = ai-take-turn:${gameId}:${power}:${phaseId}`. BullMQ dedupes while the job exists in Redis, and its atomic Lua lock on `active` ensures only one worker replica picks any given job. On entry the handler runs:
+Jobs are enqueued with deterministic `jobId = ai-take-turn-${gameId}-${power}-${phaseId}` (BullMQ jobIds disallow `:`; `-` separator used for all jobIds including `deadline-${phaseId}` and `grace-${phaseId}` from §10). BullMQ dedupes while the job exists in Redis, and its atomic Lua lock on `active` ensures only one worker replica picks any given job. On entry the handler runs:
 
 ```sql
 BEGIN;
@@ -689,9 +696,9 @@ flowchart LR
 | `test-build.yml` | PR open/sync | Full build + unit tests + E2E against Compose stack. Uses `environment: dev` for secret scope but does NOT deploy. Acts as the deployability check. |
 | `contract-check.yml` | PR open/sync (if `packages/contracts/**` changed) | Regen contracts, assert no diff. |
 | `compat-check.yml` | PR open/sync (if `packages/contracts/api/**` changed) | oasdiff vs base branch. Fails on breaking changes without `breaking-change-approved` label. |
-| `e2e.yml` | PR open/sync (if any `apps/**` or `packages/**` changed) | Playwright E2E + Postman contract tests against a Compose stack with `MOCK_AI=true` (MSW intercepts the Ollama HTTP endpoint; fixtures at `apps/worker/test/fixtures/ollama/*.json`). Covers prompt assembly, parse, legal-move validation, retry loop, fallback-to-all-Hold. |
+| `e2e.yml` | PR open/sync (if any `apps/**` or `packages/**` changed) | Playwright E2E + Postman contract tests against a Compose stack with `MOCK_AI=true` (MSW intercepts the Ollama HTTP endpoint; fixtures at `apps/worker/test/fixtures/ollama/*.json`). Covers prompt assembly, parse, legal-move validation, retry loop, and phase-default fallback (per phase type: Hold / Disband / auto-disband). |
 | `ai-smoke.yml` | `workflow_dispatch` only | Runs real Ollama against a Compose stack. Exercises 2-3 AI turns in a real game, asserts legal orders submitted (not quality — matches §18 acceptance threshold). WS-5 runs before significant AI changes land. Not a PR gate. |
-| `migrate.yml` | reusable (`workflow_call`) | Creates a Neon branch `pre-migration-{commit-sha-short}`, runs `node-pg-migrate up` against Neon's direct (non-pooled) connection. On failure, promotes the branch back to primary. Called by `deploy-dev.yml` / `deploy-stage.yml` / `deploy-prod.yml` before their ACA deploy step. |
+| `migrate.yml` | reusable (`workflow_call`) | Creates a Neon branch `pre-migration-{commit-sha-short}`, runs `pnpm --filter @diplomacy/db migrate` (drizzle-kit) against Neon's direct (non-pooled) connection. On failure, promotes the branch back to primary. Called by `deploy-dev.yml` / `deploy-stage.yml` / `deploy-prod.yml` before their ACA deploy step. |
 | `deploy-dev.yml` | `push: branches: [main]` | Calls `migrate.yml` then auto-deploys backend + worker to dev ACA env on PR merge. |
 | `deploy-frontend-dev.yml` | `push: branches: [main]` | Builds and uploads the SPA static artifact to the dev Azure Static Web App on PR merge. |
 | `release-please.yml` | `push: branches: [main]` | Updates the Release PR with CHANGELOG + version bump based on conventional-commit types since last release. |
@@ -785,7 +792,7 @@ Other decisions are more locked (e.g., Express 5 matches the lab stack directly;
 
 | Concern | Mitigation |
 |---|---|
-| **SQL injection** | pg-promise parameterized queries exclusively; no string concatenation. express-openapi-validator rejects malformed input before it reaches handlers. |
+| **SQL injection** | Drizzle query builder (`db.select().from(...).where(eq(...))`) parameterizes by construction; any raw escape hatch (`db.execute(sql`…`)`) uses tagged-template parameters, never string concatenation. express-openapi-validator rejects malformed input before it reaches handlers. |
 | **Password storage** | bcryptjs with cost factor 10+. Never log passwords. |
 | **Session hijacking** | HTTP-only cookies; `SameSite=Lax; Secure` cookie scoped to `.<apex>` so frontend subdomain and api subdomain share one same-site context (HTTPS enforced in all envs). Sessions stored in Postgres (survives backend restarts). |
 | **XSS** | React auto-escapes by default. No `dangerouslySetInnerHTML` on user input. Content Security Policy header via helmet. |
@@ -795,7 +802,7 @@ Other decisions are more locked (e.g., Express 5 matches the lab stack directly;
 | **Secrets** | Never committed. `.env` gitignored; cloud env values in GH environment secrets with reviewer gate on prod. |
 | **Dependency vulnerabilities** | Dependabot alerts enabled. `pnpm audit` in CI. |
 | **AI prompt injection** | AI output validated structurally (JSON schema) and semantically (`getLegalMoves()`) before any DB write. AI can't inject arbitrary chat since chat is routed through the normal send-message path (same rate limits + validation). |
-| **AI memory privacy** | `ai_memory` is server-side strategic context only. Never serialized to any API response, never included in realtime payloads, never written to logs. Access confined to `apps/worker` and `apps/backend`'s pre-turn context helper. The OpenAPI response validator (§8) blocks accidental leaks at runtime because `ai_memory` fields are not defined in the spec. Pino `redact` config excludes any field path matching `ai_memory`. |
+| **AI memory privacy** | `ai_memory` is server-side strategic context only. Never serialized to any API response, never included in realtime payloads, never written to logs. Access confined to `apps/worker` and `apps/backend`'s pre-turn context helper. Enforced via closed response schemas (`additionalProperties: false` on every response schema in `openapi.yaml`) or explicit response DTOs that omit `ai_memory`, plus a leak test. Pino `redact` config excludes any field path matching `ai_memory`. |
 | **Data loss / corruption** | Dev/stage: rebuildable from migrations + seeds. Prod: pre-migration Neon branch `pre-migration-{commit-sha-short}` created automatically by the deploy pipeline, 7-day retention; promoted back to primary if the migration step fails. No PITR on Neon free tier; non-migration data loss risk explicitly accepted for 4-week scope. |
 | **Admin UI** | Bull Board behind basic auth, admin password in GH env secrets. Not exposed on frontend domain. |
 
@@ -850,13 +857,14 @@ See the full week-by-week breakdown in the implementation plan. Summary:
 |---|---|---|
 | **Adjudicator correctness**, writing a Diplomacy rules engine from scratch is famously edge-case heavy (60+ DATC cases) | High | Treat as isolated math library; port DATC cases from day 1; each PR touching adjudicator must keep DATC green; one file per DATC section maps to milestone progress |
 | **4-week timeline is 3.25x the per-week velocity of a semester plan** | High | Explicit ship-list vs stretch-list per week; clear slip order so cuts aren't improvised at the last moment |
-| **AI quality** on local Ollama may be poor | Medium | Acceptance threshold is "AI submits legal orders consistently," not "AI plays well." Fallback to all-Hold if 3 retries fail. Context pack can be iteratively improved |
+| **AI quality** on local Ollama may be poor | Medium | Acceptance threshold is "AI submits legal orders consistently," not "AI plays well." Fallback to §10 phase-default orders (Movement: Hold; Retreat: Disband; Build: auto-disband farthest) if 3 retries fail. Context pack can be iteratively improved |
 | **User authentication / data security** | High | bcryptjs, parameterized queries, `SameSite=Lax` cookies on a shared apex domain, HTTPS everywhere, OAuth via standard OIDC flow |
 | **Cross-env config drift** | Medium | GH env secrets + ACA environment separation prevent values leaking. Infrastructure identical across envs (only values differ) |
 | **Teammate schedule disruption** (illness, etc.) | Medium | WS-4 holds flex-support role across all streams. WS-1 (adjudicator) is pure-function TypeScript with no I/O, so it's self-contained and easy for any stream to help with |
 | **Compose startup complexity** | Low | WS-4 scaffolds everything in M1; teammates don't touch framework config |
 | **Ollama latency during live demo** | Medium | Pin prod ACA Ollama to `minReplicas=1` for demo week (~$25 one-time cost); warm-up call 5 min before demo starts. Dev/stage stay scale-to-zero. |
 | **Prod data loss not from migration** | Low | Accept and document. Branch-safety covers the dominant risk (bad migration); Neon-side incidents and manual-SQL mistakes are out of scope for 4-week project. |
+| **Writes during the migration window are lost on branch promotion** | Low | Accept for 4-week scope. Writes between pre-migration branch snapshot and failed-migration promotion would be discarded. Maintenance mode / write drain is the standard fix; deferred because dev/stage traffic is near-zero and prod deploys happen on a planned schedule. |
 
 ---
 
@@ -893,7 +901,7 @@ Append-only. Record *when* a decision was finalized, *who* approved, *why* over 
 | 2026-10-27 | Microsoft OAuth added as additional (not replacement) login method | Pending team review | University students have Microsoft accounts; one-click signup; openid-client lets us add Google/GitHub later |
 | 2026-10-27 | Shared apex domain across env + `SameSite=Lax` session cookie | Pending team review | CDN frontend + API backend on subdomains of one apex (e.g. `app.diplomats.app` + `api.diplomats.app`) lets us use `SameSite=Lax`, which is browser-enforced CSRF/CSWSH defense. Avoids the fragile `SameSite=None` + CSRF-tokens-everywhere discipline required when apps live on unrelated domains. Cost: ~$12/yr apex + 30 min DNS. Alternative considered and rejected: `SameSite=None` + strict Origin allowlist + CSRF tokens on every state-changing endpoint, which works but has more runtime security surface. |
 | 2026-10-27 | Frontend hosted on Azure Static Web Apps, one instance per env | Pending team review | Matches CP's static-artifact-upload pattern (`control-plane-admin-portal/frontend-*.yml` workflows); free tier covers 3 envs trivially; managed custom domains + SSL tie down the `app.<apex>` / `api.<apex>` split that the SameSite=Lax story depends on; native per-env GH Action. PR previews deliberately disabled to match CP (which does not use them). Alternatives rejected: Azure Blob + Front Door (right for prod traffic, wrong for 4-week sprint), `express.static` on backend (collapses subdomain story), Vercel / Cloudflare (splits providers off Azure), Nginx-in-ACA (doubles failure surface, no CDN benefit without Front Door). |
-| 2026-10-27 | DB migrations via GH Actions step before each ACA deploy | Pending team review | `node-pg-migrate up` runs against Neon's direct (non-pooled) connection URL inside a reusable `migrate.yml` called by each `deploy-*.yml`. Deterministic and observable (failure is a step failure, not a container-log mystery). Backend process never carries schema-mutation privilege. Alternatives rejected: backend boot-time with advisory lock (moves failure out of CI, grants schema-mutation to request-serving process), separate migration-job container (four ACA apps per env for no payoff at 4-week scale). |
+| 2026-10-27 | DB migrations via GH Actions step before each ACA deploy | Pending team review | `pnpm --filter @diplomacy/db migrate` (drizzle-kit) runs against Neon's direct (non-pooled) connection URL inside a reusable `migrate.yml` called by each `deploy-*.yml`. Deterministic and observable (failure is a step failure, not a container-log mystery). Backend process never carries schema-mutation privilege. Alternatives rejected: backend boot-time with advisory lock (moves failure out of CI, grants schema-mutation to request-serving process), separate migration-job container (four ACA apps per env for no payoff at 4-week scale). |
 | 2026-10-27 | Ollama scale-to-zero in dev/stage; pinned `minReplicas=1` in prod for demo week only | Pending team review | ACA Consumption free grant (360K GiB-seconds/mo, cited from `learn.microsoft.com/azure/container-apps/billing`) covers ~139 MiB continuously — one pinned 6 GiB Ollama replica burns ~43x the grant per env. Scale-to-zero gives ~2 min cold-start on first-after-idle AI turn. Preserve §14's "zero API cost / works offline" value for dev/stage; spend ~$25 for the demo week to protect grader UX. Warm-up HTTP call 5 min pre-demo. Alternatives rejected: scale-to-zero everywhere (demo-day latency risk), switch to Groq free tier (nukes §14 Ollama decision), Ollama + Groq feature-flagged fallback (over-engineering for 4-week scope). |
 | 2026-10-27 | `@socket.io/redis-emitter` as the worker-side cross-process event emitter | Pending team review | Official Socket.IO emit-only client — three lines in the worker, no engine state, no HTTP server. Pairs with the backend's `@socket.io/redis-adapter` on the same wire protocol. Both packages pinned to the same major version. Covers `phase:resolved`, `message:new` for AI chat, `cd:changed`, `game:ended` emitted from the worker. Alternatives rejected: full `new Server()` in the worker (wasteful engine allocation), hand-rolled Redis publish + backend subscriber (reinvents what the emitter is). |
 | 2026-10-27 | Civil Disorder: hybrid per-player lockout + game-abandon when fewer than 2 unlocked humans | Pending team review | `game_players.afk_counter` increments on phase resolve for humans who submitted no orders and weren't ready, resets to 0 on submit. At 3, `locked = true` (one-way) and the power plays per-phase-type defaults for the remaining game. Game → `abandoned` only when `COUNT(unlocked humans) < 2`, so a single dropped teammate never kills the game. Per-phase-type defaults: Movement → Hold; Retreat → Disband dislodged unit; Build → auto-disband farthest-from-home (Avalon Hill convention). Alternatives rejected: pure per-player lockout with no game-abandon (games stuck forever if 5+ drop), hair-trigger "any player misses 3 → game abandoned" (demo-week risk if one teammate ill). |
