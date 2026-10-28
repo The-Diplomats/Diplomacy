@@ -553,9 +553,13 @@ The row lock serializes concurrent workers; the trigger-freshness check prevents
 
 **Deadline computation (per phase type):**
 
-- **Movement** phases: delay = `games.movement_deadline_seconds` (default 86400).
-- **Retreat** phases: delay = `movement_deadline_seconds / 2`.
-- **Build** phases: delay = `movement_deadline_seconds / 2`.
+All seconds values below are multiplied by 1000 at the BullMQ queue boundary (`delay` is milliseconds).
+
+- **Movement** phases: `games.movement_deadline_seconds` (default 86400 → `delay: 86_400_000`).
+- **Retreat** phases: `movement_deadline_seconds / 2`.
+- **Build** phases: `movement_deadline_seconds / 2`.
+- Grace job: 30 seconds → `delay: 30_000`.
+- Re-armed deadline (un-ready-during-grace): `(deadline_at - now)` seconds → × 1000.
 
 The backend persists the absolute `deadline_at` on the `phases` row so the un-ready-during-grace branch (above) can re-arm the original deadline instead of resetting it.
 
