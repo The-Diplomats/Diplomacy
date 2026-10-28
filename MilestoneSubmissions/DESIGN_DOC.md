@@ -497,7 +497,7 @@ sequenceDiagram
     participant RD as Redis (BullMQ)
     participant WK as Worker
     participant PG as Postgres
-    Note over BE,RD: Deadline job enqueued at phase start<br/>(delay = movement_deadline_seconds for Movement,<br/>movement_deadline_seconds / 2 for Retreat and Build;<br/>deadline_at persisted on phases row)
+    Note over BE,RD: Deadline job enqueued at phase start<br/>delay varies by phase type (see below)<br/>deadline_at stored on phases row
     P->>BE: PUT /orders (save-as-you-go)
     BE->>PG: UPSERT orders
     P->>BE: POST /ready
@@ -509,12 +509,13 @@ sequenceDiagram
         BE->>RD: cancel pending deadline job
         BE->>RD: schedule resolve-phase (30s grace delay)
         Note over RD: grace window open
-        alt un-ready during grace
+        opt un-ready during grace
             P->>BE: DELETE /ready
             BE->>RD: cancel grace job
             BE->>RD: re-enqueue deadline job<br/>(delay = deadline_at - now)
-            Note over BE: deadline is paused, not reset -<br/>griefing-resistant
-        else unanimous skip-grace
+            Note over BE: deadline paused, not reset<br/>- griefing-resistant
+        end
+        opt unanimous skip-grace
             P->>BE: POST /skip-grace (last voter)
             BE->>BE: check: all affected also skip-grace?
             BE->>RD: cancel grace job
@@ -542,6 +543,14 @@ SELECT 1 FROM phases WHERE id = $1 AND resolved_at IS NULL FOR UPDATE;
 ```
 
 If the row is missing or already resolved, the handler commits and returns a no-op. Otherwise it computes the new state and writes `resolved_at = NOW()` in the same transaction. Two concurrent workers racing on the same phase serialize at the row lock, and only the winner writes. The `queue.remove()` calls in the flow above are best-effort optimizations to avoid redundant worker wakeups, they are not the correctness mechanism.
+
+**Deadline computation (per phase type):**
+
+- **Movement** phases: delay = `games.movement_deadline_seconds` (default 86400).
+- **Retreat** phases: delay = `movement_deadline_seconds / 2`.
+- **Build** phases: delay = `movement_deadline_seconds / 2`.
+
+The backend persists the absolute `deadline_at` on the `phases` row so the un-ready-during-grace branch (above) can re-arm the original deadline instead of resetting it.
 
 **Resolution triggers (in priority order):**
 
