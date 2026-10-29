@@ -32,6 +32,7 @@
     "eslint-plugin-simple-import-sort": "catalog:",
     "globals": "catalog:",
     "husky": "catalog:",
+    "lint-staged": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
