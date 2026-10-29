@@ -1,6 +1,3 @@
-# EditorConfig for the Diplomacy monorepo
-# https://editorconfig.org
-
 root = true
 
 [*]
