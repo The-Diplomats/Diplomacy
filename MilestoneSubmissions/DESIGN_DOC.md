@@ -237,19 +237,6 @@ Both roles are purpose-built for Redis. Postgres can technically do either, poor
 - Microservices (we have 3 processes, not 30)
 - Module federation, service mesh, distributed tracing (100-engineer-org stuff)
 
-### 2.8 TL;DR
-
-Every architectural piece exists to satisfy a specific thing the proposal committed us to:
-
-- Skip the backend/worker split, chat freezes during AI turns.
-- Skip the OpenAPI contract, frontend sits idle waiting for backend.
-- Skip the 3-env pipeline, one bad merge breaks the demo URL.
-- Skip the monorepo, 5 people merge-conflict their way through 4 weeks.
-- Skip Redis, deadlines evaporate on every deploy.
-- Skip TypeScript, shared-package changes break at runtime days later.
-
-Starting with the right shape costs ~2 days of solo scaffolding at the start of M1 and saves the whole team from retrofitting these pieces one at a time under deadline pressure.
-
 ---
 
 ## 3. Goals & Non-Goals
@@ -409,7 +396,7 @@ erDiagram
 | `users` | Base identity, auth credentials | `password_hash` nullable (OAuth users); `(oauth_provider, oauth_subject)` UNIQUE when non-null. For Microsoft: `oauth_subject = "{tid}:{oid}"` (NOT the OIDC `sub`, which is pairwise-per-app and documented as non-portable). Future-provider conventions TBD. |
 | `games` | Game instances with lifecycle metadata | `status` ∈ `forming / active / finished / abandoned`. `movement_deadline_seconds INT NOT NULL DEFAULT 86400`; retreat and build deadlines computed as `movement_deadline_seconds / 2`. |
 | `game_players` | Many-to-many between users and games; captures role (power), AI status, AFK counter | `user_id` NULL for AI slots; `power` randomly assigned at start. `afk_counter INT NOT NULL DEFAULT 0` increments on phase resolve if the human submitted no orders and wasn't ready, resets to 0 on any order submission. `locked BOOLEAN NOT NULL DEFAULT false` (one-way) when `afk_counter` hits 3; locked powers have defaults auto-applied for the remaining game. |
-| `phases` | Game clock: one row per phase, with board snapshot JSON | `phase_type` ∈ `movement / retreat / build`. `deadline_at TIMESTAMPTZ NOT NULL` captures the phase's absolute deadline (used by the un-ready-during-grace path to re-arm the original deadline rather than resetting it). |
+| `phases` | Game clock: one row per phase, with board snapshot JSON | `phase_type` ∈ `movement / retreat / build`. `deadline_at TIMESTAMPTZ NOT NULL` captures the phase's absolute deadline (used by the un-ready-during-grace path to re-arm the original deadline rather than resetting it). `scheduler_gen INT NOT NULL DEFAULT 0` is incremented on every re-enqueue of deadline/grace jobs; encoded in jobId and payload so BullMQ dedup doesn't swallow re-enqueues when the prior job is still `active` (see §10). |
 | `orders` | Per-unit orders per phase; adjudicator fills `result` post-resolution | Many per phase |
 | `phase_readiness` | Per-player per-phase ready + skip-grace votes | Row absent = not ready; reset each phase |
 | `draw_votes` | DIAS draw vote tracking per player per game | All survivors with row = draw |
@@ -551,6 +538,8 @@ SELECT resolved_at, deadline_at FROM phases WHERE id = $1 FOR UPDATE;
 
 The row lock serializes concurrent workers; the trigger-freshness check prevents a stale grace or deadline from resolving against invalidated state. `queue.remove()` calls remain best-effort optimizations.
 
+**Scheduler generation on jobIds**: `deadline-${phaseId}-${gen}` and `grace-${phaseId}-${gen}`. Each cancel/re-enqueue bumps `phases.scheduler_gen` so BullMQ dedup can't swallow the re-arm when the old job is still `active`. Handler validates `payload.gen === phases.scheduler_gen` alongside the trigger-freshness check; stale `gen` → no-op.
+
 **Deadline computation (per phase type):**
 
 All seconds values below are multiplied by 1000 at the BullMQ queue boundary (`delay` is milliseconds).
@@ -608,31 +597,16 @@ sequenceDiagram
         WK->>OLL: retry with "previous was invalid: X" (up to 3 total)
     end
     alt all retries exhausted
-        WK->>PG: write phase-default orders (§10), mark Ready + Skip-grace
+        WK->>PG: BEGIN tx; write phase-default orders (§10)<br/>+ phase_readiness (Ready + Skip-grace)<br/>+ event-outbox rows; COMMIT
     else success
-        WK->>PG: write orders via same path humans use
-        WK->>PG: send chat via shared messageService.sendFromAi()<br/>(same validation + per-game rate limits as human path)
-        WK->>RD: publish message:new via @socket.io/redis-emitter
-        WK->>PG: insert ai_memory rows (strategic notes)
-        WK->>PG: insert phase_readiness (Ready + Skip-grace)
+        WK->>PG: BEGIN tx; write orders + chat (via shared<br/>messageService.sendFromAi()) + ai_memory<br/>+ phase_readiness + event-outbox rows; COMMIT
     end
+    WK->>RD: drain outbox: publish message:new + ready:changed<br/>via @socket.io/redis-emitter (idempotent delivery)
 ```
 
-**Why stateless workers + stateful DB**: the AI's "memory" lives entirely in Postgres (chat log, past orders, `ai_memory`). No in-memory agent, no per-game process. Scales trivially via BullMQ worker replicas.
+**Why stateless workers + stateful DB**: the AI's memory lives entirely in Postgres (chat log, past orders, `ai_memory`). No in-memory agent, no per-game process. Scales trivially via BullMQ worker replicas.
 
-**Broadcast path for AI-authored chat**: the worker uses `@socket.io/redis-emitter` to publish `message:new` **scoped to the target room**. Public messages (`to_player_id IS NULL`) go to `game:<id>`; private 1:1 DMs go only to `game:<id>:player:<to_player_id>`. The backend authorizes each socket's room joins against game membership at connection time, so a client cannot subscribe to another player's DM room. The `@socket.io/redis-adapter` on each backend replica then delivers the event only to sockets in the target room. This is the same cross-process pattern §10 uses for `phase:resolved`, just applied to chat too, so live clients see AI chat without having to refetch — and private chat stays private.
-
-**Idempotency guard (same shape as §10):**
-
-Jobs are enqueued with deterministic `jobId = ai-take-turn-${gameId}-${power}-${phaseId}` (BullMQ jobIds disallow `:`; `-` separator used for all jobIds including `deadline-${phaseId}` and `grace-${phaseId}` from §10). BullMQ dedupes while the job exists in Redis, and its atomic Lua lock on `active` ensures only one worker replica picks any given job. On entry the handler runs:
-
-```sql
-BEGIN;
-SELECT 1 FROM phases WHERE id = $1 AND resolved_at IS NULL FOR UPDATE;
-SELECT 1 FROM orders WHERE phase_id = $1 AND power = $2 FOR UPDATE;
-```
-
-If the phase is already resolved, or orders already exist for `(phase_id, power)`, the handler commits and returns a no-op. Otherwise it proceeds. This handles the stalled-job replay case (worker crashes mid-handler, BullMQ promotes to stalled, another worker runs it) without duplicating orders or memory writes.
+**Scheduler + idempotency**: after commit, worker invokes the shared scheduler service (same path humans use) so AI-last-ready triggers grace instead of waiting the full deadline. JobId is `ai-take-turn-${gameId}-${power}-${phaseId}` — no `gen` suffix since AI jobs are one-shot per `(game, power, phase)`. Handler row-locks the phase and no-ops if `orders` already exist for `(phase_id, power)` — covers stalled-job replay (same shape as §10).
 
 ---
 
@@ -663,9 +637,9 @@ flowchart LR
 
 **Reconnection**: client retries 10 times with exponential backoff; surfaces a sonner toast on exhaustion.
 
-**Cross-process event emission**: the worker is a separate Node process from the Socket.IO server. It emits events using `@socket.io/redis-emitter` (official emit-only client — no HTTP server, no engine state). The emitter speaks the same Redis wire protocol as `@socket.io/redis-adapter`, which the backend's real `Server` is attached to; events published from the worker arrive at every connected client as if the backend emitted them itself. All worker-sourced events use this path: `phase:resolved`, `message:new` for AI chat, `cd:changed`, `game:ended`. The emitter and adapter packages must share a major version — mismatched versions cause events to vanish into Redis with no subscriber.
+**Cross-process event emission**: worker uses `@socket.io/redis-emitter` (emit-only, no engine state); backend's `@socket.io/redis-adapter` on the real `Server` delivers each emit only to sockets in the targeted room. Every worker emit names its target: `phase:resolved`, `cd:changed`, `game:ended` → `game:<id>`; `message:new` → `game:<id>` for public, `game:<id>:player:<to_player_id>` for DMs. Nothing emits globally. Emitter and adapter must share a major version.
 
-**Local development**: Vite dev server (localhost:5173) proxies `/api/*` and `/socket.io/*` (with `ws: true`) to Express (localhost:3000) via Vite's `server.proxy` config. `changeOrigin: true`, and the `Origin` header is stripped on `/api` to make dev look same-origin as prod (CP-6053 pattern from control-plane-frontend). The browser sees everything as same-origin, so `SameSite=Lax` and session cookies work identically in dev and prod with no CORS config on the backend. Teammates can override `PROXY_API_TARGET` env var to point the frontend at a deployed dev backend without running the full stack locally.
+**Local development**: Vite dev server proxies `/api/*` and `/socket.io/*` (`ws: true`) to Express via `server.proxy`, with `changeOrigin: true` and `Origin` stripped on `/api` so dev looks same-origin like prod. SameSite=Lax and session cookies work identically in both. `PROXY_API_TARGET` overrides the backend target.
 
 ---
 
@@ -712,7 +686,7 @@ flowchart LR
 | `deploy-frontend-prod.yml` | `push: tags: ['v*']` | Uploads the SPA static artifact to the prod Azure Static Web App. Same `prod` GH environment approval gate as `deploy-prod.yml`. |
 | `discord-pr.yml` | PR open | Existing Discord notification. |
 
-**Change detection via dorny/paths-filter**: conditional workflows still trigger on every PR (keeps branch protection happy) but gate their jobs with `if: needs.detect.outputs.X == 'true'`. A no-op workflow still reports success.
+**Change detection via dorny/paths-filter**: conditional workflows still trigger on every PR (keeps branch protection happy) but gate their jobs with `if: needs.detect.outputs.X == 'true'`. A no-op workflow still reports success. Path patterns are repo-root-relative, so filters prefix the monorepo root: `ProjectSourceCode/apps/**` and `ProjectSourceCode/packages/**` (not bare `apps/**`).
 
 **Dependency propagation**: changing `packages/contracts/**` triggers backend AND frontend AND worker tests. Changing `packages/game-types/**` or `packages/adjudicator/**` triggers all consumers.
 
@@ -738,14 +712,14 @@ For each decision below, the **recommended** choice is what we plan to implement
 |---|---|---|---|---|---|---|
 | Language | **TypeScript everywhere** | Compile-time safety across monorepo; Kubb hooks + OpenAPI types fully leveraged | Build step; some teammate ramp-up | Plain JavaScript | Zero build; matches labs | Loses most of OpenAPI/Kubb value; adjudicator correctness relies on runtime |
 | HTTP framework | **Express 5** | Lab-aligned; native async + rejection handling built in | Older design than Fastify | Fastify | 2-5x faster; built-in JSON schema validation | Different ecosystem; team ramp-up |
-| DB client | **Drizzle ORM** | Fully typed queries; schema-in-TS as single source of truth; auto-generated migrations from schema diffs; typed row shapes inferred from schema (`typeof games.$inferSelect`) | Learning curve for teammates coming from Lab 7; inverts "SQL is truth" lab convention | pg-promise | Lab standard; direct SQL for complex adjudication queries | No typed query results; hand-written migrations scale poorly past ~10 files |
+| DB client | **Drizzle ORM** | Typed queries; schema-in-TS as single source of truth; auto-generated migrations | Learning curve vs Lab 7's pg-promise | pg-promise | Lab standard; direct SQL | No typed queries; hand-written migrations scale poorly |
 | OpenAPI validation | **express-openapi-validator** | Spec is source of truth; enforced at request + response time | Reflection overhead; opaque deep-schema errors | Zod schemas → generate OpenAPI | Code as truth; best TS inference | Inverts contract-first; loses human-authored spec |
 | Session store | **connect-pg-simple** | Postgres already present; durable | 1 SELECT per authenticated request | connect-redis | Sub-ms lookups | Durability depends on Redis AOF |
 | Password hashing | **bcryptjs** | Pure JS; no native compile | ~10x slower than native (fine for login rate) | argon2 | Modern; GPU-resistant | Native compile; node-gyp pain in Alpine |
 | OAuth library | **openid-client** | Generic OIDC; swap-in Google/GitHub later | Not Microsoft-specific | @azure/msal-node | Official Microsoft support | Azure-specific lock-in |
 | Logger | **pino** | Fast, JSON-structured, request-scoped child loggers | Terminal readability needs pino-pretty | winston | More transport plugins | Slower; more config |
 | Error handling | **Central middleware + plain `throw`** | Simple; Express 5 native async rejection | none | RFC 7807 Problem Details | Standardized error shape | More boilerplate |
-| Realtime | **Socket.IO + Redis adapter (backend) + @socket.io/redis-emitter (worker)** | Cross-replica broadcast; one auth system; worker emits via emit-only client with no engine state | Transport constrained to WS; emitter and adapter must share a major version | Server-Sent Events (SSE) | Simpler; HTTP-only | One-way; needs separate POST for sends |
+| Realtime | **Socket.IO + Redis adapter (backend) + @socket.io/redis-emitter (worker)** | Cross-replica broadcast; one auth system | WS-only transport; emitter and adapter must share major version | Server-Sent Events (SSE) | Simpler; HTTP-only | One-way |
 | Routing (frontend) | **React Router v7** | Dominant; team-familiar; rich ecosystem | Larger API surface | TanStack Router | Type-safe routes natively | Smaller community; different mental model |
 | Server state | **TanStack Query (via Kubb)** | Industry standard; caching + mutations + invalidation | none | SWR | Smaller API | Less feature complete |
 | Client state | **Zustand** | Minimal; atoms-based; tiny API | none significant | Jotai | Pure atoms model | Similar niche; smaller community |
@@ -758,8 +732,8 @@ For each decision below, the **recommended** choice is what we plan to implement
 | Toasts | **sonner** | Modern; 5KB; works with Tailwind | Newer, slightly less flexible | react-hot-toast | Battle-tested | Dated styling defaults |
 | Queue library | **BullMQ** | TS-native; cancellation by ID (needed for grace); de-facto Node standard | Needs Redis | pg-boss | Postgres-only; one fewer service | Smaller community; less feature-complete |
 | Postgres version | **16** | Supported through 2028; better perf defaults than 14 (LZ4 TOAST, `pg_stat_io`); well-covered by Neon and tooling | Not the newest (18 is current as of 2025); minor divergence from lab image 14 | 14 (lab default) | Matches labs exactly | Missing LZ4 TOAST, older JSON path, dated defaults |
-| Migration tool | **drizzle-kit** | Auto-generates SQL migrations from schema diffs; Node-native; zero infra; tied to Drizzle choice | SQL files still live on disk and must be reviewed before merge | node-pg-migrate | Node-native; works without an ORM | Hand-written SQL only; no code-first schema |
-| Pooling | **node-postgres (`pg`) + pgBouncer** (via Drizzle's `pg` adapter) | Scales with replicas without exhausting max_connections | Transaction-mode quirks; migrations must use Neon's direct (non-pooled) connection URL to preserve advisory locks and transactional DDL | `node-postgres` built-in pool only | Zero extra infra | Can exhaust max_connections at scale |
+| Migration tool | **drizzle-kit** | Auto-generates SQL from schema diffs; Node-native | Tied to Drizzle | node-pg-migrate | Works without an ORM | Hand-written SQL only |
+| Pooling | **node-postgres + pgBouncer** (via Drizzle's `pg` adapter) | Scales replicas without exhausting max_connections | Transaction-mode quirks; migrations need Neon's direct URL | `node-postgres` built-in pool | Zero extra infra | Can exhaust max_connections at scale |
 | Mock servers | **Postman (dev) + MSW (frontend tests)** | Both worlds: shared team mock URL + in-browser test mocks | Two mock sources to maintain | Postman only | One source | Loses frontend-test mocking without HTTP |
 | Monorepo | **pnpm workspaces** | Fast installs, strict hoisting (prevents phantom deps), first-class monorepo support, works great with Turborepo later if needed | One more tool to install locally; diverges slightly from the labs' npm defaults | npm workspaces | Lab-aligned; zero new tool to install | Slower installs; looser hoisting lets phantom deps slip in |
 | Monorepo task runner | **Make + pnpm scripts** | Universal; no new DSL; `pnpm -r` fans out across workspaces | Verbose per-target scripts | Turborepo | Build caching; task orchestration | New tool; config overhead |
@@ -768,9 +742,9 @@ For each decision below, the **recommended** choice is what we plan to implement
 | Secrets handling | **.env per app locally; GH env secrets in cloud** | Lab convention; built-in approval gates | none | Doppler free tier | Cloud secret manager; audit log | New signup; cloud dep |
 | CI structure | **Flat per-concern workflows** | Easy to grep; one file per concern | Setup duplication across workflows | Reusable via workflow_call | DRY; shared steps across workflows | Indirection; more files |
 | Change detection | **Labeler + dorny/paths-filter** | GH-native; branch protection stays happy | More per-workflow config | Trigger-level path filters | Simpler config | Breaks branch protection on required skipped checks |
-| Deploy target | **Azure Container Apps + Neon + Upstash** | Native KEDA queue scaling; Azure familiarity; free tier covers dev/stage; ~$25 one-time for demo week with prod Ollama pinned to `minReplicas=1` (see §18 risk + §19 open question) | Azure lock-in for compute | AWS ECS Fargate + RDS + ElastiCache | Massive ecosystem; AWS familiarity common | No scale-to-zero; weaker free tier; ~$60-100/mo for 3 envs |
-| Frontend hosting | **Azure Static Web Apps per env** | Free tier covers 3 envs trivially; managed custom domains + SSL (needed for the `app.<apex>` / `api.<apex>` subdomain split that the SameSite=Lax story depends on); native per-env GH Action; matches CP's static-artifact-upload pattern | SWA-specific config knobs (`staticwebapp.config.json`); PR previews deliberately not enabled | Azure Blob + Front Door | More raw control; prod-grade long-term | More setup; no preview envs; wrong default for a 4-week sprint |
-| AI runtime | **Ollama local in ACA** | Zero API cost; works offline; stateless | ~30-90s/turn warm; +45-90s cold-start (5GB image pull + model load); `llama3.1:8b` CPU inference is the bottleneck | Cloud API (OpenAI/Groq/Gemini) | Faster + better output; parallelism | Costs money; API key management; network dep |
+| Deploy target | **Azure Container Apps + Neon + Upstash** | KEDA queue scaling; free tier covers dev/stage; ~$25 for demo week with prod Ollama pinned (see §18) | Azure lock-in | AWS ECS Fargate + RDS + ElastiCache | Larger ecosystem | No scale-to-zero; weaker free tier |
+| Frontend hosting | **Azure Static Web Apps per env** | Free tier covers 3 envs; managed SSL for apex subdomains; matches CP's static-artifact pattern | SWA-specific config; no PR previews | Azure Blob + Front Door | More control | More setup; no previews |
+| AI runtime | **Ollama local in ACA** | Zero API cost; works offline; stateless | ~30-90s/turn warm; +45-90s cold-start; CPU inference is the bottleneck | Cloud API (OpenAI/Groq/Gemini) | Faster output | Costs money; network dep |
 | AI model | **llama3.1:8b** | Well-rounded; popular; cheap | 8B occasional hallucination | qwen2.5:7b | Strong structured output | Less-tested in community |
 | AI output format | **Prompt-requested JSON + 3 retries** | Works with any model; simple | Retries cost latency | Grammar-constrained JSON (Ollama `format: json`) | Always parseable | Slower generation; newer feature |
 | Backend testing | **Mocha + Chai** | Matches lab stack | Older than Vitest | Vitest | Faster; unified with frontend | Diverges from lab convention |
@@ -806,8 +780,8 @@ Other decisions are more locked (e.g., Express 5 matches the lab stack directly;
 | **Secrets** | Never committed. `.env` gitignored; cloud env values in GH environment secrets with reviewer gate on prod. |
 | **Dependency vulnerabilities** | Dependabot alerts enabled. `pnpm audit` in CI. |
 | **AI prompt injection** | AI output validated structurally (JSON schema) and semantically (`getLegalMoves()`) before any DB write. AI can't inject arbitrary chat since chat is routed through the normal send-message path (same rate limits + validation). |
-| **AI memory privacy** | `ai_memory` is server-side strategic context only. Never serialized to any API response, never included in realtime payloads, never written to logs. Access confined to `apps/worker` and `apps/backend`'s pre-turn context helper. Enforced via closed response schemas (`additionalProperties: false` on every response schema in `openapi.yaml`) or explicit response DTOs that omit `ai_memory`, plus a leak test. Pino `redact` config excludes any field path matching `ai_memory`. |
-| **Data loss / corruption** | Dev/stage: rebuildable from migrations + seeds. Prod: pre-migration Neon branch `pre-migration-{commit-sha-short}` created automatically by the deploy pipeline, 7-day retention; promoted back to primary if the migration step fails. No PITR on Neon free tier; non-migration data loss risk explicitly accepted for 4-week scope. |
+| **AI memory privacy** | `ai_memory` is server-side only; access confined to `apps/worker` and the pre-turn context helper. Enforced via closed response schemas (`additionalProperties: false`) and Pino `redact` on any `ai_memory` field path. |
+| **Data loss / corruption** | Pre-migration Neon branch (7-day retention) rolls back a failed migration. No PITR on free tier; see §18 for the non-migration risk acceptance. |
 | **Admin UI** | Bull Board behind basic auth, admin password in GH env secrets. Not exposed on frontend domain. |
 
 ---
@@ -826,9 +800,7 @@ Other decisions are more locked (e.g., Express 5 matches the lab stack directly;
 
 ### Deliberate non-goals (observability)
 
-- No Prometheus/Grafana (overkill for 4-week scope)
-- No distributed tracing (we're small enough that logs + request IDs suffice)
-- No APM (New Relic, Datadog, etc.)
+No Prometheus/Grafana, distributed tracing, or APM. Logs + request IDs are sufficient at 4-week scope.
 
 ---
 
@@ -903,16 +875,16 @@ Append-only. Record *when* a decision was finalized, *who* approved, *why* over 
 | 2026-10-27 | Initial tech stack per section 14 | Pending team review | See per-row Pros/Cons |
 | 2026-10-27 | 3 isolated cloud envs (dev/stage/prod) on Azure Container Apps | Pending team review | Scale-to-zero + queue-triggered scaling via KEDA + generous free tier |
 | 2026-10-27 | Microsoft OAuth added as additional (not replacement) login method | Pending team review | University students have Microsoft accounts; one-click signup; openid-client lets us add Google/GitHub later |
-| 2026-10-27 | Shared apex domain across env + `SameSite=Lax` session cookie | Pending team review | CDN frontend + API backend on subdomains of one apex (e.g. `app.diplomats.app` + `api.diplomats.app`) lets us use `SameSite=Lax`, which is browser-enforced CSRF/CSWSH defense. Avoids the fragile `SameSite=None` + CSRF-tokens-everywhere discipline required when apps live on unrelated domains. Cost: ~$12/yr apex + 30 min DNS. Alternative considered and rejected: `SameSite=None` + strict Origin allowlist + CSRF tokens on every state-changing endpoint, which works but has more runtime security surface. |
-| 2026-10-27 | Frontend hosted on Azure Static Web Apps, one instance per env | Pending team review | Matches CP's static-artifact-upload pattern (`control-plane-admin-portal/frontend-*.yml` workflows); free tier covers 3 envs trivially; managed custom domains + SSL tie down the `app.<apex>` / `api.<apex>` split that the SameSite=Lax story depends on; native per-env GH Action. PR previews deliberately disabled to match CP (which does not use them). Alternatives rejected: Azure Blob + Front Door (right for prod traffic, wrong for 4-week sprint), `express.static` on backend (collapses subdomain story), Vercel / Cloudflare (splits providers off Azure), Nginx-in-ACA (doubles failure surface, no CDN benefit without Front Door). |
-| 2026-10-27 | DB migrations via GH Actions step before each ACA deploy | Pending team review | `pnpm --filter @diplomacy/db migrate` (drizzle-kit) runs against Neon's direct (non-pooled) connection URL inside a reusable `migrate.yml` called by each `deploy-*.yml`. Deterministic and observable (failure is a step failure, not a container-log mystery). Backend process never carries schema-mutation privilege. Alternatives rejected: backend boot-time with advisory lock (moves failure out of CI, grants schema-mutation to request-serving process), separate migration-job container (four ACA apps per env for no payoff at 4-week scale). |
-| 2026-10-27 | Ollama scale-to-zero in dev/stage; pinned `minReplicas=1` in prod for demo week only | Pending team review | ACA Consumption free grant (360K GiB-seconds/mo, cited from `learn.microsoft.com/azure/container-apps/billing`) covers ~139 MiB continuously — one pinned 6 GiB Ollama replica burns ~43x the grant per env. Scale-to-zero gives ~2 min cold-start on first-after-idle AI turn. Preserve §14's "zero API cost / works offline" value for dev/stage; spend ~$25 for the demo week to protect grader UX. Warm-up HTTP call 5 min pre-demo. Alternatives rejected: scale-to-zero everywhere (demo-day latency risk), switch to Groq free tier (nukes §14 Ollama decision), Ollama + Groq feature-flagged fallback (over-engineering for 4-week scope). |
-| 2026-10-27 | `@socket.io/redis-emitter` as the worker-side cross-process event emitter | Pending team review | Official Socket.IO emit-only client — three lines in the worker, no engine state, no HTTP server. Pairs with the backend's `@socket.io/redis-adapter` on the same wire protocol. Both packages pinned to the same major version. Covers `phase:resolved`, `message:new` for AI chat, `cd:changed`, `game:ended` emitted from the worker. Alternatives rejected: full `new Server()` in the worker (wasteful engine allocation), hand-rolled Redis publish + backend subscriber (reinvents what the emitter is). |
-| 2026-10-27 | Civil Disorder: hybrid per-player lockout + game-abandon when fewer than 2 unlocked humans | Pending team review | `game_players.afk_counter` increments on phase resolve for humans who submitted no orders and weren't ready, resets to 0 on submit. At 3, `locked = true` (one-way) and the power plays per-phase-type defaults for the remaining game. Game → `abandoned` only when `COUNT(unlocked humans) < 2`, so a single dropped teammate never kills the game. Per-phase-type defaults: Movement → Hold; Retreat → Disband dislodged unit; Build → auto-disband farthest-from-home (Avalon Hill convention). Alternatives rejected: pure per-player lockout with no game-abandon (games stuck forever if 5+ drop), hair-trigger "any player misses 3 → game abandoned" (demo-week risk if one teammate ill). |
-| 2026-10-27 | Phase deadlines per-phase-type: `movement_deadline_seconds` default 86400, Retreat/Build = Movement/2, auto-skip empty Retreat/Build | Pending team review | Flat 24h for every phase is non-standard (webDip / Backstabbr / diplicity all use shorter Retreat/Build). Retreat with 0 dislodged units and Build with 0 SC/unit delta skip entirely at the phase-creation step — no phase row, no deadline job, players never see a dead screen. Per-game override deferred post-MVP. |
-| 2026-10-27 | OAuth: state/nonce/code_verifier in `req.session`; `req.session.regenerate()` in callback before setting user; `oauth_subject = "{tid}:{oid}"` for Microsoft | Pending team review | `req.session` storage is the openid-client canonical idiom; `connect-pg-simple`'s `pruneSessionInterval` cleans pre-auth orphans. `req.session.regenerate()` is OWASP ASVS session-fixation defense (`express-session` does not regenerate on write by default). Microsoft Entra's OIDC `sub` is pairwise-per-app and documented as non-portable — use the composite `{tid}:{oid}` which is stable and multi-tenant-safe. Local logout only; RP-initiated logout is for shared-device scenarios we don't ship. |
-| 2026-10-27 | Local dev: Vite proxy for `/api` + `/socket.io` with `changeOrigin: true` and `Origin` stripped | Pending team review | Makes dev look same-origin to the browser, so `SameSite=Lax` and session cookies work identically in dev and prod with no CORS config on the backend. Copies control-plane-frontend's CP-6053 pattern (same auth-gateway behavior there). `PROXY_API_TARGET` env var lets a teammate point frontend at a deployed dev backend. |
-| 2026-10-27 | Postgres backup via Neon pre-migration branches; no PITR; non-migration data loss accepted | Pending team review | `migrate.yml` creates a Neon branch `pre-migration-{commit-sha-short}` before applying migrations and promotes the branch back to primary on migration failure. 7-day retention then prune. $0 cost. Covers the dominant risk (fat-finger migration). Alternatives rejected: daily `pg_dump` (24h RPO ≈ "ask players to restart"), Neon paid tier (~$19/mo for a hedge against unlikely non-migration failure modes). |
-| 2026-10-27 | `express-openapi-validator` mounted on `/api` only (not app root) | Pending team review | Validator with `validateRequests: true` + default `ignoreUndocumented: false` rejects the `/socket.io/?EIO=4&transport=...` handshake with 404/400 if mounted at root, breaking the WebSocket upgrade. Mounting on `/api` keeps the handshake path and health endpoints outside its scope. Spec paths stay mount-relative; Kubb client baseURL set to `/api` to match. |
-| 2026-10-27 | Switch DB client from pg-promise to Drizzle ORM; new `packages/db` package hosts schema + migrations + client; migrations auto-generated by `drizzle-kit` | Pending team review | Hand-written SQL migrations scale poorly past ~10 files for a 10-table schema with per-PR column additions. Code-first schema in `packages/db/src/schema.ts` is the one place to look for current table shape; `drizzle-kit generate` diffs schema against the committed migration state and emits reviewable SQL (committed to `packages/db/migrations/`, applied by the same `migrate.yml` pipeline with Neon-branch safety). DB layer lives in its own package rather than inside `apps/backend/db/` because both backend and worker consume the schema — making it backend's `apps/*` subdirectory implied false ownership. `packages/db` exports a configured Drizzle client, the schema, and typed row shapes (`typeof games.$inferSelect`). Trades Lab 7 pg-promise alignment for TS-first consistency across the TS-everywhere stack. CP's `control-plane-backend/services/earn` reporting module uses hand-written SQL migrations (golang-migrate up/down pairs) colocated with that service; we diverge because our Postgres surface is shared across two apps + larger per-app than CP's reporting module. §14 flagged pg-promise vs Drizzle pushbackable before M2; this is the pushback. |
+| 2026-10-27 | Shared apex domain + `SameSite=Lax` session cookie | Pending team review | Browser-enforced CSRF/CSWSH defense; avoids `SameSite=None` + CSRF tokens discipline. ~$12/yr apex + DNS. |
+| 2026-10-27 | Frontend on Azure Static Web Apps, one per env | Pending team review | Matches CP's static-artifact-upload; free tier covers 3 envs; managed SSL for apex subdomains; see §14 for rejected alternatives. |
+| 2026-10-27 | DB migrations via GH Actions step before each ACA deploy | Pending team review | `pnpm --filter @diplomacy/db migrate` against Neon's direct URL inside reusable `migrate.yml`. Deterministic + observable; backend never holds schema-mutation privilege. |
+| 2026-10-27 | Ollama scale-to-zero in dev/stage; `minReplicas=1` in prod for demo week only | Pending team review | ACA free grant (360K GiB-s/mo) covers ~139 MiB continuously; a pinned 6 GiB Ollama replica burns ~43× that. Scale-to-zero cold-start ~2 min, intolerable for a live demo. ~$25 for demo week; warm-up call 5 min pre-demo. |
+| 2026-10-27 | `@socket.io/redis-emitter` as worker-side emitter | Pending team review | Emit-only client; pairs with backend's `@socket.io/redis-adapter` on same Redis wire protocol. Covers `phase:resolved`, `cd:changed`, `game:ended`, and `message:new`. Both packages pin to the same major version. |
+| 2026-10-27 | Civil Disorder: hybrid per-player lockout + game-abandon when `<2` unlocked humans | Pending team review | `afk_counter` resets on order submit; at 3, `locked=true` (one-way) and defaults play out. Avoids one dropped teammate killing the game (vs hair-trigger abandon) and games stuck forever (vs no-abandon-ever). |
+| 2026-10-27 | Phase deadlines per-phase-type; auto-skip empty Retreat/Build | Pending team review | `movement_deadline_seconds` default 86400; Retreat/Build = Movement/2. Phases with no decisions never get a row — matches webDip/Backstabbr convention. |
+| 2026-10-27 | OAuth: state/nonce in `req.session`; `req.session.regenerate()` post-callback; `oauth_subject = "{tid}:{oid}"` for Microsoft | Pending team review | Canonical openid-client idiom. Regenerate is OWASP ASVS session-fixation defense. Microsoft `sub` is pairwise-per-app; `{tid}:{oid}` is stable + multi-tenant-safe. |
+| 2026-10-27 | Local dev: Vite proxy for `/api` + `/socket.io` with Origin stripped | Pending team review | Dev looks same-origin to the browser so SameSite=Lax + session cookies behave identically to prod. Copies CP-6053 pattern. |
+| 2026-10-27 | Prod backup via Neon pre-migration branches; no PITR | Pending team review | `migrate.yml` creates `pre-migration-{sha}` before applying; promotes back on failure. 7-day retention, $0. Non-migration risk accepted. |
+| 2026-10-27 | `express-openapi-validator` mounted on `/api` only | Pending team review | Validator at app root would reject the `/socket.io/` handshake with 404 and break the WS upgrade. Spec paths stay mount-relative; Kubb client baseURL = `/api`. |
+| 2026-10-27 | Switch DB client from pg-promise to Drizzle ORM; new `packages/db` package | Pending team review | Hand-written SQL migrations scale poorly past ~10 files; Drizzle's code-first schema in `packages/db/src/schema.ts` is one source of truth, migrations auto-generated by `drizzle-kit` and applied by the same `migrate.yml`. Package is shared because both backend and worker consume the schema. §14 flagged this pushbackable before M2. |
 | | | | |
