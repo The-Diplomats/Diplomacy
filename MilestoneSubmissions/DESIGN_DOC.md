@@ -522,13 +522,14 @@ sequenceDiagram
 
 **Idempotency guard (correctness, not optimization):**
 
-BullMQ guarantees "at least once" delivery; a job can run after `queue.remove()` fails (job already `active`), so the handler cannot assume one-shot execution *or* trigger freshness. The job payload carries `{ phaseId, trigger: 'grace' | 'immediate' | 'deadline' }`. On entry:
+BullMQ guarantees "at least once" delivery; a job can run after `queue.remove()` fails (job already `active`), so the handler cannot assume one-shot execution *or* trigger freshness. The job payload carries `{ phaseId, trigger: 'grace' | 'immediate' | 'deadline', gen }`. On entry:
 
 ```sql
 BEGIN;
-SELECT resolved_at, deadline_at FROM phases WHERE id = $1 FOR UPDATE;
+SELECT resolved_at, deadline_at, scheduler_gen FROM phases WHERE id = $1 FOR UPDATE;
 
 -- If resolved_at IS NOT NULL → commit no-op.
+-- If payload.gen != scheduler_gen → commit no-op (stale, superseded by re-arm).
 -- Else re-derive the trigger's current validity:
 --   trigger = 'grace'     → recompute all-affected-ready; if false, no-op (stale).
 --   trigger = 'immediate' → recompute all-affected skip-grace; if false, no-op.
@@ -559,7 +560,7 @@ The backend persists the absolute `deadline_at` on the `phases` row so the un-re
 3. **Deadline reached** → fallback. Backend applies per-phase-type defaults *before* invoking the adjudicator so the adjudicator always sees a complete order set:
    - **Movement**: missing orders → Hold
    - **Retreat**: missing retreats → Disband (dislodged unit disbanded)
-   - **Build**: missing builds → auto-disband farthest-from-home (Avalon Hill convention)
+   - **Build**: missing order with positive build delta → **waive** (no unit added); missing order with negative delta → auto-disband farthest-from-home (Avalon Hill convention). A power never loses units from a positive delta.
 
 **Auto-skip empty phases:**
 
@@ -597,16 +598,16 @@ sequenceDiagram
         WK->>OLL: retry with "previous was invalid: X" (up to 3 total)
     end
     alt all retries exhausted
-        WK->>PG: BEGIN tx; write phase-default orders (§10)<br/>+ phase_readiness (Ready + Skip-grace)<br/>+ event-outbox rows; COMMIT
+        WK->>PG: BEGIN tx; write phase-default orders (§10)<br/>+ phase_readiness (Ready + Skip-grace); COMMIT
     else success
-        WK->>PG: BEGIN tx; write orders + chat (via shared<br/>messageService.sendFromAi()) + ai_memory<br/>+ phase_readiness + event-outbox rows; COMMIT
+        WK->>PG: BEGIN tx; write orders + chat (via shared<br/>messageService.sendFromAi()) + ai_memory<br/>+ phase_readiness; COMMIT
     end
-    WK->>RD: drain outbox: publish message:new + ready:changed<br/>via @socket.io/redis-emitter (idempotent delivery)
+    WK->>RD: post-commit: publish message:new + ready:changed<br/>via @socket.io/redis-emitter
 ```
 
 **Why stateless workers + stateful DB**: the AI's memory lives entirely in Postgres (chat log, past orders, `ai_memory`). No in-memory agent, no per-game process. Scales trivially via BullMQ worker replicas.
 
-**Scheduler + idempotency**: after commit, worker invokes the shared scheduler service (same path humans use) so AI-last-ready triggers grace instead of waiting the full deadline. JobId is `ai-take-turn-${gameId}-${power}-${phaseId}` — no `gen` suffix since AI jobs are one-shot per `(game, power, phase)`. Handler row-locks the phase and no-ops if `orders` already exist for `(phase_id, power)` — covers stalled-job replay (same shape as §10).
+**Scheduler + idempotency**: after commit, worker invokes the shared scheduler service (same path humans use) so AI-last-ready triggers grace instead of waiting the full deadline. JobId is `ai-take-turn-${gameId}-${power}-${phaseId}` — no `gen` suffix since AI jobs are one-shot per `(game, power, phase)`. Handler enters with `SELECT 1 FROM phases WHERE id = $1 AND resolved_at IS NULL FOR UPDATE` plus a `SELECT 1 FROM orders WHERE phase_id = $1 AND power = $2 FOR UPDATE`; if the phase is resolved OR orders already exist, no-op. Covers stalled-job replay and prevents writing into an already-resolved phase.
 
 ---
 
@@ -637,7 +638,7 @@ flowchart LR
 
 **Reconnection**: client retries 10 times with exponential backoff; surfaces a sonner toast on exhaustion.
 
-**Cross-process event emission**: worker uses `@socket.io/redis-emitter` (emit-only, no engine state); backend's `@socket.io/redis-adapter` on the real `Server` delivers each emit only to sockets in the targeted room. Every worker emit names its target: `phase:resolved`, `cd:changed`, `game:ended` → `game:<id>`; `message:new` → `game:<id>` for public, `game:<id>:player:<to_player_id>` for DMs. Nothing emits globally. Emitter and adapter must share a major version.
+**Cross-process event emission**: worker uses `@socket.io/redis-emitter` (emit-only, no engine state); backend's `@socket.io/redis-adapter` on the real `Server` delivers each emit only to sockets in the targeted room. Every worker emit names its target: `phase:resolved`, `cd:changed`, `game:ended` → `game:<id>`; `message:new` → `game:<id>` for public, `game:<id>:player:<to_player_id>` for DMs. Nothing emits globally. Emitter and adapter must share a major version. **Room joins are authorized server-side**: on connection, backend verifies the session's user is a `game_players` row for that game before `socket.join('game:<id>')`, and only joins `game:<id>:player:<own_id>` for the authenticated user's own seat.
 
 **Local development**: Vite dev server proxies `/api/*` and `/socket.io/*` (`ws: true`) to Express via `server.proxy`, with `changeOrigin: true` and `Origin` stripped on `/api` so dev looks same-origin like prod. SameSite=Lax and session cookies work identically in both. `PROXY_API_TARGET` overrides the backend target.
 
@@ -833,7 +834,7 @@ See the full week-by-week breakdown in the implementation plan. Summary:
 |---|---|---|
 | **Adjudicator correctness**, writing a Diplomacy rules engine from scratch is famously edge-case heavy (60+ DATC cases) | High | Treat as isolated math library; port DATC cases from day 1; each PR touching adjudicator must keep DATC green; one file per DATC section maps to milestone progress |
 | **4-week timeline is 3.25x the per-week velocity of a semester plan** | High | Explicit ship-list vs stretch-list per week; clear slip order so cuts aren't improvised at the last moment |
-| **AI quality** on local Ollama may be poor | Medium | Acceptance threshold is "AI submits legal orders consistently," not "AI plays well." Fallback to §10 phase-default orders (Movement: Hold; Retreat: Disband; Build: auto-disband farthest) if 3 retries fail. Context pack can be iteratively improved |
+| **AI quality** on local Ollama may be poor | Medium | Acceptance threshold is "AI submits legal orders consistently," not "AI plays well." Fallback to §10 phase-default orders if 3 retries fail. Context pack can be iteratively improved |
 | **User authentication / data security** | High | bcryptjs, parameterized queries, `SameSite=Lax` cookies on a shared apex domain, HTTPS everywhere, OAuth via standard OIDC flow |
 | **Cross-env config drift** | Medium | GH env secrets + ACA environment separation prevent values leaking. Infrastructure identical across envs (only values differ) |
 | **Teammate schedule disruption** (illness, etc.) | Medium | WS-4 holds flex-support role across all streams. WS-1 (adjudicator) is pure-function TypeScript with no I/O, so it's self-contained and easy for any stream to help with |
