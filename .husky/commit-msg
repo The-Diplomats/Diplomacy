@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+MSG="$(pwd)/$1"
+if ! pnpm -C ProjectSourceCode exec commitlint --edit "$MSG"; then
+  echo ""
+  echo "Commit message must follow Conventional Commits:"
+  echo "  <type>(<scope>): <subject>"
+  echo ""
+  echo "Examples:"
+  echo "  feat(auth): add OAuth login"
+  echo "  fix(adjudicator): correct convoy chain resolution"
+  echo "  chore(scaffold): add eslint flat config"
+  echo ""
+  echo "Types: feat, fix, chore, docs, style, refactor, perf, test, build, ci, revert"
+  echo "  '!' suffix (e.g. feat!:) or 'BREAKING CHANGE:' footer for breaking changes"
+  echo ""
+  echo "See https://www.conventionalcommits.org/"
+  exit 1
+fi

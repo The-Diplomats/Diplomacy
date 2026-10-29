@@ -17,10 +17,13 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "prepare": "cd .. && husky .husky || true",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck"
   },
   "devDependencies": {
+    "@commitlint/cli": "catalog:",
+    "@commitlint/config-conventional": "catalog:",
     "@eslint/js": "catalog:",
     "eslint": "catalog:",
     "eslint-config-prettier": "catalog:",
@@ -28,6 +31,7 @@
     "eslint-plugin-react-hooks": "catalog:",
     "eslint-plugin-simple-import-sort": "catalog:",
     "globals": "catalog:",
+    "husky": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
