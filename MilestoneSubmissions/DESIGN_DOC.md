@@ -588,6 +588,7 @@ sequenceDiagram
     participant WK as Worker
     participant PG as Postgres
     participant OLL as Ollama
+    participant RD as Redis
     Note over WK: Phase starts, ai-take-turn job enqueued per AI power
     WK->>PG: load board + chat visible to this power + past orders + ai_memory
     WK->>WK: assemble context pack + few-shot prompt
@@ -595,14 +596,14 @@ sequenceDiagram
     OLL->>WK: JSON response
     WK->>WK: parse + validate (JSON structure + getLegalMoves)
     alt invalid output
-        WK->>OLL: retry with "previous was invalid: X" (up to 3 total)
+        WK->>OLL: retry with 'previous was invalid: X' (up to 3 total)
     end
     alt all retries exhausted
-        WK->>PG: BEGIN tx; write phase-default orders (§10)<br/>+ phase_readiness (Ready + Skip-grace); COMMIT
+        WK->>PG: BEGIN tx, write phase-default orders (section 10) + phase_readiness (Ready + Skip-grace), COMMIT
     else success
-        WK->>PG: BEGIN tx; write orders + chat (via shared<br/>messageService.sendFromAi()) + ai_memory<br/>+ phase_readiness; COMMIT
+        WK->>PG: BEGIN tx, write orders + chat (via shared messageService.sendFromAi()) + ai_memory + phase_readiness, COMMIT
     end
-    WK->>RD: post-commit: publish ready:changed always;<br/>publish message:new only if chat was written (success branch)<br/>via @socket.io/redis-emitter
+    WK->>RD: post-commit, publish ready:changed always, publish message:new only if chat was written (success branch), via @socket.io/redis-emitter
 ```
 
 **Why stateless workers + stateful DB**: the AI's memory lives entirely in Postgres (chat log, past orders, `ai_memory`). No in-memory agent, no per-game process. Scales trivially via BullMQ worker replicas.
