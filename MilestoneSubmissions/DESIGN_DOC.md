@@ -602,7 +602,7 @@ sequenceDiagram
     else success
         WK->>PG: BEGIN tx; write orders + chat (via shared<br/>messageService.sendFromAi()) + ai_memory<br/>+ phase_readiness; COMMIT
     end
-    WK->>RD: post-commit: publish message:new + ready:changed<br/>via @socket.io/redis-emitter
+    WK->>RD: post-commit: publish ready:changed always;<br/>publish message:new only if chat was written (success branch)<br/>via @socket.io/redis-emitter
 ```
 
 **Why stateless workers + stateful DB**: the AI's memory lives entirely in Postgres (chat log, past orders, `ai_memory`). No in-memory agent, no per-game process. Scales trivially via BullMQ worker replicas.
