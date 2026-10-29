@@ -23,7 +23,7 @@ Diplomacy Online
 5. Application Description
 Diplomacy Online is a web-based version of the 1950s board game Diplomacy. It will be an online multiplayer strategy game for 2-7 players that includes a chat for game-based communication. Players compete to capture 18 supply centers across the board through negotiation, strategic maneuvering, and betrayal. It will also be possible for players to play against an AI, which will communicate via the chat and strategize like a human player.
 
-This application will allow friends to have fun together even across different time zones. Diplomacy is a turn-based game and is easily able to be played online over a longer period of time.
+This application will allow friends to have fun together even across different time zones. Diplomacy is a turn-based game and is easily able to be played online over a longer period of time. Turn deadlines default to 24h for Movement phases (half that for Retreat and Build), with real-time chat and board updates pushed to connected players.
 
 
 6. Audience
@@ -48,10 +48,12 @@ With TA: Mondays 3:15 Pm, Zoom
 Team Only: Thursday 4:00 Pm, Discord Meeting
 
 12. Use Case Diagram
-See project MilestoneSubmissions directory.
+See project MilestoneSubmissions directory:
+DESIGN_DOC.md
 
 13. Wireframes
-See project MilestoneSubmissions directory.
+See project MilestoneSubmissions directory:
+wireframes.webp
 
 
 Extra Credit: Project Risk Analysis
