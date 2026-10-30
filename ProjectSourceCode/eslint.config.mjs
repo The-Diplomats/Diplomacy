@@ -39,12 +39,16 @@ export default [
   {
     files: ['**/*.{jsx,tsx}'],
     ...react.configs.flat.recommended,
-    ...react.configs.flat['jsx-runtime'],
     settings: { react: { version: 'detect' } },
   },
 
   {
     files: ['**/*.{jsx,tsx}'],
+    ...react.configs.flat['jsx-runtime'],
+  },
+
+  {
+    files: ['**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}'],
     plugins: { 'react-hooks': reactHooks },
     rules: {
       'react-hooks/rules-of-hooks': 'error',
@@ -68,7 +72,7 @@ export default [
   },
 
   {
-    files: ['**/*.{jsx,tsx}'],
+    files: ['apps/frontend/**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}'],
     languageOptions: {
       globals: { ...globals.browser },
     },

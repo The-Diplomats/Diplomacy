@@ -1,6 +1,4 @@
-packages:
-  - apps/*
-  - packages/*
+autoInstallPeers: true
 
 catalog:
   '@commitlint/cli': ^21.2.4
@@ -19,3 +17,9 @@ catalog:
   typescript-eslint: ^8.72.1
 
 onlyBuiltDependencies: []
+
+packages:
+  - apps/*
+  - packages/*
+
+saveWorkspaceProtocol: rolling
