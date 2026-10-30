@@ -1,0 +1,93 @@
+openapi: 3.1.0
+
+info:
+  title: Diplomacy API
+  version: 0.0.0
+  description: Internal API contract for the Diplomacy monorepo.
+  license:
+    name: GPL-3.0-or-later
+    identifier: GPL-3.0-or-later
+
+servers:
+  - url: /api
+    description: Mount-relative base path (refer to DESIGN_DOC)
+
+tags:
+  - name: Health
+    description: Service health
+  - name: Auth
+    description: Authentication
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /auth/me:
+    get:
+      operationId: getAuthMe
+      tags: [Auth]
+      summary: Current authenticated user
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, uptime]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        uptime:
+          type: integer
+          minimum: 0
+          description: Server uptime in seconds
+
+    User:
+      type: object
+      required: [id, email]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+
+    ProblemDetails:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer

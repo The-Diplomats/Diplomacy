@@ -1,0 +1,36 @@
+{
+  "name": "@diplomacy/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OpenAPI 3.1 spec, generated typed client + React Query hooks, and hand-written Socket.IO event types",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "generate": "kubb generate",
+    "build": "pnpm run generate && tsc -b",
+    "typecheck": "pnpm run generate && tsc -b --noEmit",
+    "clean": "rm -rf dist src/generated"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "catalog:"
+  },
+  "devDependencies": {
+    "@kubb/cli": "catalog:",
+    "@kubb/core": "catalog:",
+    "@kubb/plugin-client": "catalog:",
+    "@kubb/plugin-oas": "catalog:",
+    "@kubb/plugin-react-query": "catalog:",
+    "@kubb/plugin-ts": "catalog:",
+    "@redocly/cli": "catalog:"
+  }
+}

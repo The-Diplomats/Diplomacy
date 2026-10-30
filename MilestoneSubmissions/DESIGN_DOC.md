@@ -443,7 +443,7 @@ OpenAPI 3.1 contract-first. Spec lives at `packages/contracts/api/public/openapi
 
 ### Socket.IO events
 
-Not covered by OpenAPI. Typed via hand-written TS in `packages/contracts/sockets/events.ts`:
+Not covered by OpenAPI. Typed via hand-written TS in `packages/contracts/src/sockets/events.ts`:
 
 - `phase:resolved`, payload includes new board state + resolution results
 - `ready:changed`, N/M counter update
@@ -674,7 +674,7 @@ flowchart LR
 | `labeler.yml` | PR open/sync | Auto-adds `area:*` labels based on changed paths. |
 | `lint.yml` | PR open/sync | ESLint + Prettier + typecheck. Always runs. |
 | `test-build.yml` | PR open/sync | Full build + unit tests + E2E against Compose stack. Uses `environment: dev` for secret scope but does NOT deploy. Acts as the deployability check. |
-| `contract-check.yml` | PR open/sync (if `packages/contracts/**` changed) | Regen contracts, assert no diff. |
+| `contract-check.yml` | PR open/sync (if `packages/contracts/**` changed) | Regen contracts (generated code is gitignored), assert `tsc` passes on the regenerated output. |
 | `compat-check.yml` | PR open/sync (if `packages/contracts/api/**` changed) | oasdiff vs base branch. Fails on breaking changes without `breaking-change-approved` label. |
 | `e2e.yml` | PR open/sync (if any `apps/**` or `packages/**` changed) | Playwright E2E + Postman contract tests against a Compose stack with `MOCK_AI=true` (MSW intercepts the Ollama HTTP endpoint; fixtures at `apps/worker/test/fixtures/ollama/*.json`). Covers prompt assembly, parse, legal-move validation, retry loop, and phase-default fallback (per phase type: Hold / Disband / auto-disband). |
 | `ai-smoke.yml` | `workflow_dispatch` only | Runs real Ollama against a Compose stack. Exercises 2-3 AI turns in a real game, asserts legal orders submitted (not quality — matches §18 acceptance threshold). WS-5 runs before significant AI changes land. Not a PR gate. |

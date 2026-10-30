@@ -1,3 +1,6 @@
+allowBuilds:
+  es5-ext: false
+
 autoInstallPeers: true
 
 catalog:
@@ -10,12 +13,22 @@ catalog:
   eslint-plugin-react-hooks: ^7.1.1
   eslint-plugin-simple-import-sort: ^14.0.0
   globals: ^17.13.0
+  '@kubb/cli': 4.38.0
+  '@kubb/core': 4.38.0
+  '@kubb/plugin-client': 4.38.0
+  '@kubb/plugin-oas': 4.38.0
+  '@kubb/plugin-react-query': 4.38.0
+  '@kubb/plugin-ts': 4.38.0
   lint-staged: ^17.6.0
   prettier: ^3.9.10
+  '@redocly/cli': ^2.72.1
+  '@tanstack/react-query': ^5.105.0
   typescript: ~5.8.3
   typescript-eslint: ^8.72.1
 
-onlyBuiltDependencies: []
+minimumReleaseAge: 1440 # 24h
+minimumReleaseAgeExclude:
+  - '@redocly/cli@2.72.1'
 
 packages:
   - apps/*
