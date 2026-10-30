@@ -1,0 +1,23 @@
+{
+  "name": "@diplomacy/game-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Pure TypeScript domain types for Diplomacy",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "clean": "rm -rf dist"
+  }
+}
