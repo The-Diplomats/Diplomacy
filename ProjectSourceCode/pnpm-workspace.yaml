@@ -1,6 +1,4 @@
-packages:
-  - apps/*
-  - packages/*
+autoInstallPeers: true
 
 catalog:
   '@commitlint/cli': ^21.2.4
@@ -12,10 +10,15 @@ catalog:
   eslint-plugin-react-hooks: ^7.1.1
   eslint-plugin-simple-import-sort: ^14.0.0
   globals: ^17.13.0
-  husky: ^9.1.7
   lint-staged: ^17.6.0
   prettier: ^3.9.10
   typescript: ~5.8.3
   typescript-eslint: ^8.72.1
 
 onlyBuiltDependencies: []
+
+packages:
+  - apps/*
+  - packages/*
+
+saveWorkspaceProtocol: rolling

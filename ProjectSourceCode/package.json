@@ -17,7 +17,7 @@
     "format:check": "prettier --check .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "prepare": "cd .. && husky .husky || true",
+    "prepare": "cd .. && git config core.hooksPath .githooks || true",
     "test": "pnpm -r run test",
     "typecheck": "pnpm -r run typecheck"
   },
@@ -31,7 +31,6 @@
     "eslint-plugin-react-hooks": "catalog:",
     "eslint-plugin-simple-import-sort": "catalog:",
     "globals": "catalog:",
-    "husky": "catalog:",
     "lint-staged": "catalog:",
     "prettier": "catalog:",
     "typescript": "catalog:",
