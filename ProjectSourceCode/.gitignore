@@ -37,3 +37,5 @@ Thumbs.db
 *.iml
 .vscode/*.code-workspace
 .history/
+
+generated/
