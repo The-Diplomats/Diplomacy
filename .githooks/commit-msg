@@ -1,5 +1,8 @@
 #!/usr/bin/env sh
-MSG="$(pwd)/$1"
+case "$1" in
+  /*) MSG="$1" ;;
+  *)  MSG="$(pwd)/$1" ;;
+esac
 if ! pnpm -C ProjectSourceCode exec commitlint --edit "$MSG"; then
   echo ""
   echo "Commit message must follow Conventional Commits:"
@@ -9,6 +12,7 @@ if ! pnpm -C ProjectSourceCode exec commitlint --edit "$MSG"; then
   echo "  feat(auth): add OAuth login"
   echo "  fix(adjudicator): correct convoy chain resolution"
   echo "  chore(scaffold): add eslint flat config"
+  echo "  feat: adjudicator"
   echo ""
   echo "Types: feat, fix, chore, docs, style, refactor, perf, test, build, ci, revert"
   echo "  '!' suffix (e.g. feat!:) or 'BREAKING CHANGE:' footer for breaking changes"
