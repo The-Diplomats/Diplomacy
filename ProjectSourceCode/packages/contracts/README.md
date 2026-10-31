@@ -17,5 +17,5 @@ import type { ServerToClientEvents, ClientToServerEvents } from '@diplomacy/cont
 
 ## Workflow
 
-Edit the spec. Run `pnpm --filter @diplomacy/contracts run generate` to regenerate the client. Commit the spec change
-(generated code is regenerated per-install).
+Edit the spec, then `pnpm --filter @diplomacy/contracts run generate`. (The generate step also runs automatically before
+`build` and `typecheck`.)
