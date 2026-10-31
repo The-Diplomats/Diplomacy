@@ -1,2 +1,11 @@
 #!/usr/bin/env sh
+branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+
+if [ "$branch" = "main" ]; then
+  echo "Direct commits to main are not allowed."
+  echo "Create a branch: git switch -c <author>/<type>/<ticket number>/<slug>"
+  echo "Bypass intentionally with: git commit --no-verify"
+  exit 1
+fi
+
 pnpm -C ProjectSourceCode exec lint-staged
