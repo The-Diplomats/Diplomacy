@@ -21,6 +21,9 @@ pnpm -r build
 `pnpm -r build` builds all packages in dependency order. Required on clean checkout before individual app commands work
 (apps consume shared packages' compiled types).
 
+If an app has a `.env.example`, copy it to `.env` before running the app's dev server. See each app's README for its
+specific env vars.
+
 ## Day-to-day workflow
 
 Run an app in dev mode (hot reload):

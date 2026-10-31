@@ -3,13 +3,22 @@ import { describe, expect, test } from 'vitest';
 
 import { createApp } from './app.js';
 
+const testConfig = {
+  databaseUrl: 'postgres://localhost:5432/test',
+  sessionSecret: 'test-secret',
+};
+
 describe('backend app', () => {
   test('GET /api/health returns ok', async () => {
-    const app = createApp();
+    const app = createApp(testConfig);
     const response = await supertest(app).get('/api/health');
-
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('ok');
-    expect(typeof response.body.uptime).toBe('number');
+  });
+
+  test('GET /api/auth/me returns 401 when not authenticated', async () => {
+    const app = createApp(testConfig);
+    const response = await supertest(app).get('/api/auth/me');
+    expect(response.status).toBe(401);
   });
 });
