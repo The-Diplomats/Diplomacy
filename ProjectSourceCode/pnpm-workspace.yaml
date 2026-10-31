@@ -1,11 +1,14 @@
 allowBuilds:
   es5-ext: false
+  esbuild: true
 
 autoInstallPeers: true
 
 catalog:
   '@commitlint/cli': ^21.2.4
   '@commitlint/config-conventional': ^21.2.4
+  drizzle-kit: ^0.31.11
+  drizzle-orm: ^0.45.4
   '@eslint/js': ^10.0.1
   eslint: ^10.13.0
   eslint-config-prettier: ^10.1.8
@@ -20,9 +23,12 @@ catalog:
   '@kubb/plugin-react-query': 4.38.0
   '@kubb/plugin-ts': 4.38.0
   lint-staged: ^17.6.0
+  pg: ^8.23.1
   prettier: ^3.9.10
   '@redocly/cli': ^2.72.1
   '@tanstack/react-query': ^5.105.0
+  '@types/node': ^24.19.2
+  '@types/pg': ^8.23.1
   typescript: ~5.8.3
   typescript-eslint: ^8.72.1
   vitest: 4.1.10
@@ -34,5 +40,9 @@ minimumReleaseAgeExclude:
 packages:
   - apps/*
   - packages/*
+
+peerDependencyRules:
+  allowedVersions:
+    'eslint-plugin-react>eslint': '>=10.0.0'
 
 saveWorkspaceProtocol: rolling
