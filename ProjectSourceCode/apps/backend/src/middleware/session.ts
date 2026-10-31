@@ -1,12 +1,20 @@
 import connectPgSimple from 'connect-pg-simple';
 import session, { type SessionOptions } from 'express-session';
+import pg from 'pg';
 
 const PgStore = connectPgSimple(session);
 
 export function createSessionMiddleware(connectionString: string, secret: string) {
+  const pool = new pg.Pool({
+    connectionString,
+    connectionTimeoutMillis: 5_000,
+    idleTimeoutMillis: 30_000,
+    max: 10,
+  });
+
   const store = new PgStore({
-    conString: connectionString,
-    createTableIfMissing: true,
+    pool,
+    createTableIfMissing: false,
   });
 
   const options: SessionOptions = {

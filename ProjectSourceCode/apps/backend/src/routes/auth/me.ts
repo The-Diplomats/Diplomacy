@@ -7,5 +7,5 @@ meRouter.get('/me', (req: Request, res: Response) => {
   if (!user) {
     return res.status(401).json({ title: 'Not authenticated' });
   }
-  res.json({ user });
+  res.json(user);
 });

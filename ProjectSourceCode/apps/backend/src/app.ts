@@ -18,6 +18,8 @@ export function createApp(config: AppConfig): Express {
   app.use(pinoHttp({ logger }));
   app.use(express.json());
 
+  app.set('trust proxy', 1);
+
   app.use(createSessionMiddleware(config.databaseUrl, config.sessionSecret));
 
   app.use('/api', healthRouter);

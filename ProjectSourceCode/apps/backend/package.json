@@ -20,6 +20,7 @@
     "express": "catalog:",
     "express-session": "catalog:",
     "helmet": "catalog:",
+    "pg": "catalog:",
     "pino": "catalog:",
     "pino-http": "catalog:"
   },
@@ -28,6 +29,7 @@
     "@types/express": "catalog:",
     "@types/express-session": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "@types/supertest": "catalog:",
     "pino-pretty": "catalog:",
     "supertest": "catalog:",
