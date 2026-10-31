@@ -4,7 +4,7 @@ import pg from 'pg';
 import * as schema from './schema/index.js';
 
 export function createDbClient(connectionString: string) {
-  if (!connectionString) {
+  if (!connectionString?.trim()) {
     throw new Error('createDbClient: connectionString is required');
   }
   const pool = new pg.Pool({ connectionString });
