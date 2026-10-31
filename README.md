@@ -24,11 +24,11 @@ See [MilestoneSubmissions/DESIGN_DOC.md](./MilestoneSubmissions/DESIGN_DOC.md) f
 
 ## Deployment
 
-Planned environments:
+Planned environments. Each has three subdomains: `app` (frontend), `api` (public API), `admin` (admin tooling, basic-auth gated).
 
-- Dev: `app.dev.diplomacy.gg` / `api.dev.diplomacy.gg`
-- Stage: `app.stage.diplomacy.gg` / `api.stage.diplomacy.gg`
-- Prod: `app.diplomacy.gg` / `api.diplomacy.gg`
+- Dev: `app.dev.diplomacy.gg`, `api.dev.diplomacy.gg`, `admin.dev.diplomacy.gg`
+- Stage: `app.stage.diplomacy.gg`, `api.stage.diplomacy.gg`, `admin.stage.diplomacy.gg`
+- Prod: `app.diplomacy.gg`, `api.diplomacy.gg`, `admin.diplomacy.gg`
 
 ## License
 
