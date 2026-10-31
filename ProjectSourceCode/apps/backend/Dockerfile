@@ -32,6 +32,7 @@ RUN apk add --no-cache tini
 WORKDIR /app
 RUN addgroup -S app && adduser -S -G app app
 COPY --from=build --chown=app:app /app /app
+ENV NODE_ENV=production
 USER app
 EXPOSE 3001
 ENTRYPOINT ["/sbin/tini", "--"]
