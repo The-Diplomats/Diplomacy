@@ -219,7 +219,6 @@ Both roles are purpose-built for Redis. Postgres can technically do either, poor
 **Kept from the lab stack:**
 - Node + Express + PostgreSQL (the backbone)
 - bcryptjs + express-session (lab auth pattern)
-- Mocha + Chai (lab testing)
 - Docker Compose for local dev
 - Incremental schema evolution via committed SQL files
 
@@ -749,8 +748,8 @@ For each decision below, the **recommended** choice is what we plan to implement
 | AI runtime | **Ollama local in ACA** | Zero API cost; works offline; stateless | ~30-90s/turn warm; +45-90s cold-start; CPU inference is the bottleneck | Cloud API (OpenAI/Groq/Gemini) | Faster output | Costs money; network dep |
 | AI model | **llama3.1:8b** | Well-rounded; popular; cheap | 8B occasional hallucination | qwen2.5:7b | Strong structured output | Less-tested in community |
 | AI output format | **Prompt-requested JSON + 3 retries** | Works with any model; simple | Retries cost latency | Grammar-constrained JSON (Ollama `format: json`) | Always parseable | Slower generation; newer feature |
-| Backend testing | **Mocha + Chai** | Matches lab stack | Older than Vitest | Vitest | Faster; unified with frontend | Diverges from lab convention |
-| Frontend testing | **Vitest + Playwright + MSW** | Modern; Vite-native; MSW works great for API mocking | none significant | Jest + Cypress + Nock | Older but still common | Slower; dated |
+| Testing (all workspaces) | **Vitest** | One framework across the monorepo; modern TS support; browser mode via `@vitest/browser-playwright` for frontend | Diverges from lab convention (lab uses Mocha+Chai) | Mocha + Chai | Matches lab stack | Older; split framework across repo |
+| E2E / integration (frontend) | **Playwright + MSW** | Vite-native; MSW works great for API mocking | none significant | Cypress + Nock | Older but still common | Slower; dated |
 | Test DB isolation | **Per-test transaction + rollback** | Fast; isolated; no cleanup bugs | Can't use nested transactions in tests | Per-test fresh schema | Allows nested txns | Slower per test |
 | DATC organization | **One file per section (~9 files)** | Manageable; maps to milestone progress | Files grow to 15+ cases each | One file per case (~60+ files) | Atomic PRs | Overwhelming directory |
 
@@ -758,7 +757,6 @@ For each decision below, the **recommended** choice is what we plan to implement
 
 If anyone on the team has a strong preference for the alternative, flag it in a PR comment on this doc **before** M2 implementation begins (end of week 1):
 
-- **Backend testing framework**, Vitest vs Mocha+Chai (lab alignment vs modernity)
 - **Monorepo task runner**, Make vs Turborepo (simple vs faster builds)
 - **AI runtime**, Local Ollama vs cloud API (free vs quality)
 - **DB client**, pg-promise vs Drizzle (lab vs TS-first)
