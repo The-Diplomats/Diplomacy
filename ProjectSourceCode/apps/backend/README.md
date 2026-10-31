@@ -1,13 +1,13 @@
-# @diplomacy/backend
+# backend
 
 Express 5 HTTP API server.
 
 ## Scripts
 
-- `pnpm --filter @diplomacy/backend dev`: hot-reload dev server (tsx watch)
-- `pnpm --filter @diplomacy/backend test`: Vitest + supertest
-- `pnpm --filter @diplomacy/backend build`: compile to dist/
-- `pnpm --filter @diplomacy/backend start`: run compiled dist/index.js
+- `pnpm --filter /backend dev`: hot-reload dev server (tsx watch)
+- `pnpm --filter backend test`: Vitest + supertest
+- `pnpm --filter backend build`: compile to dist/
+- `pnpm --filter backend start`: run compiled dist/index.js
 
 ## Routes
 

@@ -17,14 +17,14 @@ COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/adjudicator/package.json ./packages/adjudicator/
 COPY packages/db/package.json ./packages/db/
 COPY apps/backend/package.json ./apps/backend/
-RUN pnpm install --frozen-lockfile --filter @diplomacy/backend...
+RUN pnpm install --frozen-lockfile --filter backend...
 
 # Build stage: copy source and build backend + its workspace deps.
 FROM deps AS build
 COPY tsconfig.base.json tsconfig.json ./
 COPY packages ./packages
 COPY apps/backend ./apps/backend
-RUN pnpm --filter @diplomacy/backend... run build
+RUN pnpm --filter backend... run build
 
 # Runtime stage: minimal image with just what's needed to run.
 FROM node:24-alpine AS runtime
