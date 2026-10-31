@@ -1,5 +1,7 @@
 name: Discord PR Notification
 
+permissions: {}
+
 on:
   pull_request:
     types: [opened]
