@@ -9,7 +9,7 @@ import { createOpenApiValidator } from './middleware/openapi-validator.js';
 
 const corsMiddleware = cors({ origin: ['http://localhost'], credentials: true });
 
-const openApiValidator = createOpenApiValidator({ validateResponses: false });
+const openApiValidator = createOpenApiValidator({ validateResponses: true });
 
 const sessionMiddleware = session({
   secret: 'test-secret',
