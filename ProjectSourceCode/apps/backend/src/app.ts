@@ -7,6 +7,7 @@ import { authRouter } from './routes/auth/index.js';
 import { healthRouter } from './routes/health.js';
 
 interface AppConfig {
+  corsMiddleware: RequestHandler;
   sessionMiddleware: RequestHandler;
 }
 
@@ -18,6 +19,7 @@ export function createApp(config: AppConfig): Express {
 
   app.set('trust proxy', 1);
 
+  app.use(config.corsMiddleware);
   app.use(config.sessionMiddleware);
 
   app.use('/api', healthRouter);

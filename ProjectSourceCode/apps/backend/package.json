@@ -17,6 +17,7 @@
     "@diplomacy/contracts": "workspace:^",
     "@diplomacy/db": "workspace:^",
     "connect-pg-simple": "catalog:",
+    "cors": "catalog:",
     "express": "catalog:",
     "express-session": "catalog:",
     "helmet": "catalog:",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@types/connect-pg-simple": "catalog:",
+    "@types/cors": "catalog:",
     "@types/express": "catalog:",
     "@types/express-session": "catalog:",
     "@types/node": "catalog:",

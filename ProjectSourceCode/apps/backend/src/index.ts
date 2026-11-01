@@ -1,5 +1,7 @@
 import { createServer } from 'node:http';
 
+import cors from 'cors';
+
 import { createApp } from './app.js';
 import { logger } from './log.js';
 import { createSessionMiddleware } from './middleware/session.js';
@@ -30,8 +32,9 @@ const origins = frontendOriginsRaw
 const redisUrl = process.env.REDIS_URL?.trim() || undefined;
 const port = Number(process.env.PORT ?? 3001);
 
+const corsMiddleware = cors({ origin: origins, credentials: true });
 const { middleware: sessionMiddleware, pool } = createSessionMiddleware(databaseUrl, sessionSecret);
-const app = createApp({ sessionMiddleware });
+const app = createApp({ corsMiddleware, sessionMiddleware });
 const httpServer = createServer(app);
 const socketServer = createSocketServer(httpServer, {
   sessionMiddleware,

@@ -46,6 +46,9 @@ Socket.IO mounted at `/socket.io/`. Event types sourced from `@diplomacy/contrac
 The HTTP session middleware is attached to the WebSocket handshake via `io.engine.use(sessionMiddleware)`, so
 `socket.request.session` matches `req.session` from HTTP handlers.
 
+Transport: WebSocket only. Polling fallback is disabled so the backend can run multi-replica behind the Redis adapter
+without sticky sessions.
+
 ### Events
 
 - `health:ping` (client -> server): no payload

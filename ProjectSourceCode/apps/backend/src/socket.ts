@@ -22,9 +22,18 @@ export function createSocketServer(
   options: SocketServerOptions,
 ): { io: DiplomacySocketServer; close: () => Promise<void> } {
   const io: DiplomacySocketServer = new Server(httpServer, {
+    transports: ['websocket'],
     cors: {
       origin: options.origins,
       credentials: true,
+    },
+    allowRequest: (req, callback) => {
+      const origin = req.headers.origin;
+      if (!origin || options.origins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback('origin not allowed', false);
+      }
     },
   });
 
