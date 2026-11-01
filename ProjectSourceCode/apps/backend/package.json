@@ -2,7 +2,7 @@
   "name": "backend",
   "version": "0.0.0",
   "private": true,
-  "description": "Diplomacy HTTP API Express server",
+  "description": "Diplomacy HTTP + WebSocket server (Express 5 + Socket.IO)",
   "type": "module",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
@@ -20,9 +20,12 @@
     "express": "catalog:",
     "express-session": "catalog:",
     "helmet": "catalog:",
+    "ioredis": "catalog:",
     "pg": "catalog:",
     "pino": "catalog:",
-    "pino-http": "catalog:"
+    "pino-http": "catalog:",
+    "socket.io": "catalog:",
+    "@socket.io/redis-adapter": "catalog:"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "catalog:",
@@ -32,6 +35,7 @@
     "@types/pg": "catalog:",
     "@types/supertest": "catalog:",
     "pino-pretty": "catalog:",
+    "socket.io-client": "catalog:",
     "supertest": "catalog:",
     "tsx": "catalog:",
     "vitest": "catalog:"
