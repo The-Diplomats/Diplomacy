@@ -75,4 +75,9 @@ describe('backend app', () => {
     const response = await supertest(app()).get('/unknown-path');
     expect(response.status).toBe(404);
   });
+
+  test('HEAD /health returns 200', async () => {
+    const response = await supertest(app()).head('/health');
+    expect(response.status).toBe(200);
+  });
 });

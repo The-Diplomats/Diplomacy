@@ -11,3 +11,7 @@ healthRouter.get('/health', (_req: Request, res: Response<HealthStatus>) => {
     uptime: Math.floor((Date.now() - startedAt) / 1000),
   });
 });
+
+healthRouter.head('/health', (_req, res) => {
+  res.status(200).end();
+});

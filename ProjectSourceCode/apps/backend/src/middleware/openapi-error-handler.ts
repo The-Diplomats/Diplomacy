@@ -1,7 +1,7 @@
 import { type ErrorRequestHandler } from 'express';
 import { error } from 'express-openapi-validator';
 
-import { logger } from '../log';
+import { logger } from '../log.js';
 
 const openApiErrorClasses = [
   error.BadRequest,
