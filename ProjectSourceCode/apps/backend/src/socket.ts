@@ -8,7 +8,7 @@ import { Server } from 'socket.io';
 
 import { logger } from './log.js';
 import { registerHealthSocketHandlers } from './sockets/health.js';
-import { classifySurface } from './surface.js';
+import { classifySurface, extractForwardedHost } from './surface.js';
 
 export type DiplomacySocketServer = Server<ClientToServerEvents, ServerToClientEvents>;
 
@@ -29,7 +29,7 @@ export function createSocketServer(
       credentials: true,
     },
     allowRequest: (req, callback) => {
-      const surface = classifySurface(req.headers.host);
+      const surface = classifySurface(extractForwardedHost(req.headers));
       if (surface !== 'api' && surface !== 'dev') {
         callback('wrong surface', false);
         return;

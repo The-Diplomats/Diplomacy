@@ -17,3 +17,13 @@ export function classifySurface(host: string | undefined): DiplomacySurface {
   if (firstLabel === 'admin') return 'admin';
   return 'unknown';
 }
+
+export function extractForwardedHost(headers: {
+  host?: string;
+  'x-forwarded-host'?: string | string[];
+}): string | undefined {
+  const forwarded = headers['x-forwarded-host'];
+  if (Array.isArray(forwarded)) return forwarded[0];
+  if (typeof forwarded === 'string') return forwarded.split(',')[0]?.trim();
+  return headers.host;
+}
