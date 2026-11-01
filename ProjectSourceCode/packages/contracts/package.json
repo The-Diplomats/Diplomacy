@@ -20,7 +20,8 @@
     "generate": "kubb generate",
     "build": "pnpm run generate && tsc -b",
     "typecheck": "pnpm run generate && tsc -b --noEmit",
-    "clean": "rm -rf dist src/generated"
+    "clean": "rm -rf dist src/generated",
+    "prepare": "pnpm run build"
   },
   "dependencies": {
     "js-yaml": "catalog:",

@@ -15,6 +15,11 @@ const openApiErrorClasses = [
 export const openApiErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   if (openApiErrorClasses.some((cls) => err instanceof cls)) {
     const httpErr = err as InstanceType<(typeof openApiErrorClasses)[number]>;
+    if (httpErr.headers) {
+      for (const [key, value] of Object.entries(httpErr.headers)) {
+        if (typeof value === 'string') res.setHeader(key, value);
+      }
+    }
     res.status(httpErr.status).json({
       title: httpErr.name,
       detail: httpErr.message,
