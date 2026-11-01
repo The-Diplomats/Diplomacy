@@ -48,4 +48,32 @@ describe('Socket.IO health handler', () => {
       client.disconnect();
     }
   });
+
+  test('rejects WS upgrade from admin host', async () => {
+    const client: ClientSocket = ioClient(url, {
+      transports: ['websocket'],
+      extraHeaders: { host: 'admin.dev.diplomacy.gg' },
+    });
+
+    try {
+      const error = await new Promise<Error>((resolve, reject) => {
+        const timeout = setTimeout(
+          () => reject(new Error('expected connect_error, got nothing')),
+          2000,
+        );
+        client.on('connect_error', (err) => {
+          clearTimeout(timeout);
+          resolve(err);
+        });
+        client.on('connect', () => {
+          clearTimeout(timeout);
+          reject(new Error('expected connect to fail, but it succeeded'));
+        });
+      });
+
+      expect(error).toBeInstanceOf(Error);
+    } finally {
+      client.disconnect();
+    }
+  });
 });

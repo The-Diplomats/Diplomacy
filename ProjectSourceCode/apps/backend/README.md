@@ -32,16 +32,34 @@ environments set env vars via the container runtime config, not from `.env`.
 - `pnpm --filter backend... build`: compile backend + its workspace deps in dep order
 - `pnpm --filter backend start`: run compiled dist/index.js
 
+## Surfaces
+
+Requests are classified by hostname into one of three surfaces:
+
+- `api.*.diplomacy.gg`: HTTP routes + Socket.IO upgrades
+- `admin.*.diplomacy.gg`: admin router
+- `localhost`, `127.0.0.1`: dev surface, serves both api and admin routes
+
+Unknown hosts return 404 at the first middleware. The classifier lives in `src/surface.ts`.
+
+Admin access is gated by an email allowlist in `src/middleware/require-admin.ts`.
+
 ## Routes
 
 Full API contract at `packages/contracts/api/public/openapi.yaml`.
 
-- `GET /api/health`: service health status
-- `GET /api/auth/me`: current session user, 401 if not authenticated
+### api surface
+
+- `GET /health`: service health status
+- `GET /auth/me`: current session user, 401 if not authenticated
+
+### admin surface
+
+- `GET /queues`: 403 for non-admins, 503 otherwise
 
 ## Sockets
 
-Socket.IO mounted at `/socket.io/`. Event types sourced from `@diplomacy/contracts`.
+Socket.IO mounted at `/socket.io/` on the api surface. Event types sourced from `@diplomacy/contracts`.
 
 The HTTP session middleware is attached to the WebSocket handshake via `io.engine.use(sessionMiddleware)`, so
 `socket.request.session` matches `req.session` from HTTP handlers.

@@ -18,14 +18,12 @@ export default defineConfig({
     pluginTs({ output: { path: 'types' } }),
     pluginClient({
       output: { path: 'client' },
-      baseURL: '/api',
       client: 'fetch',
     }),
     pluginReactQuery({
       output: { path: 'hooks' },
       client: {
         client: 'fetch',
-        baseURL: '/api',
       },
     }),
   ],
