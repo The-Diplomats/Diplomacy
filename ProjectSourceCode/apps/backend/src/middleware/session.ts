@@ -36,5 +36,8 @@ export function createSessionMiddleware(connectionString: string, secret: string
     },
   };
 
-  return session(options);
+  return {
+    middleware: session(options),
+    pool,
+  };
 }

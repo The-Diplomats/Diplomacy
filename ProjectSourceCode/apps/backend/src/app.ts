@@ -1,15 +1,14 @@
-import express, { type Express } from 'express';
+import express, { type Express, type RequestHandler } from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 
 import { logger } from './log.js';
-import { createSessionMiddleware } from './middleware/session.js';
 import { authRouter } from './routes/auth/index.js';
 import { healthRouter } from './routes/health.js';
 
 interface AppConfig {
-  databaseUrl: string;
-  sessionSecret: string;
+  corsMiddleware: RequestHandler;
+  sessionMiddleware: RequestHandler;
 }
 
 export function createApp(config: AppConfig): Express {
@@ -20,7 +19,8 @@ export function createApp(config: AppConfig): Express {
 
   app.set('trust proxy', 1);
 
-  app.use(createSessionMiddleware(config.databaseUrl, config.sessionSecret));
+  app.use(config.corsMiddleware);
+  app.use(config.sessionMiddleware);
 
   app.use('/api', healthRouter);
   app.use('/api/auth', authRouter);
