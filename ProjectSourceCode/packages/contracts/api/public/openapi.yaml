@@ -9,8 +9,8 @@ info:
     identifier: GPL-3.0-or-later
 
 servers:
-  - url: /api
-    description: Mount-relative base path (refer to DESIGN_DOC)
+  - url: /
+    description: Mount-relative base path
 
 tags:
   - name: Health

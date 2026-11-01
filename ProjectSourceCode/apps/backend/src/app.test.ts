@@ -14,17 +14,39 @@ const sessionMiddleware = session({
   cookie: { secure: true, httpOnly: true },
 });
 
+function app() {
+  return createApp({ corsMiddleware, sessionMiddleware });
+}
+
 describe('backend app', () => {
-  test('GET /api/health returns ok', async () => {
-    const app = createApp({ corsMiddleware, sessionMiddleware });
-    const response = await supertest(app).get('/api/health');
+  test('GET /health returns ok', async () => {
+    const response = await supertest(app()).get('/health');
     expect(response.status).toBe(200);
     expect(response.body.status).toBe('ok');
   });
 
-  test('GET /api/auth/me returns 401 when not authenticated', async () => {
-    const app = createApp({ corsMiddleware, sessionMiddleware });
-    const response = await supertest(app).get('/api/auth/me');
+  test('GET /auth/me returns 401 when not authenticated', async () => {
+    const response = await supertest(app()).get('/auth/me');
     expect(response.status).toBe(401);
+  });
+
+  test('GET /queues on admin host returns 403 without admin session', async () => {
+    const response = await supertest(app()).get('/queues').set('Host', 'admin.dev.diplomacy.gg');
+    expect(response.status).toBe(403);
+  });
+
+  test('GET /queues on api host returns 404', async () => {
+    const response = await supertest(app()).get('/queues').set('Host', 'api.dev.diplomacy.gg');
+    expect(response.status).toBe(404);
+  });
+
+  test('GET /health on admin host returns 404', async () => {
+    const response = await supertest(app()).get('/health').set('Host', 'admin.dev.diplomacy.gg');
+    expect(response.status).toBe(404);
+  });
+
+  test('GET /unknown host returns 404', async () => {
+    const response = await supertest(app()).get('/health').set('Host', 'evil.com');
+    expect(response.status).toBe(404);
   });
 });
