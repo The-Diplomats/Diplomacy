@@ -19,15 +19,16 @@ export function createApp(config: AppConfig): Express {
 
   app.set('trust proxy', 1);
 
-  app.use(surfaceRouter);
   app.use(helmet());
   app.use(pinoHttp({ logger }));
   app.use(express.json());
+
+  app.use(surfaceRouter);
   app.use(config.corsMiddleware);
   app.use(config.sessionMiddleware);
 
-  app.use(createApiSurface(config.openApiValidator));
   app.use(createAdminSurface());
+  app.use(createApiSurface(config.openApiValidator));
 
   app.use(config.openApiErrorHandler);
 

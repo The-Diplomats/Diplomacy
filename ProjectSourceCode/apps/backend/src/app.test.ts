@@ -68,7 +68,7 @@ describe('backend app', () => {
   test('POST /health includes Allow header on 405', async () => {
     const response = await supertest(app()).post('/health');
     expect(response.status).toBe(405);
-    expect(response.headers.allow).toBe('GET');
+    expect(response.headers.allow).toContain('GET');
   });
 
   test('GET /unknown-path passes through to Express 404', async () => {

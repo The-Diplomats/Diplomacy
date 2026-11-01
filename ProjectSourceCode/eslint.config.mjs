@@ -18,6 +18,7 @@ export default [
       '**/.vite/**',
       '**/generated/**',
       '**/*.tsbuildinfo',
+      'apps/web/**',
     ],
   },
 

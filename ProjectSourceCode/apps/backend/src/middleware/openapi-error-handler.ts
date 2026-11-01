@@ -1,6 +1,8 @@
 import { type ErrorRequestHandler } from 'express';
 import { error } from 'express-openapi-validator';
 
+import { logger } from '../log';
+
 const openApiErrorClasses = [
   error.BadRequest,
   error.NotFound,
@@ -19,6 +21,14 @@ export const openApiErrorHandler: ErrorRequestHandler = (err, _req, res, next) =
       for (const [key, value] of Object.entries(httpErr.headers)) {
         if (typeof value === 'string') res.setHeader(key, value);
       }
+    }
+    if (httpErr.status >= 500) {
+      logger.error({ err: httpErr }, 'openapi response validation error');
+      res.status(httpErr.status).json({
+        title: httpErr.name,
+        status: httpErr.status,
+      });
+      return;
     }
     res.status(httpErr.status).json({
       title: httpErr.name,

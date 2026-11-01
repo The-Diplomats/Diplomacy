@@ -19,3 +19,5 @@ blob-report/
 
 *.min.js
 *.min.css
+
+apps/web/

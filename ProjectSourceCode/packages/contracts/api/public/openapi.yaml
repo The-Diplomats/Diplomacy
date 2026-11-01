@@ -31,6 +31,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthStatus'
+    head:
+      operationId: headHealth
+      tags: [Health]
+      summary: Health check (headers only, for uptime monitors)
+      responses:
+        '200':
+          description: Service is healthy
 
   /auth/me:
     get:
