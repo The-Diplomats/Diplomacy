@@ -4,6 +4,8 @@ import cors from 'cors';
 
 import { createApp } from './app.js';
 import { logger } from './log.js';
+import { openApiErrorHandler } from './middleware/openapi-error-handler.js';
+import { createOpenApiValidator } from './middleware/openapi-validator.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { createSocketServer } from './socket.js';
 
@@ -33,8 +35,16 @@ const redisUrl = process.env.REDIS_URL?.trim() || undefined;
 const port = Number(process.env.PORT ?? 3001);
 
 const corsMiddleware = cors({ origin: origins, credentials: true });
+const openApiValidator = createOpenApiValidator({
+  validateResponses: process.env.NODE_ENV !== 'production',
+});
 const { middleware: sessionMiddleware, pool } = createSessionMiddleware(databaseUrl, sessionSecret);
-const app = createApp({ corsMiddleware, sessionMiddleware });
+const app = createApp({
+  corsMiddleware,
+  openApiValidator,
+  openApiErrorHandler,
+  sessionMiddleware,
+});
 const httpServer = createServer(app);
 const socketServer = createSocketServer(httpServer, {
   sessionMiddleware,

@@ -13,6 +13,7 @@
   },
   "types": "./dist/index.d.ts",
   "files": [
+    "api/public/openapi.yaml",
     "dist"
   ],
   "scripts": {
@@ -22,6 +23,7 @@
     "clean": "rm -rf dist src/generated"
   },
   "dependencies": {
+    "js-yaml": "catalog:",
     "@tanstack/react-query": "catalog:"
   },
   "devDependencies": {
@@ -31,6 +33,9 @@
     "@kubb/plugin-oas": "catalog:",
     "@kubb/plugin-react-query": "catalog:",
     "@kubb/plugin-ts": "catalog:",
-    "@redocly/cli": "catalog:"
+    "openapi-types": "catalog:",
+    "@redocly/cli": "catalog:",
+    "@types/js-yaml": "catalog:",
+    "@types/node": "catalog:"
   }
 }
