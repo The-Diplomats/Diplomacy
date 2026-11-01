@@ -57,6 +57,82 @@ Full API contract at `packages/contracts/api/public/openapi.yaml`.
 
 - `GET /queues`: 403 for non-admins, 503 otherwise
 
+## Adding an api endpoint
+
+Contract-first. Example: `GET /games`.
+
+1. Edit `packages/contracts/api/public/openapi.yaml`. The file already has top-level `tags:`, `paths:`, and
+   `components.schemas:` sections. Append to each (don't replace):
+   ```yaml
+   tags:
+     # ... existing tags (Health, Auth) ...
+     - name: Games
+       description: Game lifecycle
+
+   paths:
+     # ... existing paths (/health, /auth/me) ...
+     /games:
+       get:
+         operationId: listGames # becomes useListGames hook + listGames fn in generated client
+         tags: [Games]
+         summary: List games
+         responses:
+           '200':
+             description: OK
+             content:
+               application/json:
+                 schema:
+                   $ref: '#/components/schemas/GamesList'
+
+   components:
+     schemas:
+       # ... existing schemas (HealthStatus, User, ProblemDetails) ...
+       GamesList:
+         type: object
+         required: [games]
+         additionalProperties: false
+         properties:
+           games:
+             type: array
+             items:
+               $ref: '#/components/schemas/Game'
+       Game:
+         type: object
+         required: [id, name]
+         additionalProperties: false
+         properties:
+           id:
+             type: string
+             format: uuid
+           name:
+             type: string
+   ```
+2. Regenerate the typed client and parsed spec:
+   ```sh
+   pnpm --filter @diplomacy/contracts build
+   ```
+3. Create the handler at `src/routes/api/games.ts`:
+   ```ts
+   import type { GamesList } from '@diplomacy/contracts';
+   import { type Request, type Response, Router } from 'express';
+
+   export const gamesRouter = Router();
+
+   gamesRouter.get('/', (_req: Request, res: Response<GamesList>) => {
+     res.json({ games: [] });
+   });
+   ```
+4. Mount in `src/routes/api/index.ts`:
+   ```ts
+   import { gamesRouter } from './games.js';
+   // inside createApiSurface:
+   api.use('/games', gamesRouter);
+   ```
+5. Add a test in `src/app.test.ts`.
+
+`src/app.ts` is not touched for route additions. Request validation and response typing come from the OpenAPI spec via
+`express-openapi-validator` and the generated `@diplomacy/contracts` types.
+
 ## Sockets
 
 Socket.IO mounted at `/socket.io/` on the api surface. Event types sourced from `@diplomacy/contracts`.

@@ -4,8 +4,12 @@ import supertest from 'supertest';
 import { describe, expect, test } from 'vitest';
 
 import { createApp } from './app.js';
+import { openApiErrorHandler } from './middleware/openapi-error-handler.js';
+import { createOpenApiValidator } from './middleware/openapi-validator.js';
 
 const corsMiddleware = cors({ origin: ['http://localhost'], credentials: true });
+
+const openApiValidator = createOpenApiValidator({ validateResponses: true });
 
 const sessionMiddleware = session({
   secret: 'test-secret',
@@ -15,7 +19,12 @@ const sessionMiddleware = session({
 });
 
 function app() {
-  return createApp({ corsMiddleware, sessionMiddleware });
+  return createApp({
+    corsMiddleware,
+    openApiValidator,
+    openApiErrorHandler,
+    sessionMiddleware,
+  });
 }
 
 describe('backend app', () => {
@@ -48,5 +57,27 @@ describe('backend app', () => {
   test('GET /unknown host returns 404', async () => {
     const response = await supertest(app()).get('/health').set('Host', 'evil.com');
     expect(response.status).toBe(404);
+  });
+
+  test('POST /health returns 405 (method not in spec)', async () => {
+    const response = await supertest(app()).post('/health');
+    expect(response.status).toBe(405);
+    expect(response.body.title).toBe('Method Not Allowed');
+  });
+
+  test('POST /health includes Allow header on 405', async () => {
+    const response = await supertest(app()).post('/health');
+    expect(response.status).toBe(405);
+    expect(response.headers.allow).toContain('GET');
+  });
+
+  test('GET /unknown-path passes through to Express 404', async () => {
+    const response = await supertest(app()).get('/unknown-path');
+    expect(response.status).toBe(404);
+  });
+
+  test('HEAD /health returns 200', async () => {
+    const response = await supertest(app()).head('/health');
+    expect(response.status).toBe(200);
   });
 });

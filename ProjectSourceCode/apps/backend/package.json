@@ -19,6 +19,7 @@
     "connect-pg-simple": "catalog:",
     "cors": "catalog:",
     "express": "catalog:",
+    "express-openapi-validator": "catalog:",
     "express-session": "catalog:",
     "helmet": "catalog:",
     "ioredis": "catalog:",

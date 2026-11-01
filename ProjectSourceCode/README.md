@@ -24,6 +24,14 @@ pnpm -r build
 If an app has a `.env.example`, copy it to `.env` before running the app's dev server. See each app's README for its
 specific env vars.
 
+## VS Code setup
+
+On first open, VS Code prompts "Would you like to use the workspace's version of TypeScript?" Click yes so IDE
+diagnostics match CLI output. Otherwise VS Code uses its bundled TypeScript, which differs from the repo's pinned
+version and produces false errors (missing `@types/node`, unresolved `node:` imports, etc.).
+
+The prompt is enabled by `.vscode/settings.json`. Teammates using other editors can ignore it.
+
 ## Day-to-day workflow
 
 Run an app in dev mode (hot reload):
