@@ -1,0 +1,45 @@
+{
+  "name": "backend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Diplomacy HTTP + WebSocket server (Express 5 + Socket.IO)",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "dev": "tsx watch --env-file=.env src/index.ts | pnpm exec pino-pretty",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@diplomacy/contracts": "workspace:^",
+    "@diplomacy/db": "workspace:^",
+    "connect-pg-simple": "catalog:",
+    "cors": "catalog:",
+    "express": "catalog:",
+    "express-session": "catalog:",
+    "helmet": "catalog:",
+    "ioredis": "catalog:",
+    "pg": "catalog:",
+    "pino": "catalog:",
+    "pino-http": "catalog:",
+    "socket.io": "catalog:",
+    "@socket.io/redis-adapter": "catalog:"
+  },
+  "devDependencies": {
+    "@types/connect-pg-simple": "catalog:",
+    "@types/cors": "catalog:",
+    "@types/express": "catalog:",
+    "@types/express-session": "catalog:",
+    "@types/node": "catalog:",
+    "@types/pg": "catalog:",
+    "@types/supertest": "catalog:",
+    "pino-pretty": "catalog:",
+    "socket.io-client": "catalog:",
+    "supertest": "catalog:",
+    "tsx": "catalog:",
+    "vitest": "catalog:"
+  }
+}

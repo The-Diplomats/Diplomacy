@@ -6,6 +6,12 @@
     },
     {
       "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/adjudicator"
+    },
+    {
+      "path": "./packages/db"
     }
   ]
 }

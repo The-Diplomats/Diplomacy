@@ -38,4 +38,4 @@ Thumbs.db
 .vscode/*.code-workspace
 .history/
 
-generated/
+packages/*/src/generated/

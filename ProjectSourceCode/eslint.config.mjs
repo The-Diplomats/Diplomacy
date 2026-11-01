@@ -28,7 +28,15 @@ export default [
     files: ['**/*.{ts,tsx,mts,cts}'],
     languageOptions: {
       parserOptions: {
-        projectService: true,
+        projectService: {
+          allowDefaultProject: [
+            'apps/*/*.config.ts',
+            'apps/*/*.config.mts',
+            'apps/*/*.config.cts',
+            'apps/*/*.config.mjs',
+            'apps/*/*.config.cjs',
+          ],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
