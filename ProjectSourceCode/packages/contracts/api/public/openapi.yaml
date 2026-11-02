@@ -17,6 +17,8 @@ tags:
     description: Service health
   - name: Auth
     description: Authentication
+  - name: Chat
+    description: BasicChat
 
 paths:
   /health:
@@ -58,6 +60,18 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
 
+  /chat:
+    get:
+      summary: Get chat
+      operationId: getChat
+      responses:
+        '200':
+          description: Success response
+          content:
+            application/json:
+              schema:
+                type: string
+
 components:
   schemas:
     HealthStatus:
@@ -98,3 +112,9 @@ components:
           type: string
         status:
           type: integer
+
+    Chat:
+      type: object
+      required: [chat]
+      additionalProperties: false
+      # ???????

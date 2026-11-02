@@ -17,6 +17,10 @@ interface AppConfig {
 export function createApp(config: AppConfig): Express {
   const app = express();
 
+  app.get('/chat', (_req, res) => {
+    res.send('<h1>Did this thing work</h1>');
+  });
+
   app.set('trust proxy', 1);
 
   app.use(helmet());
