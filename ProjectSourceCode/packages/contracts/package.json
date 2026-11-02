@@ -1,0 +1,44 @@
+{
+  "name": "@diplomacy/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "description": "OpenAPI 3.1 spec, generated typed client + React Query hooks, and hand-written Socket.IO event types",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "api/public/openapi.yaml",
+    "dist"
+  ],
+  "scripts": {
+    "generate": "kubb generate",
+    "build": "pnpm run generate && tsc -b",
+    "build:watch": "chokidar \"api/public/**/*.yaml\" \"src/**/*.ts\" --ignore \"src/generated/**\" --initial -c \"pnpm run build\"",
+    "typecheck": "pnpm run generate && tsc -b --noEmit",
+    "clean": "rm -rf dist src/generated",
+    "prepare": "pnpm run build"
+  },
+  "dependencies": {
+    "js-yaml": "catalog:",
+    "@tanstack/react-query": "catalog:"
+  },
+  "devDependencies": {
+    "chokidar-cli": "catalog:",
+    "@kubb/cli": "catalog:",
+    "@kubb/core": "catalog:",
+    "@kubb/plugin-client": "catalog:",
+    "@kubb/plugin-oas": "catalog:",
+    "@kubb/plugin-react-query": "catalog:",
+    "@kubb/plugin-ts": "catalog:",
+    "openapi-types": "catalog:",
+    "@redocly/cli": "catalog:",
+    "@types/js-yaml": "catalog:",
+    "@types/node": "catalog:"
+  }
+}

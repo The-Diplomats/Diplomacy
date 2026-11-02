@@ -1,0 +1,17 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "./packages/game-types"
+    },
+    {
+      "path": "./packages/contracts"
+    },
+    {
+      "path": "./packages/adjudicator"
+    },
+    {
+      "path": "./packages/db"
+    }
+  ]
+}

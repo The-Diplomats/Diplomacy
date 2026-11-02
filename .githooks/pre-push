@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+
+# Typecheck the whole workspace before push. Catches TS errors locally
+# so CI doesn't have to be the first to notice.
+# Bypass intentionally with: git push --no-verify
+pnpm -C ProjectSourceCode -r run typecheck

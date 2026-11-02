@@ -1,0 +1,165 @@
+openapi: 3.1.0
+
+info:
+  title: Diplomacy API
+  version: 0.0.0
+  description: Internal API contract for the Diplomacy monorepo.
+  license:
+    name: GPL-3.0-or-later
+    identifier: GPL-3.0-or-later
+
+servers:
+  - url: /
+    description: Mount-relative base path
+
+tags:
+  - name: Health
+    description: Service health
+  - name: Auth
+    description: Authentication
+
+paths:
+  /health:
+    head:
+      operationId: headHealth
+      tags: [Health]
+      summary: Health check (headers only, for uptime monitors)
+      responses:
+        '200':
+          description: Service is healthy
+    get:
+      operationId: getHealth
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+
+  /auth/user:
+    get:
+      operationId: getAuthUser
+      tags: [Auth]
+      summary: Current authenticated user
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/login:
+    post:
+      operationId: postAuthLogin
+      tags: [Auth]
+      summary: Log in with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Logged in (session cookie set)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/register:
+    post:
+      operationId: postAuthRegister
+      tags: [Auth]
+      summary: Create an account and sign in
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Account created (session cookie set)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/logout:
+    post:
+      operationId: postAuthLogout
+      tags: [Auth]
+      summary: End the current session
+      responses:
+        '204':
+          description: Signed out
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, uptime]
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        uptime:
+          type: integer
+          minimum: 0
+          description: Server uptime in seconds
+
+    User:
+      type: object
+      required: [id, email]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+
+    ProblemDetails:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        detail:
+          type: string
+        status:
+          type: integer
