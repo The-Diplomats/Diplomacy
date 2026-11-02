@@ -1,0 +1,31 @@
+{
+  "name": "@diplomacy/queues",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared BullMQ queue definitions and typed job payloads",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b --noEmit",
+    "clean": "rm -rf dist",
+    "prepare": "pnpm run build"
+  },
+  "dependencies": {
+    "bullmq": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@diplomacy/contracts": "workspace:^"
+  }
+}

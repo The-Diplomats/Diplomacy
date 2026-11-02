@@ -4,4 +4,5 @@ export interface ClientToServerEvents {
 
 export interface ServerToClientEvents {
   'health:pong': (payload: { timestamp: number }) => void;
+  'health:tick': (payload: { at: number }) => void;
 }

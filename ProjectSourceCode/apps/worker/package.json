@@ -1,0 +1,33 @@
+{
+  "name": "worker",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Diplomacy background job consumer (BullMQ + Socket.IO redis-emitter)",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "dev": "tsx watch --env-file=.env src/index.ts | pnpm exec pino-pretty",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "bullmq": "catalog:",
+    "@diplomacy/contracts": "workspace:^",
+    "@diplomacy/queues": "workspace:^",
+    "ioredis": "catalog:",
+    "pino": "catalog:",
+    "@socket.io/redis-emitter": "catalog:"
+  },
+  "devDependencies": {
+    "pino-pretty": "catalog:",
+    "socket.io": "catalog:",
+    "socket.io-client": "catalog:",
+    "@socket.io/redis-adapter": "catalog:",
+    "tsx": "catalog:",
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  }
+}
