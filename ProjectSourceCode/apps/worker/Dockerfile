@@ -15,7 +15,11 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/queues/package.json ./packages/queues/
 COPY apps/worker/package.json ./apps/worker/
-RUN pnpm install --frozen-lockfile --filter worker...
+RUN pnpm install --frozen-lockfile --filter worker... --ignore-scripts
+
+# Dev stage: reuses deps installed above; source arrives via volume mount from compose.
+FROM deps AS dev
+CMD ["pnpm", "--filter", "worker", "run", "dev:container"]
 
 # Build stage: copy source and build worker + its workspace deps.
 FROM deps AS build

@@ -13,5 +13,9 @@
     {
       "path": "../game-types/tsconfig.src.json"
     }
-  ]
+  ],
+  "watchOptions": {
+    "watchFile": "fixedPollingInterval",
+    "watchDirectory": "fixedPollingInterval"
+  }
 }

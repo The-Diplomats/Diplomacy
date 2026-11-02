@@ -18,10 +18,12 @@
   ],
   "scripts": {
     "build": "tsc -b",
+    "build:watch": "tsc -b --watch",
     "typecheck": "tsc -b --noEmit",
     "clean": "rm -rf dist",
     "generate": "drizzle-kit generate",
-    "migrate": "drizzle-kit migrate"
+    "migrate": "drizzle-kit migrate",
+    "prepare": "pnpm run build"
   },
   "dependencies": {
     "drizzle-orm": "catalog:",

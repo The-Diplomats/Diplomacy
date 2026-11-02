@@ -17,6 +17,7 @@
   ],
   "scripts": {
     "build": "tsc -b",
+    "build:watch": "tsc -b --watch",
     "typecheck": "tsc -b --noEmit",
     "clean": "rm -rf dist",
     "prepare": "pnpm run build"

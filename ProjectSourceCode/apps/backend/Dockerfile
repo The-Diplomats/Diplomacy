@@ -17,7 +17,12 @@ COPY packages/contracts/package.json ./packages/contracts/
 COPY packages/adjudicator/package.json ./packages/adjudicator/
 COPY packages/db/package.json ./packages/db/
 COPY apps/backend/package.json ./apps/backend/
-RUN pnpm install --frozen-lockfile --filter backend...
+RUN pnpm install --frozen-lockfile --filter backend... --ignore-scripts
+
+# Dev stage: reuses deps installed above; source arrives via volume mount from compose.
+FROM deps AS dev
+EXPOSE 3001
+CMD ["pnpm", "--filter", "backend", "run", "dev:container"]
 
 # Build stage: copy source and build backend + its workspace deps.
 FROM deps AS build

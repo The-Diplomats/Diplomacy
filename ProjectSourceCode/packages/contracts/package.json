@@ -19,6 +19,7 @@
   "scripts": {
     "generate": "kubb generate",
     "build": "pnpm run generate && tsc -b",
+    "build:watch": "chokidar 'api/public/**/*.yaml' 'src/**/*.ts' --poll 1000 -c 'pnpm run build'",
     "typecheck": "pnpm run generate && tsc -b --noEmit",
     "clean": "rm -rf dist src/generated",
     "prepare": "pnpm run build"
@@ -28,6 +29,7 @@
     "@tanstack/react-query": "catalog:"
   },
   "devDependencies": {
+    "chokidar-cli": "catalog:",
     "@kubb/cli": "catalog:",
     "@kubb/core": "catalog:",
     "@kubb/plugin-client": "catalog:",

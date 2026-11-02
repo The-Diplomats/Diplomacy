@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: diplomacy
+      POSTGRES_PASSWORD: diplomacy
+      POSTGRES_DB: diplomacy
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U diplomacy -d diplomacy']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # One-shot: applies pending DB migrations before backend/worker start.
+  migrator:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://diplomacy:diplomacy@postgres:5432/diplomacy
+    volumes:
+      - ./packages/db:/app/packages/db
+      - /app/packages/db/node_modules
+    command: ['pnpm', '--filter', '@diplomacy/db', 'run', 'migrate']
+    restart: 'no'
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: dev
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://diplomacy:diplomacy@postgres:5432/diplomacy
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: dev-only-change-me-minimum-32-chars-long-string
+      FRONTEND_ORIGINS: http://localhost:5173
+      PORT: '3001'
+      LOG_LEVEL: info
+      NODE_ENV: development
+    volumes:
+      - ./apps/backend/src:/app/apps/backend/src
+      - ./packages/contracts/dist:/app/packages/contracts/dist
+      - ./packages/contracts/api:/app/packages/contracts/api
+      - ./packages/queues/dist:/app/packages/queues/dist
+      - ./packages/db/dist:/app/packages/db/dist
+      - ./packages/game-types/dist:/app/packages/game-types/dist
+      - ./packages/adjudicator/dist:/app/packages/adjudicator/dist
+    ports:
+      - '3001:3001'
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+      target: dev
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: info
+      NODE_ENV: development
+    volumes:
+      - ./apps/worker/src:/app/apps/worker/src
+      - ./packages/contracts/dist:/app/packages/contracts/dist
+      - ./packages/contracts/api:/app/packages/contracts/api
+      - ./packages/queues/dist:/app/packages/queues/dist
+
+volumes:
+  postgres-data:
