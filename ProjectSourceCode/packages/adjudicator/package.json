@@ -17,10 +17,12 @@
   ],
   "scripts": {
     "build": "tsc -b",
+    "build:watch": "tsc -b --watch",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest --run",
     "test:watch": "vitest",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepare": "pnpm run build"
   },
   "dependencies": {
     "@diplomacy/game-types": "workspace:^"

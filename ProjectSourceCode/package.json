@@ -13,6 +13,9 @@
   },
   "scripts": {
     "build": "pnpm -r run build",
+    "dev": "concurrently --names \"compose,packages\" --prefix-colors \"blue,green\" --kill-others-on-fail \"docker compose up --build\" \"pnpm --parallel --filter @diplomacy/contracts --filter @diplomacy/queues --filter @diplomacy/db --filter @diplomacy/game-types --filter @diplomacy/adjudicator run build:watch\"",
+    "down": "docker compose down",
+    "nuke": "docker compose down -v",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "eslint .",
@@ -24,6 +27,7 @@
   "devDependencies": {
     "@commitlint/cli": "catalog:",
     "@commitlint/config-conventional": "catalog:",
+    "concurrently": "catalog:",
     "@eslint/js": "catalog:",
     "eslint": "catalog:",
     "eslint-config-prettier": "catalog:",
