@@ -54,7 +54,9 @@ database. Use for schema reset or when you suspect corrupt DB state.
 For infra-only mode (run backend/worker on host with native debugger attach):
 
 ```sh
-docker compose up postgres redis
+docker compose up -d postgres redis
+# Ensure apps/backend/.env (or apps/worker/.env) exists with DATABASE_URL, REDIS_URL,
+# SESSION_SECRET, FRONTEND_ORIGINS matching the compose services.
 pnpm --filter backend dev
 ```
 

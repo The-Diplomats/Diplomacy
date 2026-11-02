@@ -8,7 +8,7 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U diplomacy -d diplomacy']
       interval: 5s
@@ -18,7 +18,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - '6379:6379'
+      - '127.0.0.1:6379:6379'
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -71,7 +71,7 @@ services:
       - ./packages/game-types/dist:/app/packages/game-types/dist
       - ./packages/adjudicator/dist:/app/packages/adjudicator/dist
     ports:
-      - '3001:3001'
+      - '127.0.0.1:3001:3001'
 
   worker:
     build:

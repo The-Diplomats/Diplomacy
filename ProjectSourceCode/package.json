@@ -13,7 +13,7 @@
   },
   "scripts": {
     "build": "pnpm -r run build",
-    "dev": "concurrently --names 'compose,packages' --prefix-colors 'blue,green' --kill-others-on-fail 'docker compose up' 'pnpm --parallel --filter @diplomacy/contracts --filter @diplomacy/queues --filter @diplomacy/db --filter @diplomacy/game-types --filter @diplomacy/adjudicator run build:watch'",
+    "dev": "concurrently --names \"compose,packages\" --prefix-colors \"blue,green\" --kill-others-on-fail \"docker compose up --build\" \"pnpm --parallel --filter @diplomacy/contracts --filter @diplomacy/queues --filter @diplomacy/db --filter @diplomacy/game-types --filter @diplomacy/adjudicator run build:watch\"",
     "down": "docker compose down",
     "nuke": "docker compose down -v",
     "format": "prettier --write .",
