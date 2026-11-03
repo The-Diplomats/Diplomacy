@@ -1,8 +1,24 @@
 Diplomacy Group Project – Meeting Notes
-Date: October 26, 2026
 Course: CSCI 3308 – Software Development Methods
 Meeting Type: Weekly TA Review
 
+
+Date: November 2, 2026
+Scaffolding and project/repo frame is almost complete.
+Game board map is underway.
+Registration and login pages functional, tweaks still needed.
+Fledgling chat page functionality.
+
+Assignments this week:
+Deven - public and private chat, LLM integration
+Rez - Scaffolding and frontend design
+Justin - Frontend and map design
+Brynne - login and registration pages, other miscellaneous backend functionality
+Nathan - Database
+
+
+
+Date: October 26, 2026
 1. Team Contributions
 - All team members have completed their first commit.
 - One member created the initial repository, PR template, and Discord notifications.
