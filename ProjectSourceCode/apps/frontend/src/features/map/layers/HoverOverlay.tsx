@@ -1,9 +1,11 @@
 import { HOVER_EXTENSIONS } from '../constants.ts';
 import { useMap } from '../hooks/useMap.ts';
+import { getProvinceOwner } from '../powers.ts';
 
 // Hover highlight for the hovered province. Rendered INSIDE the godip clip so the province's
 // native edge strokes at the viewBox boundary are cleanly cut off (no double-line against the
-// extension polygon, no bleed into the frame).
+// extension polygon, no bleed into the frame). Russia uses a dark mask because its parchment
+// fill is nearly white and the white mask has no contrast.
 export function HoverProvinceHighlight({ hoveredId }: { hoveredId: string | null }) {
   const { data } = useMap();
   if (!hoveredId) {
@@ -13,11 +15,14 @@ export function HoverProvinceHighlight({ hoveredId }: { hoveredId: string | null
   if (!prov) {
     return null;
   }
+  const isRussian = getProvinceOwner(hoveredId) === 'russia';
+  const fill = isRussian ? 'rgba(20, 15, 10, 0.3)' : 'rgba(255, 255, 255, 0.35)';
+  const stroke = isRussian ? '#1a1510' : '#ffffff';
   return (
     <path
       d={prov.d}
-      fill="rgba(255, 255, 255, 0.35)"
-      stroke="#ffffff"
+      fill={fill}
+      stroke={stroke}
       strokeWidth={2.5}
       strokeLinejoin="round"
       pointerEvents="none"

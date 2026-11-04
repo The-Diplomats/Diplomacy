@@ -1,10 +1,19 @@
 import { useMap } from '../hooks/useMap.ts';
-import { classifyLabel, prettifySeaText } from '../labels.ts';
+import {
+  classifyLabel,
+  coastLabelNudge,
+  expandCoastLabel,
+  expandProvinceName,
+  isCoastLabel,
+  prettifySeaText,
+} from '../labels.ts';
 import {
   COUNTRY_LABEL_POSITIONS,
   COUNTRY_LABEL_TEXT,
+  getProvinceOwner,
   PROVINCE_LABEL_OVERRIDES,
   provinceIdFromLabel,
+  seaLabelOverride,
 } from '../powers.ts';
 
 // Country-label soft halos — land-clipped so the lightening never bleeds onto sea.
@@ -20,13 +29,14 @@ export function CountryLabelHalos() {
         const text = COUNTRY_LABEL_TEXT[power];
         const textWidth =
           text.length * spec.fontSize * 0.55 + (text.length - 1) * spec.letterSpacing;
+        const scale = spec.haloScale ?? 1;
         return (
           <ellipse
             key={`halo-${power}`}
             cx={spec.x}
             cy={spec.y - spec.fontSize * 0.3}
-            rx={textWidth * 1.2}
-            ry={spec.fontSize * 2.8}
+            rx={textWidth * 1.2 * scale}
+            ry={spec.fontSize * 2.8 * scale}
             fill="url(#country-halo)"
           />
         );
@@ -115,57 +125,106 @@ export function GodipLabels() {
         }
 
         if (kind === 'sea') {
+          const seaOverride = seaLabelOverride(label.text);
+          const seaX = seaOverride ? seaOverride.x : label.x;
+          const seaY = seaOverride ? seaOverride.y : label.y;
+          // Sea labels: always horizontal (no rotation), province-sized, black, Title Case.
+          const seaFontSize = seaOverride?.fontSize ?? 10;
+          const prettified = prettifySeaText(label.text);
+          // Multi-line wrap: labels that don't fit their body of water on one line.
+          const twoLineMap: Record<string, [string, string]> = {
+            'Gulf of Bothnia': ['Gulf of', 'Bothnia'],
+            'Aegean Sea': ['Aegean', 'Sea'],
+            'Eastern Mediterranean': ['Eastern', 'Mediterranean'],
+          };
+          const twoLine = twoLineMap[prettified];
+          const gulfMatch = twoLine ? ['', twoLine[0], twoLine[1]] : null;
           return (
             <text
               key={`label-${index}`}
-              transform={rotationAttr}
-              fontSize={label.fontSize * 1.3}
+              fontSize={seaFontSize}
               fontFamily="'Merriweather Variable', serif"
               fontStyle="italic"
-              letterSpacing={label.letterSpacing}
-              fill="#1a1210"
+              letterSpacing={0.5}
+              fill="#000000"
+              textAnchor={twoLine ? 'middle' : undefined}
               style={{ userSelect: 'none' }}
             >
-              <tspan x={label.x} y={label.y}>
-                {prettifySeaText(label.text)}
-              </tspan>
+              {gulfMatch ? (
+                <>
+                  <tspan x={seaX} y={seaY}>
+                    {gulfMatch[1]}
+                  </tspan>
+                  <tspan x={seaX} dy="1.2em">
+                    {gulfMatch[2]}
+                  </tspan>
+                </>
+              ) : (
+                <tspan x={seaX} y={seaY}>
+                  {prettified}
+                </tspan>
+              )}
             </text>
           );
         }
 
         // Province label: if a hand-authored override exists for this province, render
         // horizontal (no rotation) at the override position with a consistent font size.
-        const upper = label.text.toUpperCase();
+        // Coast labels (SC/NC/EC/WC) are a special sub-case: we expand them to "South Coast" etc.
+        // at a smaller font and keep godip's rotation/position.
+        const coastLabel = isCoastLabel(label.text);
+        const displayText = coastLabel
+          ? expandCoastLabel(label.text)
+          : expandProvinceName(label.text).toUpperCase();
+        const upper = displayText;
         const first = upper.charAt(0);
         const rest = upper.slice(1);
-        const provId = provinceIdFromLabel(label.text);
+        const provId = coastLabel ? undefined : provinceIdFromLabel(label.text);
         const override = provId ? PROVINCE_LABEL_OVERRIDES[provId] : undefined;
-        const baseSize = override ? 10 : label.fontSize * 0.75;
-        const labelX = override ? override.x : label.x;
-        const labelY = override ? override.y : label.y;
+        const baseSize = coastLabel ? 7 : override ? 10 : label.fontSize * 0.75;
+        const coastNudge = coastLabel ? coastLabelNudge(label.text, label.x) : { dx: 0, dy: 0 };
+        const labelX = override ? override.x : label.x + coastNudge.dx;
+        const labelY = override ? override.y : label.y + coastNudge.dy;
         const effectiveRotation = override ? undefined : rotationAttr;
         const effectiveAnchor = override ? 'middle' : undefined;
+        // Russia's land is near-white parchment so white text would wash out; use dark fill with
+        // a cream halo instead to match the darker country-label reads.
+        const isRussian = provId ? getProvinceOwner(provId) === 'russia' : false;
+        const fillColor = isRussian ? '#0a0804' : '#ffffff';
+        const strokeColor = isRussian ? '#fcf9ee' : '#0a0804';
+        // Spain's South Coast gets a curved baseline (smile under Iberia). Identify by text +
+        // approximate godip x so we don't catch the other SC labels.
+        const curvedPathId =
+          coastLabel && label.text.trim().toUpperCase() === 'SC' && Math.abs(label.x - 419) < 50
+            ? 'coast-arc-spa-sc'
+            : null;
         return (
           <text
             key={`label-${index}`}
-            transform={effectiveRotation}
+            transform={curvedPathId ? undefined : effectiveRotation}
             fontSize={baseSize}
             fontFamily="'Merriweather Variable', serif"
             fontStyle="italic"
             fontWeight={500}
             letterSpacing={0.5}
-            fill="#ffffff"
-            stroke="#0a0804"
+            fill={fillColor}
+            stroke={strokeColor}
             strokeWidth={1.6}
             strokeLinejoin="round"
             paintOrder="stroke"
             textAnchor={effectiveAnchor}
             style={{ userSelect: 'none' }}
           >
-            <tspan x={labelX} y={labelY}>
-              <tspan fontSize={baseSize * 1.2}>{first}</tspan>
-              {rest}
-            </tspan>
+            {curvedPathId ? (
+              <textPath href={`#${curvedPathId}`} startOffset="50%" textAnchor="middle">
+                {upper}
+              </textPath>
+            ) : (
+              <tspan x={labelX} y={labelY}>
+                <tspan fontSize={baseSize * 1.2}>{first}</tspan>
+                {rest}
+              </tspan>
+            )}
           </text>
         );
       })}

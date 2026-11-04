@@ -114,6 +114,9 @@ export function MapDefs() {
       <clipPath id="godip-content-clip">
         <rect x={3} y={3} width={data.width - 6} height={data.height - 6} />
       </clipPath>
+
+      {/* Curved baseline for Spain South Coast label — smile arc under Iberia. */}
+      <path id="coast-arc-spa-sc" d="M 225 1209 Q 250 1212 275 1197" />
     </defs>
   );
 }
