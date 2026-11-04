@@ -4,6 +4,7 @@ import { useLocation } from 'react-router';
 import { MAP_EXTENSION_LEFT, MAP_EXTENSION_X, MAP_EXTENSION_Y } from './constants.ts';
 import { useLayerToggles } from './hooks/useLayerToggles.ts';
 import { useZoomPan } from './hooks/useZoomPan.ts';
+import { Graticule } from './layers/Graticule.tsx';
 import { HoverExtensionHighlight, HoverProvinceHighlight } from './layers/HoverOverlay.tsx';
 import {
   CountryLabelHalos,
@@ -69,6 +70,7 @@ export function MapBackdrop() {
               <HoverProvinceHighlight hoveredId={hoveredId} />
             </g>
             <MapExtensions />
+            <Graticule />
             <HoverExtensionHighlight hoveredId={hoveredId} />
             <Vignette />
             <PaperNoiseOverlay />

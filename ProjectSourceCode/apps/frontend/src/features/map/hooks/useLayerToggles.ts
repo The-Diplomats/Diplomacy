@@ -10,6 +10,7 @@ import { useLocation } from 'react-router';
 //   ?nonoise      - hide paper noise texture
 //   ?nowatercolor - disable watercolor filter on provinces
 //   ?novignette   - disable coastal vignette
+//   ?nograticule  - hide the latitude/longitude grid
 //   ?noimpassable - hide impassable (Switzerland) label
 export type LayerToggles = {
   provinceLabels: boolean;
@@ -20,6 +21,7 @@ export type LayerToggles = {
   noise: boolean;
   watercolor: boolean;
   vignette: boolean;
+  graticule: boolean;
   impassableLabel: boolean;
 };
 
@@ -35,6 +37,7 @@ export function useLayerToggles(): LayerToggles {
     noise: !params.has('nonoise'),
     watercolor: !params.has('nowatercolor'),
     vignette: !params.has('novignette'),
+    graticule: !params.has('nograticule'),
     impassableLabel: !params.has('noimpassable'),
   };
 }
