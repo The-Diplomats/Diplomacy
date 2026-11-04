@@ -135,6 +135,7 @@ export function GodipLabels() {
           const twoLineMap: Record<string, [string, string]> = {
             'Gulf of Bothnia': ['Gulf of', 'Bothnia'],
             'Aegean Sea': ['Aegean', 'Sea'],
+            'Adriatic Sea': ['Adriatic', 'Sea'],
             'Eastern Mediterranean': ['Eastern', 'Mediterranean'],
           };
           const twoLine = twoLineMap[prettified];

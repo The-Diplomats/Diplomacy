@@ -307,7 +307,7 @@ export const SEA_LABEL_OVERRIDES: Record<string, SeaLabelOverride> = {
   'GULF OF LYON': { x: 453, y: 1103 },
   'MID ATLANTIC': { x: 33, y: 863 },
   'TYRRHENIAN SEA': { x: 624, y: 1191 },
-  'ADRIATIC SEA': { x: 705, y: 1019 },
+  'ADRIATIC SEA': { x: 757, y: 1070 },
   'IONIAN SEA': { x: 781, y: 1323 },
   'AEGEAN SEA': { x: 1015, y: 1180 },
   'EAST MED': { x: 1180, y: 1308 },
@@ -327,3 +327,50 @@ export const SEA_LABEL_OVERRIDES: Record<string, SeaLabelOverride> = {
 export function seaLabelOverride(text: string): SeaLabelOverride | undefined {
   return SEA_LABEL_OVERRIDES[text.toUpperCase().trim()];
 }
+
+// Hand-authored supply-center star positions. Keyed by province id (same as godip SC ids).
+// If present we use this instead of godip's x/y. Add entries as we tune each star.
+export const SC_POSITION_OVERRIDES: Record<string, { x: number; y: number }> = {
+  // England
+  edi: { x: 385, y: 548 },
+  lvp: { x: 376, y: 633 },
+  lon: { x: 424, y: 730 },
+  // France
+  bre: { x: 292, y: 820 },
+  par: { x: 458, y: 840 },
+  mar: { x: 525, y: 1028 },
+  // Germany
+  ber: { x: 707, y: 735 },
+  mun: { x: 677, y: 880 },
+  kie: { x: 639, y: 686 },
+  // Austria-Hungary
+  vie: { x: 821, y: 871 },
+  bud: { x: 886, y: 884 },
+  tri: { x: 718, y: 983 },
+  // Italy
+  rom: { x: 687, y: 1085 },
+  ven: { x: 680, y: 968 },
+  nap: { x: 735, y: 1142 },
+  // Russia
+  mos: { x: 1151, y: 523 },
+  war: { x: 907, y: 700 },
+  sev: { x: 1206, y: 884 },
+  stp: { x: 999, y: 466 },
+  // Turkey
+  con: { x: 1111, y: 1101 },
+  ank: { x: 1217, y: 1121 },
+  smy: { x: 1090, y: 1210 },
+  // Neutrals
+  spa: { x: 230, y: 1066 },
+  por: { x: 78, y: 1086 },
+  tun: { x: 597, y: 1270 },
+  bel: { x: 517, y: 755 },
+  hol: { x: 525, y: 709 },
+  den: { x: 682, y: 619 },
+  swe: { x: 759, y: 479 },
+  nwy: { x: 665, y: 463 },
+  gre: { x: 949, y: 1191 },
+  ser: { x: 901, y: 1010 },
+  rum: { x: 1014, y: 1014 },
+  bul: { x: 974, y: 1103 },
+};

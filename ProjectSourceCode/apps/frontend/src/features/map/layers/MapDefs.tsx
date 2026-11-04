@@ -79,11 +79,11 @@ export function MapDefs() {
           clip the country-label halos so the lightening stays on land. */}
       <clipPath id="land-clip">
         {data.provinces
-          .filter((p) => p.id.includes('/') === false && getProvinceOwner(p.id) !== 'water')
+          .filter((p) => !p.id.includes('/') && getProvinceOwner(p.id) !== 'water')
           .map((p) => (
             <path key={`land-clip-${p.id}`} d={p.d} />
           ))}
-        {data.decorativeRegions?.map((r, i) => (
+        {data.decorativeRegions.map((r, i) => (
           <path key={`land-clip-decor-${i}`} d={r.d} />
         ))}
       </clipPath>

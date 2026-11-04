@@ -1,6 +1,6 @@
 import { decorativeRegionFill, starPoints } from '../decorations.ts';
 import { useMap } from '../hooks/useMap.ts';
-import { getProvinceOwner, POWER_COLORS } from '../powers.ts';
+import { getProvinceOwner, POWER_COLORS, SC_POSITION_OVERRIDES } from '../powers.ts';
 
 type Props = {
   onHoverEnter: (id: string) => void;
@@ -26,7 +26,7 @@ export function ProvinceLayer({ onHoverEnter, onHoverLeave }: Props) {
 
       {/* Decorative non-province landmasses. Deluxe paints each one to match its geographic
           neighbor's power (Corsica/Sardinia green with Italy; Ireland blue with UK; etc.). */}
-      {data.decorativeRegions?.map((region, index) => {
+      {data.decorativeRegions.map((region, index) => {
         const fill = decorativeRegionFill(region.id, region.d);
         return (
           <path
@@ -107,16 +107,21 @@ export function SupplyCenterStars() {
   }
   return (
     <>
-      {data.supplyCenters.map((sc) => (
-        <polygon
-          key={`sc-${sc.id}`}
-          points={starPoints(sc.x, sc.y, 9, 3.8)}
-          fill="#0f0a04"
-          stroke="#d4a846"
-          strokeWidth={1.6}
-          strokeLinejoin="round"
-        />
-      ))}
+      {data.supplyCenters.map((sc) => {
+        const override = SC_POSITION_OVERRIDES[sc.id];
+        const cx = override ? override.x : sc.x;
+        const cy = override ? override.y : sc.y;
+        return (
+          <polygon
+            key={`sc-${sc.id}`}
+            points={starPoints(cx, cy, 7, 3)}
+            fill="#0f0a04"
+            stroke="#e2b85c"
+            strokeWidth={1.6}
+            strokeLinejoin="miter"
+          />
+        );
+      })}
     </>
   );
 }
