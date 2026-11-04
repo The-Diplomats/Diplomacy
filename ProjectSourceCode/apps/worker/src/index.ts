@@ -46,7 +46,9 @@ logger.info('worker started, waiting for notifications jobs');
 
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
-  if (shuttingDown) return;
+  if (shuttingDown) {
+    return;
+  }
   shuttingDown = true;
   logger.info({ signal }, 'worker shutting down');
 

@@ -19,7 +19,9 @@ export const openApiErrorHandler: ErrorRequestHandler = (err, _req, res, next) =
     const httpErr = err as InstanceType<(typeof openApiErrorClasses)[number]>;
     if (httpErr.headers) {
       for (const [key, value] of Object.entries(httpErr.headers)) {
-        if (typeof value === 'string') res.setHeader(key, value);
+        if (typeof value === 'string') {
+          res.setHeader(key, value);
+        }
       }
     }
     if (httpErr.status >= 500) {

@@ -1,7 +1,7 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier';
-import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
@@ -30,18 +30,13 @@ export default [
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: [
-            'apps/*/*.config.ts',
-            'apps/*/*.config.mts',
-            'apps/*/*.config.cts',
-            'apps/*/*.config.mjs',
-            'apps/*/*.config.cjs',
-          ],
+          allowDefaultProject: ['apps/backend/vitest.config.ts', 'apps/worker/vitest.config.ts'],
         },
         tsconfigRootDir: import.meta.dirname,
       },
     },
     rules: {
+      curly: ['error', 'all'],
       '@typescript-eslint/consistent-type-imports': 'error',
       '@typescript-eslint/consistent-type-exports': 'error',
       '@typescript-eslint/no-unused-vars': [
@@ -52,22 +47,19 @@ export default [
   },
 
   {
-    files: ['**/*.{jsx,tsx}'],
-    ...react.configs.flat.recommended,
-    settings: { react: { version: 'detect' } },
-  },
-
-  {
-    files: ['**/*.{jsx,tsx}'],
-    ...react.configs.flat['jsx-runtime'],
-  },
-
-  {
     files: ['**/*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}'],
     plugins: { 'react-hooks': reactHooks },
     rules: {
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
+
+  {
+    files: ['apps/frontend/**/*.{jsx,tsx}'],
+    plugins: { 'react-refresh': reactRefresh },
+    rules: {
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
 
@@ -94,4 +86,9 @@ export default [
   },
 
   prettier,
+  {
+    rules: {
+      curly: ['error', 'all'],
+    },
+  },
 ];
