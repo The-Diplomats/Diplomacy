@@ -62,6 +62,30 @@ export function MapFrame() {
         fill={POWER_COLORS.water.fill}
         filter={toggles.watercolor ? 'url(#watercolor)' : undefined}
       />
+
+      {/* 45° miter joints — only drawn across the LIGHTER gold middle band (not the dark cardboard
+          edges on either side), reading as a shadow in the center of the frame. */}
+      {(() => {
+        const inner = FRAME_EDGE_THICK; // outer edge of the gold middle band
+        const outer = FRAME_EDGE_THICK + FRAME_GOLD_THICK; // inner edge of the gold middle band
+        return (
+          <g stroke="#3d2b15" strokeWidth={1} strokeLinecap="square" opacity={0.75}>
+            {/* top-left */}
+            <line x1={x0 + inner} y1={y0 + inner} x2={x0 + outer} y2={y0 + outer} />
+            {/* top-right */}
+            <line x1={x0 + fullW - inner} y1={y0 + inner} x2={x0 + fullW - outer} y2={y0 + outer} />
+            {/* bottom-left */}
+            <line x1={x0 + inner} y1={y0 + fullH - inner} x2={x0 + outer} y2={y0 + fullH - outer} />
+            {/* bottom-right */}
+            <line
+              x1={x0 + fullW - inner}
+              y1={y0 + fullH - inner}
+              x2={x0 + fullW - outer}
+              y2={y0 + fullH - outer}
+            />
+          </g>
+        );
+      })()}
     </>
   );
 }
