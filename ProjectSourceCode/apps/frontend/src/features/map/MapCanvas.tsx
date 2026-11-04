@@ -1,27 +1,79 @@
+import { useState } from 'react';
+
+import { MAP_EXTENSION_LEFT, MAP_EXTENSION_X, MAP_EXTENSION_Y } from './constants.ts';
+import { useLayerToggles } from './hooks/useLayerToggles.ts';
+import { useZoomPan } from './hooks/useZoomPan.ts';
+import { MapBoard } from './MapBoard.tsx';
+import { MapProvider } from './MapContext.tsx';
 import { useMapData } from './useMapData.ts';
 
-export function MapCanvas() {
+type Props = {
+  // Game state hook-up points. Omit during scaffold; HUD / orders flow will wire these up.
+  onSelectProvince?: (id: string) => void;
+  selectedProvinceId?: string | null;
+};
+
+// Interactive in-game map. Same Deluxe styling as MapBackdrop, plus a click callback on
+// provinces so the game HUD (order popover, selection, etc.) can react. Selection state is
+// intentionally local for now; a Zustand store can replace it when we have cross-component
+// consumers (OrderPopover, PhasePanel, SubmitFab).
+export function MapCanvas({ onSelectProvince, selectedProvinceId }: Props = {}) {
   const { data } = useMapData();
+  const toggles = useLayerToggles();
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [internalSelected, setInternalSelected] = useState<string | null>(null);
+  const zoomPan = useZoomPan();
 
   if (!data) {
     return null;
   }
 
+  const handleClick = (id: string) => {
+    setInternalSelected(id);
+    onSelectProvince?.(id);
+  };
+
+  // Selected province gets the hover treatment too — gives a persistent highlight until the
+  // player clicks elsewhere. HUD will replace this with its own treatment later.
+  const activeHoverId = hoveredId ?? selectedProvinceId ?? internalSelected;
+
+  const cursor = zoomPan.zoom > 1 ? (zoomPan.isDragging ? 'grabbing' : 'grab') : 'default';
+
   return (
-    <svg
-      viewBox={`0 0 ${data.width} ${data.height}`}
-      preserveAspectRatio="xMidYMid meet"
-      className="fixed inset-0 z-[5] h-full w-full"
+    <div
+      ref={zoomPan.viewportRef}
+      className="fixed inset-0 z-[5] overflow-hidden bg-black"
+      onWheel={zoomPan.onWheel}
+      onPointerDown={zoomPan.onPointerDown}
+      onPointerMove={zoomPan.onPointerMove}
+      onPointerUp={zoomPan.onPointerUp}
+      onPointerCancel={zoomPan.onPointerUp}
+      style={{ cursor, touchAction: 'none' }}
     >
-      {data.provinces.map((province) => (
-        <path
-          key={province.id}
-          id={province.id}
-          data-province={province.id}
-          d={province.d}
-          className="fill-stone-200 stroke-stone-500 stroke-[0.5] hover:fill-stone-300 cursor-pointer"
-        />
-      ))}
-    </svg>
+      <div
+        className="h-full w-full"
+        style={{
+          transform: `translate(${zoomPan.pan.x}px, ${zoomPan.pan.y}px) scale(${zoomPan.zoom})`,
+          transformOrigin: 'center center',
+          willChange: 'transform',
+        }}
+      >
+        <svg
+          viewBox={`${-MAP_EXTENSION_LEFT} ${-MAP_EXTENSION_Y} ${data.width + MAP_EXTENSION_X} ${data.height + 2 * MAP_EXTENSION_Y}`}
+          preserveAspectRatio="xMidYMid meet"
+          className="h-full w-full"
+          style={{ pointerEvents: 'none' }}
+        >
+          <MapProvider data={data} toggles={toggles}>
+            <MapBoard
+              hoveredId={activeHoverId}
+              onHoverEnter={setHoveredId}
+              onHoverLeave={(id) => setHoveredId((current) => (current === id ? null : current))}
+              onClickProvince={handleClick}
+            />
+          </MapProvider>
+        </svg>
+      </div>
+    </div>
   );
 }

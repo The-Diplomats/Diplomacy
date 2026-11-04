@@ -4,22 +4,12 @@ import { useLocation } from 'react-router';
 import { MAP_EXTENSION_LEFT, MAP_EXTENSION_X, MAP_EXTENSION_Y } from './constants.ts';
 import { useLayerToggles } from './hooks/useLayerToggles.ts';
 import { useZoomPan } from './hooks/useZoomPan.ts';
-import { Graticule } from './layers/Graticule.tsx';
-import { HoverExtensionHighlight, HoverProvinceHighlight } from './layers/HoverOverlay.tsx';
-import {
-  CountryLabelHalos,
-  CountryLabels,
-  GodipLabels,
-  SwitzerlandLabel,
-} from './layers/LabelLayer.tsx';
-import { DiplomacyLogo, MapExtensions, PaperNoiseOverlay } from './layers/MapChrome.tsx';
-import { MapDefs } from './layers/MapDefs.tsx';
-import { MapFrame } from './layers/MapFrame.tsx';
-import { ProvinceLayer, SupplyCenterStars } from './layers/ProvinceLayer.tsx';
-import { Vignette } from './layers/Vignette.tsx';
+import { MapBoard } from './MapBoard.tsx';
 import { MapProvider } from './MapContext.tsx';
 import { useMapData } from './useMapData.ts';
 
+// Fullscreen Deluxe-styled map backdrop for non-game pages (login, lobby, etc). Zoom + drag-pan
+// via useZoomPan. Hidden on /game/* routes where MapCanvas takes over.
 export function MapBackdrop() {
   const { data } = useMapData();
   const location = useLocation();
@@ -60,26 +50,11 @@ export function MapBackdrop() {
           style={{ pointerEvents: 'none' }}
         >
           <MapProvider data={data} toggles={toggles}>
-            <MapDefs />
-            <MapFrame />
-            <g clipPath="url(#godip-content-clip)">
-              <ProvinceLayer
-                onHoverEnter={setHoveredId}
-                onHoverLeave={(id) => setHoveredId((current) => (current === id ? null : current))}
-              />
-              <HoverProvinceHighlight hoveredId={hoveredId} />
-            </g>
-            <MapExtensions />
-            <Graticule />
-            <HoverExtensionHighlight hoveredId={hoveredId} />
-            <Vignette />
-            <PaperNoiseOverlay />
-            <DiplomacyLogo />
-            <SupplyCenterStars />
-            <CountryLabelHalos />
-            <CountryLabels />
-            <GodipLabels />
-            <SwitzerlandLabel />
+            <MapBoard
+              hoveredId={hoveredId}
+              onHoverEnter={setHoveredId}
+              onHoverLeave={(id) => setHoveredId((current) => (current === id ? null : current))}
+            />
           </MapProvider>
         </svg>
       </div>

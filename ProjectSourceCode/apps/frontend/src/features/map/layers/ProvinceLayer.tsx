@@ -5,11 +5,13 @@ import { getProvinceOwner, POWER_COLORS, SC_POSITION_OVERRIDES } from '../powers
 type Props = {
   onHoverEnter: (id: string) => void;
   onHoverLeave: (id: string) => void;
+  onClickProvince?: (id: string) => void;
 };
 
 // Inside godip's content clip: impassables, decorative landmasses, supplemental vignettes for
-// province gaps (con/den/kie), province fills (with hover handlers), and foreground borders.
-export function ProvinceLayer({ onHoverEnter, onHoverLeave }: Props) {
+// province gaps (con/den/kie), province fills (with hover + optional click handlers), and
+// foreground borders.
+export function ProvinceLayer({ onHoverEnter, onHoverLeave, onClickProvince }: Props) {
   const { data, toggles } = useMap();
   return (
     <>
@@ -82,6 +84,7 @@ export function ProvinceLayer({ onHoverEnter, onHoverLeave }: Props) {
               filter={toggles.watercolor ? 'url(#watercolor)' : undefined}
               onMouseEnter={() => onHoverEnter(province.id)}
               onMouseLeave={() => onHoverLeave(province.id)}
+              onClick={onClickProvince ? () => onClickProvince(province.id) : undefined}
               style={{ cursor: 'pointer', pointerEvents: 'all' }}
             />
           );
