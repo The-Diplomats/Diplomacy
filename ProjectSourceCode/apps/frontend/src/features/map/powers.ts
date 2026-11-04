@@ -136,7 +136,7 @@ export const COUNTRY_LABEL_POSITIONS: Record<
   Exclude<Power, 'neutral' | 'water'>,
   { x: number; y: number; fontSize: number; letterSpacing: number }
 > = {
-  england: { x: 400, y: 720, fontSize: 18, letterSpacing: 2 }, // narrow UK: smaller font, higher position
+  england: { x: 390, y: 665, fontSize: 14, letterSpacing: 2 }, // vertically between yor and wal, within land
   france: { x: 440, y: 1000, fontSize: 22, letterSpacing: 3 },
   germany: { x: 790, y: 840, fontSize: 22, letterSpacing: 3 },
   austria: { x: 1030, y: 1030, fontSize: 22, letterSpacing: 3 }, // AUSTRIA-HUNGARY is long
@@ -158,4 +158,30 @@ export const COUNTRY_LABEL_TEXT: Record<Exclude<Power, 'neutral' | 'water'>, str
 
 export function getProvinceOwner(id: string): Power {
   return PROVINCE_OWNERS[id] ?? 'neutral';
+}
+
+// Hand-authored label positions for provinces, overriding godip's rotated positions so each
+// label sits horizontally inside the province shape. Keyed by province id. Grow this map as we
+// lock down each country. Coordinates are godip viewBox units.
+export const PROVINCE_LABEL_OVERRIDES: Record<string, { x: number; y: number }> = {
+  // England
+  cly: { x: 360, y: 490 },
+  edi: { x: 420, y: 520 },
+  lvp: { x: 365, y: 610 },
+  yor: { x: 445, y: 640 },
+  wal: { x: 345, y: 690 },
+  lon: { x: 405, y: 720 },
+};
+
+const PROVINCE_LABEL_TEXT_TO_ID: Record<string, string> = {
+  CLYDE: 'cly',
+  EDINBURGH: 'edi',
+  LIVERPOOL: 'lvp',
+  YORKSHIRE: 'yor',
+  WALES: 'wal',
+  LONDON: 'lon',
+};
+
+export function provinceIdFromLabel(text: string): string | undefined {
+  return PROVINCE_LABEL_TEXT_TO_ID[text.toUpperCase()];
 }
