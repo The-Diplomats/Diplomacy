@@ -23,14 +23,19 @@ export function MapCanvas({ zoomPan, onSelectProvince, selectedProvinceId }: Pro
     return null;
   }
 
+  const isControlled = selectedProvinceId !== undefined;
+  const selected = isControlled ? selectedProvinceId : internalSelected;
+
   const handleClick = (id: string) => {
-    setInternalSelected(id);
+    if (!isControlled) {
+      setInternalSelected(id);
+    }
     onSelectProvince?.(id);
   };
 
   // Selected province gets the hover treatment too; gives a persistent highlight until the
   // player clicks elsewhere. HUD will replace this with its own treatment later.
-  const activeHoverId = hoveredId ?? selectedProvinceId ?? internalSelected;
+  const activeHoverId = hoveredId ?? selected;
 
   const cursor = zoomPan.zoom > 1 ? (zoomPan.isDragging ? 'grabbing' : 'grab') : 'default';
 
@@ -38,7 +43,6 @@ export function MapCanvas({ zoomPan, onSelectProvince, selectedProvinceId }: Pro
     <div
       ref={zoomPan.viewportRef}
       className="absolute inset-0 z-0 overflow-hidden bg-black"
-      onWheel={zoomPan.onWheel}
       onPointerDown={zoomPan.onPointerDown}
       onPointerMove={zoomPan.onPointerMove}
       onPointerUp={zoomPan.onPointerUp}

@@ -3,6 +3,8 @@ import { cn } from 'cn';
 import { CheckIcon, ChevronRightIcon } from 'lucide-react';
 import * as React from 'react';
 
+import { useThemedPortalContainer } from '../themed-portal-context';
+
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
 }
@@ -24,8 +26,9 @@ function DropdownMenuContent({
   ...props
 }: MenuPrimitive.Popup.Props &
   Pick<MenuPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>) {
+  const container = useThemedPortalContainer();
   return (
-    <MenuPrimitive.Portal>
+    <MenuPrimitive.Portal container={container ?? undefined}>
       <MenuPrimitive.Positioner
         className="isolate z-50 outline-none"
         align={align}

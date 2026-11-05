@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { KEY_ZOOM_STEP, MAX_ZOOM, MIN_ZOOM, WHEEL_ZOOM_SPEED } from '../constants.ts';
 
@@ -6,8 +6,7 @@ export type ZoomPan = {
   zoom: number;
   pan: { x: number; y: number };
   isDragging: boolean;
-  viewportRef: React.RefObject<HTMLDivElement | null>;
-  onWheel: (e: React.WheelEvent) => void;
+  viewportRef: (element: HTMLDivElement | null) => void;
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: (e: React.PointerEvent) => void;
@@ -22,11 +21,21 @@ export function useZoomPan(): ZoomPan {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const viewportElementRef = useRef<HTMLDivElement | null>(null);
+  const [viewportElement, setViewportElement] = useState<HTMLDivElement | null>(null);
+  const viewportRef = useCallback((element: HTMLDivElement | null) => {
+    viewportElementRef.current = element;
+    setViewportElement(element);
+  }, []);
   const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const pressed = useRef(false);
+  const zoomRef = useRef(zoom);
+  const panRef = useRef(pan);
+  zoomRef.current = zoom;
+  panRef.current = pan;
 
   const clampPan = (p: { x: number; y: number }, z: number) => {
-    const el = viewportRef.current;
+    const el = viewportElementRef.current;
     if (!el) {
       return p;
     }
@@ -67,33 +76,48 @@ export function useZoomPan(): ZoomPan {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const onWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    const el = viewportRef.current;
+  useEffect(() => {
+    const el = viewportElement;
     if (!el) {
       return;
     }
-    const rect = el.getBoundingClientRect();
-    const cx = e.clientX - rect.left - rect.width / 2;
-    const cy = e.clientY - rect.top - rect.height / 2;
-    const factor = Math.exp(-e.deltaY * WHEEL_ZOOM_SPEED);
-    const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, zoom * factor));
-    const ratio = nextZoom / zoom;
-    const nextPan = { x: cx - (cx - pan.x) * ratio, y: cy - (cy - pan.y) * ratio };
-    setZoom(nextZoom);
-    setPan(clampPan(nextPan, nextZoom));
-  };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const cx = e.clientX - rect.left - rect.width / 2;
+      const cy = e.clientY - rect.top - rect.height / 2;
+      const currentZoom = zoomRef.current;
+      const currentPan = panRef.current;
+      const factor = Math.exp(-e.deltaY * WHEEL_ZOOM_SPEED);
+      const nextZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, currentZoom * factor));
+      const ratio = nextZoom / currentZoom;
+      const nextPan = {
+        x: cx - (cx - currentPan.x) * ratio,
+        y: cy - (cy - currentPan.y) * ratio,
+      };
+      setZoom(nextZoom);
+      setPan(clampPan(nextPan, nextZoom));
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [viewportElement]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (zoom <= 1) {
       return;
     }
-    setIsDragging(true);
     dragStart.current = { x: e.clientX, y: e.clientY, panX: pan.x, panY: pan.y };
-    viewportRef.current?.setPointerCapture(e.pointerId);
+    pressed.current = true;
   };
 
   const onPointerMove = (e: React.PointerEvent) => {
+    if (pressed.current && !isDragging) {
+      const distance = Math.hypot(e.clientX - dragStart.current.x, e.clientY - dragStart.current.y);
+      if (distance > 4) {
+        setIsDragging(true);
+        viewportElementRef.current?.setPointerCapture(e.pointerId);
+      }
+    }
     if (!isDragging) {
       return;
     }
@@ -105,8 +129,9 @@ export function useZoomPan(): ZoomPan {
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
+    pressed.current = false;
     setIsDragging(false);
-    viewportRef.current?.releasePointerCapture(e.pointerId);
+    viewportElementRef.current?.releasePointerCapture(e.pointerId);
   };
 
   const zoomIn = () => {
@@ -135,7 +160,6 @@ export function useZoomPan(): ZoomPan {
     pan,
     isDragging,
     viewportRef,
-    onWheel,
     onPointerDown,
     onPointerMove,
     onPointerUp,

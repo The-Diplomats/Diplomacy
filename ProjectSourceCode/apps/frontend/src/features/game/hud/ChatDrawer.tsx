@@ -166,6 +166,7 @@ export function ChatDrawer({ onClose }: Props) {
             <Plus />
           </Button>
           <input
+            aria-label="Message"
             type="text"
             placeholder="Send a message"
             className="flex-1 bg-transparent px-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"

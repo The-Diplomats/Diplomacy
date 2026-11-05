@@ -3,6 +3,7 @@ import { cn } from 'cn';
 import { XIcon } from 'lucide-react';
 import * as React from 'react';
 
+import { useThemedPortalContainer } from '@/components/themed-portal-context';
 import { Button } from '@/components/ui/button';
 
 function Dialog({ ...props }: DialogPrimitive.Root.Props) {
@@ -14,7 +15,14 @@ function DialogTrigger({ ...props }: DialogPrimitive.Trigger.Props) {
 }
 
 function DialogPortal({ ...props }: DialogPrimitive.Portal.Props) {
-  return <DialogPrimitive.Portal data-slot="dialog-portal" {...props} />;
+  const container = useThemedPortalContainer();
+  return (
+    <DialogPrimitive.Portal
+      data-slot="dialog-portal"
+      container={props.container ?? container ?? undefined}
+      {...props}
+    />
+  );
 }
 
 function DialogClose({ ...props }: DialogPrimitive.Close.Props) {

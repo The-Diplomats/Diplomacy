@@ -107,6 +107,8 @@ export function PowersPanel({ activePower, onSelect, size = 'sm', floatHover = f
       className="pointer-events-auto relative flex items-stretch gap-2"
       onMouseEnter={show}
       onMouseLeave={hide}
+      onFocus={show}
+      onBlur={hide}
     >
       <button
         type="button"

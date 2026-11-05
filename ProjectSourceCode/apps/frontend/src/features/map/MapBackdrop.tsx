@@ -28,7 +28,6 @@ export function MapBackdrop() {
     <div
       ref={zoomPan.viewportRef}
       className="fixed inset-0 z-0 overflow-hidden bg-black"
-      onWheel={zoomPan.onWheel}
       onPointerDown={zoomPan.onPointerDown}
       onPointerMove={zoomPan.onPointerMove}
       onPointerUp={zoomPan.onPointerUp}

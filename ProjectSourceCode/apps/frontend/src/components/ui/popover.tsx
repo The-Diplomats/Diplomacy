@@ -2,6 +2,8 @@ import { Popover as PopoverPrimitive } from '@base-ui/react/popover';
 import { cn } from 'cn';
 import * as React from 'react';
 
+import { useThemedPortalContainer } from '../themed-portal-context';
+
 function Popover({ ...props }: PopoverPrimitive.Root.Props) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
 }
@@ -19,8 +21,9 @@ function PopoverContent({
   ...props
 }: PopoverPrimitive.Popup.Props &
   Pick<PopoverPrimitive.Positioner.Props, 'align' | 'alignOffset' | 'side' | 'sideOffset'>) {
+  const container = useThemedPortalContainer();
   return (
-    <PopoverPrimitive.Portal>
+    <PopoverPrimitive.Portal container={container ?? undefined}>
       <PopoverPrimitive.Positioner
         align={align}
         alignOffset={alignOffset}

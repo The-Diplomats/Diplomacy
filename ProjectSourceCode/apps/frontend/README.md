@@ -55,7 +55,9 @@ Tests run in a real Chromium instance via Vitest browser mode + Playwright. Conf
 
 - Test files: `src/**/*.test.{ts,tsx}` and `mocks/**/*.test.{ts,tsx}`
 - Playwright binary install (once per machine): `pnpm --filter frontend exec playwright install chromium`
-- `VITE_USE_MSW` is irrelevant for tests — tests consume `mocks/node.ts` directly if they need request mocks.
+- `VITE_USE_MSW` is irrelevant for tests — tests that need request mocks import `worker` from `mocks/browser.ts` and
+  call `worker.start()` / `worker.resetHandlers()` in their setup. `mocks/node.ts` is for anything that actually runs in
+  Node (e.g. a future headless harness) and isn't used by the browser suite.
 
 ## Feature layout
 
