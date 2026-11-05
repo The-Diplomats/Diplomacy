@@ -1,0 +1,6 @@
+extends:
+  - recommended
+
+rules:
+  # TODO: enable once auth is implemented and each endpoint declares its security requirements.
+  security-defined: off
