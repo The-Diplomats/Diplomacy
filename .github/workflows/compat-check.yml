@@ -28,9 +28,16 @@ jobs:
           fetch-depth: 0
 
       - name: Install oasdiff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          curl -L https://github.com/oasdiff/oasdiff/releases/latest/download/oasdiff_linux_amd64.tar.gz \
-            | tar -xz -C /usr/local/bin oasdiff
+          set -euo pipefail
+          VERSION=$(gh api repos/oasdiff/oasdiff/releases/latest --jq .tag_name | sed 's/^v//')
+          echo "Installing oasdiff $VERSION"
+          curl -fsSL -o oasdiff.tar.gz \
+            "https://github.com/oasdiff/oasdiff/releases/download/v${VERSION}/oasdiff_${VERSION}_linux_amd64.tar.gz"
+          sudo tar -xzf oasdiff.tar.gz -C /usr/local/bin oasdiff
+          rm oasdiff.tar.gz
           oasdiff --version
 
       - name: Extract base spec
