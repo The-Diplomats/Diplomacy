@@ -1,4 +1,5 @@
 
+import { Link } from 'react-router';
 export default function GameRules() {
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -67,12 +68,12 @@ export default function GameRules() {
       </div>
 
       <footer className="mt-10 text-center">
-        <a
-          href="/"
+        <Link
+          to="/lobby"
           className="inline-block rounded-lg border px-6 py-3 font-medium hover:bg-gray-100 hover:text-gray-900"
         >
-          Back to Main Menu
-        </a>
+          Back to Lobby
+    </Link>
       </footer>
     </main>
   );
