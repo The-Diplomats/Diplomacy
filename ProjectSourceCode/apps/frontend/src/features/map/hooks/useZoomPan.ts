@@ -11,6 +11,9 @@ export type ZoomPan = {
   onPointerDown: (e: React.PointerEvent) => void;
   onPointerMove: (e: React.PointerEvent) => void;
   onPointerUp: (e: React.PointerEvent) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  recenter: () => void;
 };
 
 // Wheel + Ctrl/Cmd keys zoom the map; drag pans when zoomed in. Pan is clamped so the transformed
@@ -106,5 +109,38 @@ export function useZoomPan(): ZoomPan {
     viewportRef.current?.releasePointerCapture(e.pointerId);
   };
 
-  return { zoom, pan, isDragging, viewportRef, onWheel, onPointerDown, onPointerMove, onPointerUp };
+  const zoomIn = () => {
+    setZoom((z) => {
+      const next = Math.min(MAX_ZOOM, z * KEY_ZOOM_STEP);
+      setPan((p) => clampPan(p, next));
+      return next;
+    });
+  };
+
+  const zoomOut = () => {
+    setZoom((z) => {
+      const next = Math.max(MIN_ZOOM, z / KEY_ZOOM_STEP);
+      setPan((p) => clampPan(p, next));
+      return next;
+    });
+  };
+
+  const recenter = () => {
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
+  };
+
+  return {
+    zoom,
+    pan,
+    isDragging,
+    viewportRef,
+    onWheel,
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    zoomIn,
+    zoomOut,
+    recenter,
+  };
 }

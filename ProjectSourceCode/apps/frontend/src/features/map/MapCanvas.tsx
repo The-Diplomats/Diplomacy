@@ -2,23 +2,22 @@ import { useState } from 'react';
 
 import { MAP_EXTENSION_LEFT, MAP_EXTENSION_X, MAP_EXTENSION_Y } from './constants.ts';
 import { useLayerToggles } from './hooks/useLayerToggles.ts';
-import { useZoomPan } from './hooks/useZoomPan.ts';
+import type { ZoomPan } from './hooks/useZoomPan.ts';
 import { MapBoard } from './MapBoard.tsx';
 import { MapProvider } from './MapContext.tsx';
 import { useMapData } from './useMapData.ts';
 
 type Props = {
-  // Game state hook-up points. Omit during scaffold; HUD / orders flow will wire these up.
+  zoomPan: ZoomPan;
   onSelectProvince?: (id: string) => void;
   selectedProvinceId?: string | null;
 };
 
-export function MapCanvas({ onSelectProvince, selectedProvinceId }: Props = {}) {
+export function MapCanvas({ zoomPan, onSelectProvince, selectedProvinceId }: Props) {
   const { data } = useMapData();
   const toggles = useLayerToggles();
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [internalSelected, setInternalSelected] = useState<string | null>(null);
-  const zoomPan = useZoomPan();
 
   if (!data) {
     return null;

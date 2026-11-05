@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 
 import { Themed } from '../../components/Themed';
+import { useZoomPan } from '../map/hooks/useZoomPan';
 import { MapCanvas } from '../map/MapCanvas';
 import type { Power } from '../map/powers';
 import { AppsDrawer } from './hud/AppsDrawer';
@@ -30,6 +31,7 @@ export function HUDLayout() {
     y: number;
   } | null>(null);
   const lastClickRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const zoomPan = useZoomPan();
 
   return (
     <div className="fixed inset-0 flex items-center justify-center overflow-hidden bg-black">
@@ -49,6 +51,7 @@ export function HUDLayout() {
         }}
       >
         <MapCanvas
+          zoomPan={zoomPan}
           selectedProvinceId={selectedProvince?.id ?? null}
           onSelectProvince={(id) =>
             setSelectedProvince({
@@ -99,7 +102,11 @@ export function HUDLayout() {
               timelineOpen ? '-translate-y-[120px]' : ''
             }`}
           >
-            <ZoomControls />
+            <ZoomControls
+              onZoomIn={zoomPan.zoomIn}
+              onZoomOut={zoomPan.zoomOut}
+              onReset={zoomPan.recenter}
+            />
             <ChatToggle unread={3} onClick={() => setChatOpen(!chatOpen)} />
             <PhaseTimelineTrigger
               open={timelineOpen}
