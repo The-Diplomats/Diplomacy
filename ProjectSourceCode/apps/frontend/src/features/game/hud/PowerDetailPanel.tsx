@@ -24,7 +24,7 @@ export function PowerDetailPanel({ power, onClose }: Props) {
   const colors = POWER_COLORS[power];
   return (
     <Card className="pointer-events-auto w-72 bg-card/95 shadow-xl backdrop-blur-sm">
-      <CardHeader className="flex-row items-center gap-3 space-y-0">
+      <CardHeader className="flex flex-row items-center gap-3 space-y-0">
         <div
           className="h-6 w-6 rounded-full shadow ring-2 ring-background"
           style={{ backgroundColor: colors.fill }}
@@ -35,21 +35,8 @@ export function PowerDetailPanel({ power, onClose }: Props) {
         </Button>
       </CardHeader>
       <Separator />
-      <CardContent className="space-y-3 pt-3">
-        <div>
-          <div className="text-xs tracking-wider text-muted-foreground uppercase">Player</div>
-          <div className="text-sm font-medium text-card-foreground">vacant</div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <div className="text-xs tracking-wider text-muted-foreground uppercase">Centers</div>
-            <div className="text-2xl font-bold text-card-foreground">3</div>
-          </div>
-          <div>
-            <div className="text-xs tracking-wider text-muted-foreground uppercase">Units</div>
-            <div className="text-2xl font-bold text-card-foreground">3</div>
-          </div>
-        </div>
+      <CardContent className="flex h-32 items-center justify-center pt-3 text-xs text-muted-foreground italic">
+        Details TBD
       </CardContent>
     </Card>
   );
