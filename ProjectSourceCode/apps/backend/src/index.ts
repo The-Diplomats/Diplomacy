@@ -63,7 +63,9 @@ httpServer.listen(port, () => {
 
 let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
-  if (shuttingDown) return;
+  if (shuttingDown) {
+    return;
+  }
   shuttingDown = true;
   logger.info({ signal }, 'backend shutting down');
 
