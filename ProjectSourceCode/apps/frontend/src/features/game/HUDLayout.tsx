@@ -4,6 +4,7 @@ import { Themed } from '../../components/Themed';
 import { MapCanvas } from '../map/MapCanvas';
 import type { Power } from '../map/powers';
 import { AppsDrawer } from './hud/AppsDrawer';
+import { ChatDrawer } from './hud/ChatDrawer';
 import { ChatToggle } from './hud/ChatToggle';
 import { PhaseBadge } from './hud/PhaseBadge';
 import { PhaseTimelineDrawer } from './hud/PhaseTimelineDrawer';
@@ -19,6 +20,7 @@ type PlayablePower = Exclude<Power, 'neutral' | 'water'>;
 export function HUDLayout() {
   const [activePower, setActivePower] = useState<PlayablePower | null>(null);
   const [timelineOpen, setTimelineOpen] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center overflow-hidden bg-black">
@@ -66,12 +68,22 @@ export function HUDLayout() {
             }`}
           >
             <ZoomControls />
-            <ChatToggle unread={3} />
+            <ChatToggle unread={3} onClick={() => setChatOpen(!chatOpen)} />
             <PhaseTimelineTrigger
               open={timelineOpen}
               onClick={() => setTimelineOpen(!timelineOpen)}
             />
           </HUDSlot>
+
+          {chatOpen && (
+            <div
+              className={`pointer-events-none absolute right-[calc(2.5%+56px)] h-[440px] w-[360px] transition-[bottom] duration-200 ease-out ${
+                timelineOpen ? 'bottom-[calc(3.5%+172px)]' : 'bottom-[calc(3.5%+52px)]'
+              }`}
+            >
+              <ChatDrawer onClose={() => setChatOpen(false)} />
+            </div>
+          )}
         </Themed>
       </div>
     </div>
