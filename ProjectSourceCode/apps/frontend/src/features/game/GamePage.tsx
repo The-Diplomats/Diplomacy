@@ -1,5 +1,5 @@
-import { MapCanvas } from '../map/MapCanvas';
+import { HUDLayout } from './HUDLayout';
 
 export function GamePage() {
-  return <MapCanvas />;
+  return <HUDLayout />;
 }

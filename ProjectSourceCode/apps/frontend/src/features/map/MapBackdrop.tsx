@@ -33,7 +33,7 @@ export function MapBackdrop() {
       onPointerMove={zoomPan.onPointerMove}
       onPointerUp={zoomPan.onPointerUp}
       onPointerCancel={zoomPan.onPointerUp}
-      style={{ cursor, touchAction: 'none' }}
+      style={{ cursor, touchAction: 'none', contain: 'paint', isolation: 'isolate' }}
     >
       <div
         className="h-full w-full"

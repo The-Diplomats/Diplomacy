@@ -13,10 +13,6 @@ type Props = {
   selectedProvinceId?: string | null;
 };
 
-// Interactive in-game map. Same Deluxe styling as MapBackdrop, plus a click callback on
-// provinces so the game HUD (order popover, selection, etc.) can react. Selection state is
-// intentionally local for now; a Zustand store can replace it when we have cross-component
-// consumers (OrderPopover, PhasePanel, SubmitFab).
 export function MapCanvas({ onSelectProvince, selectedProvinceId }: Props = {}) {
   const { data } = useMapData();
   const toggles = useLayerToggles();
@@ -33,7 +29,7 @@ export function MapCanvas({ onSelectProvince, selectedProvinceId }: Props = {}) 
     onSelectProvince?.(id);
   };
 
-  // Selected province gets the hover treatment too — gives a persistent highlight until the
+  // Selected province gets the hover treatment too; gives a persistent highlight until the
   // player clicks elsewhere. HUD will replace this with its own treatment later.
   const activeHoverId = hoveredId ?? selectedProvinceId ?? internalSelected;
 
@@ -42,13 +38,13 @@ export function MapCanvas({ onSelectProvince, selectedProvinceId }: Props = {}) 
   return (
     <div
       ref={zoomPan.viewportRef}
-      className="fixed inset-0 z-[5] overflow-hidden bg-black"
+      className="absolute inset-0 z-0 overflow-hidden bg-black"
       onWheel={zoomPan.onWheel}
       onPointerDown={zoomPan.onPointerDown}
       onPointerMove={zoomPan.onPointerMove}
       onPointerUp={zoomPan.onPointerUp}
       onPointerCancel={zoomPan.onPointerUp}
-      style={{ cursor, touchAction: 'none' }}
+      style={{ cursor, touchAction: 'none', contain: 'paint', isolation: 'isolate' }}
     >
       <div
         className="h-full w-full"
