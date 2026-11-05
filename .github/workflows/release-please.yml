@@ -74,6 +74,20 @@ jobs:
         run: |
           set -euo pipefail
           BRANCH="release-notes/${TAG}"
+
+          # Idempotency: if a PR for this branch is already open, we're done.
+          EXISTING_PR=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number // empty')
+          if [[ -n "$EXISTING_PR" ]]; then
+            echo "PR #${EXISTING_PR} already open for ${BRANCH}; nothing to do."
+            exit 0
+          fi
+
+          # Orphan branch from a prior failed run (push succeeded, PR-create failed): delete it.
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "Deleting orphaned remote branch ${BRANCH}"
+            git push origin --delete "$BRANCH"
+          fi
+
           git config user.name "${APP_SLUG}[bot]"
           git config user.email "${APP_SLUG}[bot]@users.noreply.github.com"
           git checkout -b "$BRANCH"
