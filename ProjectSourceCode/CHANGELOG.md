@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/The-Diplomats/Diplomacy/compare/diplomacy-v1.0.0...diplomacy-v1.1.0) (2026-11-05)
+
+
+### Features
+
+* **frontend:** add game rules page ([#68](https://github.com/The-Diplomats/Diplomacy/issues/68)) ([a200edd](https://github.com/The-Diplomats/Diplomacy/commit/a200eddf0f0008167d29cc979d5750d6153184bd))
+
 ## 1.0.0 (2026-11-05)
 
 
