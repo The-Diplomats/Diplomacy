@@ -1,3 +1,4 @@
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
@@ -8,6 +9,9 @@ import { RegisterPage } from './features/auth/RegisterPage.tsx';
 import { GamePage } from './features/game/GamePage.tsx';
 import { LobbyPage } from './features/lobby/LobbyPage.tsx';
 import { MapBackdrop } from './features/map/MapBackdrop.tsx';
+
+// New: Import Game Rules Page
+import GameRules from './features/rules/GameRules.tsx';
 
 const queryClient = new QueryClient();
 
@@ -30,6 +34,10 @@ export function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/lobby" element={<LobbyPage />} />
             <Route path="/game/:id" element={<GamePage />} />
+
+            {/* New: Game Rules Page route */}
+            <Route path="/rules" element={<GameRules />} />
+
             <Route path="*" element={<LobbyPage />} />
           </Routes>
         </BrowserRouter>
