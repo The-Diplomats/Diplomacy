@@ -6,11 +6,11 @@ on:
 
 permissions:
   pull-requests: write
-  issues: read
+  issues: write
 
 jobs:
   link:
-    name: Native link to issue
+    name: Close-reference link
     runs-on: ubuntu-latest
     steps:
       - name: Extract issue number from branch
@@ -24,10 +24,11 @@ jobs:
             echo "issue=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Link issue to PR via GraphQL
+      - name: Add close reference via GraphQL
         if: steps.extract.outputs.issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           ISSUE_NUMBER: ${{ steps.extract.outputs.issue }}
         run: |
@@ -40,14 +41,15 @@ jobs:
             exit 0
           fi
 
+          # addCloseIssueReferences is idempotent: GitHub dedupes repeat calls
+          # with the same (issue, pr) pair.
           gh api graphql \
             -f query='
-              mutation($prId: ID!, $issueId: ID!) {
-                linkPullRequestToIssue(input: { pullRequestId: $prId, issueId: $issueId }) {
+              mutation($issueId: ID!, $prId: ID!) {
+                addCloseIssueReferences(input: { issueId: $issueId, pullRequestIds: [$prId] }) {
                   issue { number }
-                  pullRequest { number }
                 }
               }
             ' \
-            -F prId="$PR_ID" \
-            -F issueId="$ISSUE_ID"
+            -F issueId="$ISSUE_ID" \
+            -F prId="$PR_ID"
