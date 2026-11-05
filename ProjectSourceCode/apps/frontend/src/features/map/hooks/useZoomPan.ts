@@ -15,9 +15,17 @@ export type ZoomPan = {
   recenter: () => void;
 };
 
+type Options = {
+  // Attach the wheel listener for mouse-wheel zoom. Off by default so the hook can decorate
+  // non-game pages without blocking Ctrl/Cmd+wheel browser zoom.
+  wheel?: boolean;
+  // Attach the global Ctrl/Cmd +/-/0 keyboard listener. Off by default for the same reason.
+  keyboard?: boolean;
+};
+
 // Wheel + Ctrl/Cmd keys zoom the map; drag pans when zoomed in. Pan is clamped so the transformed
 // map's edges can't go inside the viewport — the frame + black bars stay at the bounds.
-export function useZoomPan(): ZoomPan {
+export function useZoomPan({ wheel = false, keyboard = false }: Options = {}): ZoomPan {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
@@ -48,6 +56,9 @@ export function useZoomPan(): ZoomPan {
   };
 
   useEffect(() => {
+    if (!keyboard) {
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) {
         return;
@@ -74,11 +85,11 @@ export function useZoomPan(): ZoomPan {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [keyboard]);
 
   useEffect(() => {
     const el = viewportElement;
-    if (!el) {
+    if (!el || !wheel) {
       return;
     }
     const onWheel = (e: WheelEvent) => {
@@ -100,7 +111,7 @@ export function useZoomPan(): ZoomPan {
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [viewportElement]);
+  }, [viewportElement, wheel]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (zoom <= 1) {

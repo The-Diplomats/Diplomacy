@@ -31,7 +31,7 @@ export function HUDLayout() {
     y: number;
   } | null>(null);
   const lastClickRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-  const zoomPan = useZoomPan();
+  const zoomPan = useZoomPan({ wheel: true, keyboard: true });
 
   return (
     <div className="fixed inset-0 flex items-center justify-center overflow-hidden bg-black">
