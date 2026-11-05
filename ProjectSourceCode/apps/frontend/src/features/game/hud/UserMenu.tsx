@@ -24,7 +24,7 @@ export function UserMenu() {
           aria-label="User menu"
           className="rounded-full shadow-lg ring-1 ring-border transition hover:ring-ring focus:outline-none focus:ring-2 focus:ring-ring"
         >
-          <Avatar className="h-10 w-10">
+          <Avatar className="h-9 w-9">
             <AvatarFallback className="bg-primary text-primary-foreground">R</AvatarFallback>
           </Avatar>
         </DropdownMenuTrigger>

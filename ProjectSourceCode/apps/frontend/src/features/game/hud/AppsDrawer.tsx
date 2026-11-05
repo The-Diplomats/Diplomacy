@@ -22,7 +22,7 @@ export function AppsDrawer() {
       <Popover>
         <PopoverTrigger
           aria-label="Game tools"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-card/95 text-foreground shadow-lg ring-1 ring-border backdrop-blur-sm transition hover:bg-card hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring"
+          className="flex h-9 w-9 items-center justify-center rounded-full bg-card/95 text-foreground shadow-lg ring-1 ring-border backdrop-blur-sm transition hover:bg-card hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-ring"
         >
           <LayoutGrid className="h-5 w-5" />
         </PopoverTrigger>

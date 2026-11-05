@@ -17,7 +17,7 @@ const POSITION_CLASSES: Record<SlotPosition, string> = {
   'bottom-left': 'bottom-[3.5%] left-[2.5%] items-start',
   'bottom-center': 'bottom-[3.5%] left-1/2 -translate-x-1/2 items-center',
   'bottom-right': 'bottom-[3.5%] right-[2.5%] items-end',
-  left: 'top-1/2 left-[2%] -translate-y-1/2 items-start',
+  left: 'top-1/2 left-[2.5%] -translate-y-1/2 items-start',
   right: 'top-1/2 right-[2%] -translate-y-1/2 items-end',
 };
 
