@@ -76,27 +76,17 @@ jobs:
           set -euo pipefail
           BRANCH="release-notes/${TAG}"
 
-          # Look up any open in-repo PR on this branch (base-agnostic, fork-excluded).
-          PR_JSON=$(gh pr list \
-            --head "$BRANCH" \
-            --state open \
-            --json number,headRepositoryOwner,baseRefName \
-            --jq ".[] | select(.headRepositoryOwner.login == \"${REPO_OWNER}\")" \
-            | jq -s '.[0] // empty')
-
-          if [[ -n "$PR_JSON" ]]; then
-            PR_NUMBER=$(echo "$PR_JSON" | jq -r '.number')
-            PR_BASE=$(echo "$PR_JSON" | jq -r '.baseRefName')
-            if [[ "$PR_BASE" == "main" ]]; then
-              echo "PR #${PR_NUMBER} already open for ${BRANCH} targeting main; nothing to do."
-              exit 0
-            fi
-            # Retargeted PR: don't delete the branch and lose its commits. Surface loudly.
-            echo "::error::PR #${PR_NUMBER} on ${BRANCH} targets '${PR_BASE}', not main. Refusing to replace the branch; resolve manually."
-            exit 1
+          # Idempotency: if an in-repo PR for this branch targeting main is already open, we're done.
+          # Server-side head=OWNER:BRANCH filter excludes forks structurally.
+          EXISTING_PR=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${REPO_OWNER}:${BRANCH}&base=main" \
+            --jq '.[0].number // empty')
+          if [[ -n "$EXISTING_PR" ]]; then
+            echo "PR #${EXISTING_PR} already open for ${BRANCH}; nothing to do."
+            exit 0
           fi
 
-          # No PR anywhere. Delete stale branch from a prior failed run (push ok, PR-create failed).
+          # Orphan branch from a prior failed run (push succeeded, PR-create failed): delete it.
           if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
             echo "Deleting orphaned remote branch ${BRANCH}"
             git push origin --delete "$BRANCH"
