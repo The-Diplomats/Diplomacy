@@ -1,4 +1,3 @@
-
 import { BookOpen, Plus, Users } from 'lucide-react';
 import { Link } from 'react-router';
 
@@ -80,9 +79,7 @@ export function LobbyPage() {
         <main className="pointer-events-auto relative mx-auto flex w-full max-w-3xl flex-col gap-6 px-8 pt-[8%] pb-8">
           <div className="flex items-end justify-between">
             <div className="flex flex-col gap-1">
-              <h2 className="text-2xl font-bold text-foreground">
-                Games
-              </h2>
+              <h2 className="text-2xl font-bold text-foreground">Games</h2>
               <p className="text-sm text-foreground/75">
                 Join an active round or spin one up yourself.
               </p>
@@ -124,19 +121,13 @@ function GameCard({ game }: { game: LobbyGame }) {
       className="flex-row gap-0 overflow-hidden bg-card/95 p-0 shadow-lg backdrop-blur-sm transition hover:shadow-xl"
     >
       <div className="w-52 shrink-0 self-stretch bg-muted">
-        <img
-          src={mapThumbnail}
-          alt=""
-          className="h-full w-full object-cover object-center"
-        />
+        <img src={mapThumbnail} alt="" className="h-full w-full object-cover object-center" />
       </div>
 
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-0.5">
-            <CardTitle className="text-base font-bold">
-              {game.name}
-            </CardTitle>
+            <CardTitle className="text-base font-bold">{game.name}</CardTitle>
 
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Users className="h-3.5 w-3.5" />
@@ -146,9 +137,7 @@ function GameCard({ game }: { game: LobbyGame }) {
             </div>
           </div>
 
-          <Badge
-            variant={game.status === 'active' ? 'default' : 'secondary'}
-          >
+          <Badge variant={game.status === 'active' ? 'default' : 'secondary'}>
             {STATUS_LABEL[game.status]}
           </Badge>
         </div>
@@ -156,14 +145,10 @@ function GameCard({ game }: { game: LobbyGame }) {
         <Separator />
 
         <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">
-            {game.phase}
-          </span>
+          <span className="text-xs text-muted-foreground">{game.phase}</span>
 
           {game.deadline && (
-            <span className="font-mono text-xs font-semibold text-foreground">
-              {game.deadline}
-            </span>
+            <span className="font-mono text-xs font-semibold text-foreground">{game.deadline}</span>
           )}
         </div>
 
@@ -181,9 +166,7 @@ function EmptyState() {
       <Users className="h-8 w-8 text-muted-foreground" />
 
       <div className="flex flex-col gap-1">
-        <div className="text-base font-semibold text-foreground">
-          No games yet
-        </div>
+        <div className="text-base font-semibold text-foreground">No games yet</div>
 
         <div className="text-sm text-muted-foreground">
           Create a game and invite your diplomats.
