@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
+import { LoadingOverlay } from './components/LoadingOverlay.tsx';
 import { LoginPage } from './features/auth/LoginPage.tsx';
 import { RegisterPage } from './features/auth/RegisterPage.tsx';
 import { GamePage } from './features/game/GamePage.tsx';
@@ -20,6 +21,7 @@ export function App() {
       disableTransitionOnChange
     >
       <QueryClientProvider client={queryClient}>
+        <LoadingOverlay />
         <BrowserRouter>
           <MapBackdrop />
           <Routes>

@@ -126,6 +126,15 @@
   display: none;
 }
 
+@keyframes spin-forever {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.spin-forever {
+  animation: spin-forever 1s linear infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
