@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
-import { BrowserRouter, Route, Routes } from 'react-router';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
 import { LoginPage } from './features/auth/LoginPage.tsx';
+import { RegisterPage } from './features/auth/RegisterPage.tsx';
 import { GamePage } from './features/game/GamePage.tsx';
 import { LobbyPage } from './features/lobby/LobbyPage.tsx';
 import { MapBackdrop } from './features/map/MapBackdrop.tsx';
@@ -22,7 +23,9 @@ export function App() {
         <BrowserRouter>
           <MapBackdrop />
           <Routes>
+            <Route path="/" element={<Navigate to="/game/test" replace />} />
             <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
             <Route path="/lobby" element={<LobbyPage />} />
             <Route path="/game/:id" element={<GamePage />} />
             <Route path="*" element={<LobbyPage />} />
