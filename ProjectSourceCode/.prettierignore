@@ -12,6 +12,7 @@ coverage/
 .vite/
 
 generated/
+CHANGELOG.md
 
 test-results/
 playwright-report/
