@@ -4,7 +4,9 @@ on:
   pull_request:
     branches: [main]
     paths:
-      - 'ProjectSourceCode/packages/contracts/api/**'
+      - 'ProjectSourceCode/packages/contracts/**'
+      - 'ProjectSourceCode/pnpm-workspace.yaml'
+      - 'ProjectSourceCode/pnpm-lock.yaml'
       - '.github/workflows/contract-lint.yml'
   merge_group:
 

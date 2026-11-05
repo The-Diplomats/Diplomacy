@@ -7,6 +7,7 @@ on:
     paths:
       - "ProjectSourceCode/packages/contracts/api/**"
       - ".github/workflows/compat-check.yml"
+  merge_group:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -41,8 +42,10 @@ jobs:
           oasdiff --version
 
       - name: Extract base spec
+        env:
+          BASE_REF: ${{ github.base_ref || github.event.merge_group.base_ref }}
         run: |
-          git show origin/${{ github.base_ref }}:ProjectSourceCode/packages/contracts/api/public/openapi.yaml \
+          git show "origin/${BASE_REF#refs/heads/}:ProjectSourceCode/packages/contracts/api/public/openapi.yaml" \
             > /tmp/base.yaml
 
       - name: Check for breaking changes
@@ -50,4 +53,5 @@ jobs:
           oasdiff breaking \
             /tmp/base.yaml \
             ProjectSourceCode/packages/contracts/api/public/openapi.yaml \
+            --allow-external-refs=false \
             --fail-on ERR
