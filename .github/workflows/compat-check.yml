@@ -4,9 +4,6 @@ on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, labeled, unlabeled]
-    paths:
-      - "ProjectSourceCode/packages/contracts/api/**"
-      - ".github/workflows/compat-check.yml"
   merge_group:
 
 concurrency:
@@ -28,7 +25,20 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Always run so the required check reports; gate real work by path changes.
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            contracts:
+              - 'ProjectSourceCode/packages/contracts/api/**'
+              - '.github/workflows/compat-check.yml'
+
+      - if: steps.filter.outputs.contracts != 'true'
+        run: echo "No contract changes; skipping breaking-change check."
+
       - name: Install oasdiff
+        if: steps.filter.outputs.contracts == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -42,6 +52,7 @@ jobs:
           oasdiff --version
 
       - name: Extract base spec
+        if: steps.filter.outputs.contracts == 'true'
         env:
           BASE_REF: ${{ github.base_ref || github.event.merge_group.base_ref }}
         run: |
@@ -49,6 +60,7 @@ jobs:
             > /tmp/base.yaml
 
       - name: Check for breaking changes
+        if: steps.filter.outputs.contracts == 'true'
         run: |
           oasdiff breaking \
             /tmp/base.yaml \
