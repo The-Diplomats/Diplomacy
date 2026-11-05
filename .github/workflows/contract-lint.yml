@@ -1,0 +1,39 @@
+name: Contract Lint
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ProjectSourceCode/packages/contracts/**'
+      - 'ProjectSourceCode/pnpm-workspace.yaml'
+      - 'ProjectSourceCode/pnpm-lock.yaml'
+      - '.github/workflows/contract-lint.yml'
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: OpenAPI spec lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ProjectSourceCode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: ProjectSourceCode/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --filter '@diplomacy/contracts...'
+      - name: Lint OpenAPI spec
+        run: pnpm --filter @diplomacy/contracts exec redocly lint api/public/openapi.yaml

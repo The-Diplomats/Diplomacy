@@ -1,0 +1,57 @@
+name: OpenAPI Compat
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, labeled, unlabeled]
+    paths:
+      - "ProjectSourceCode/packages/contracts/api/**"
+      - ".github/workflows/compat-check.yml"
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  compat:
+    name: Breaking change check
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'breaking-change-approved') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install oasdiff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION=$(gh api repos/oasdiff/oasdiff/releases/latest --jq .tag_name | sed 's/^v//')
+          echo "Installing oasdiff $VERSION"
+          curl -fsSL -o oasdiff.tar.gz \
+            "https://github.com/oasdiff/oasdiff/releases/download/v${VERSION}/oasdiff_${VERSION}_linux_amd64.tar.gz"
+          sudo tar -xzf oasdiff.tar.gz -C /usr/local/bin oasdiff
+          rm oasdiff.tar.gz
+          oasdiff --version
+
+      - name: Extract base spec
+        env:
+          BASE_REF: ${{ github.base_ref || github.event.merge_group.base_ref }}
+        run: |
+          git show "origin/${BASE_REF#refs/heads/}:ProjectSourceCode/packages/contracts/api/public/openapi.yaml" \
+            > /tmp/base.yaml
+
+      - name: Check for breaking changes
+        run: |
+          oasdiff breaking \
+            /tmp/base.yaml \
+            ProjectSourceCode/packages/contracts/api/public/openapi.yaml \
+            --allow-external-refs=false \
+            --fail-on ERR

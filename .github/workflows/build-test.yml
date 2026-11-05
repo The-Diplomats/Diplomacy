@@ -1,0 +1,64 @@
+name: Build & Test
+
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build + Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ProjectSourceCode
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: diplomacy
+          POSTGRES_PASSWORD: diplomacy
+          POSTGRES_DB: diplomacy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U diplomacy -d diplomacy"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://diplomacy:diplomacy@localhost:5432/diplomacy
+      REDIS_URL: redis://localhost:6379
+      SESSION_SECRET: ci-dummy-secret-must-be-at-least-32-chars-long
+      FRONTEND_ORIGINS: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: ProjectSourceCode/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Install Playwright Chromium for frontend browser tests
+        run: pnpm --filter frontend exec playwright install --with-deps chromium
+      - run: pnpm -r build
+      - run: pnpm -r test
