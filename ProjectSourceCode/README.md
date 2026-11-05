@@ -7,7 +7,7 @@ queues, adjudicator, db).
 
 - **Node 24** (see `.nvmrc` at repo root)
 - **Corepack**: ships with Node, enable once with `corepack enable`
-- **Docker** for the development stack
+- **Docker Desktop** running before `pnpm dev`
 
 Corepack reads the `packageManager` field in `package.json` and auto-fetches the pinned pnpm version. No global pnpm
 install needed.
@@ -19,9 +19,14 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` runs `docker compose up` (postgres + redis + migrator + backend + worker) alongside tsc watchers for all
-shared packages on the host. Backend on `http://localhost:3001`, postgres `5432`, redis `6379`. First run builds images;
-later starts are instant.
+`pnpm dev` runs three lanes via `concurrently`:
+
+- **compose**: `docker compose up --build` (postgres + redis + migrator + backend + worker)
+- **packages**: tsc watchers for all shared packages
+- **frontend**: Vite dev server on the host at `http://localhost:5173`
+
+Backend on `http://localhost:3001`, postgres `5432`, redis `6379`. First compose run builds images; later starts are
+instant. `--kill-others-on-fail` tears down all three lanes together if any one dies.
 
 Edit any `apps/*/src/*`: tsx reloads inside the container. Edit any `packages/*/src/*`: host tsc rebuilds dist, the
 bind-mount propagates into the container, tsx reloads. Zero manual steps.
@@ -75,7 +80,7 @@ pnpm format:check
 | ---------------------- | ------------------------------------------------------------- |
 | `apps/backend`         | HTTP API server (Express 5)                                   |
 | `apps/worker`          | Background job consumer (BullMQ)                              |
-| `apps/frontend`        | React + Vite SPA _(planned)_                                  |
+| `apps/frontend`        | React 19 + Vite SPA (Tailwind v4 + shadcn/ui)                 |
 | `packages/game-types`  | Shared domain types (pure TS)                                 |
 | `packages/contracts`   | OpenAPI spec + generated typed client + Socket.IO event types |
 | `packages/queues`      | Shared BullMQ queue definitions and typed job payloads        |
@@ -111,7 +116,8 @@ Bypass intentional with `--no-verify` on `commit` or `push`.
 
 - **Ports in use (5432/6379/3001)**: stop local postgres/redis/dev-server instances, or change the compose port
   mappings.
-- **"Cannot connect to Docker daemon"**: start Docker Desktop (or equivalent).
+- **"Cannot connect to Docker daemon"** / **`dial unix /…/docker.sock: no such file`**: start Docker Desktop, then
+  re-run `pnpm dev`. The compose lane's death also kills the other lanes via `--kill-others-on-fail`.
 - **Stale state after schema change**: `pnpm nuke && pnpm dev` for a clean DB.
 
 ## Where to look next
