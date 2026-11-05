@@ -1,0 +1,53 @@
+name: Link PR to Issue
+
+on:
+  pull_request:
+    types: [opened]
+
+permissions:
+  pull-requests: write
+  issues: read
+
+jobs:
+  link:
+    name: Native link to issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract issue number from branch
+        id: extract
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          # Expected pattern: <author>/<type>/<issue>/<slug>
+          if [[ "$HEAD_REF" =~ ^[^/]+/[^/]+/([0-9]+)/ ]]; then
+            echo "issue=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Link issue to PR via GraphQL
+        if: steps.extract.outputs.issue
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          ISSUE_NUMBER: ${{ steps.extract.outputs.issue }}
+        run: |
+          set -euo pipefail
+
+          # Resolve GraphQL node IDs; bail softly if the issue doesn't exist.
+          PR_ID=$(gh pr view "$PR_NUMBER" --json id --jq .id)
+          if ! ISSUE_ID=$(gh issue view "$ISSUE_NUMBER" --json id --jq .id 2>/dev/null); then
+            echo "Issue #$ISSUE_NUMBER not found; skipping link."
+            exit 0
+          fi
+
+          gh api graphql \
+            -f query='
+              mutation($prId: ID!, $issueId: ID!) {
+                linkPullRequestToIssue(input: { pullRequestId: $prId, issueId: $issueId }) {
+                  issue { number }
+                  pullRequest { number }
+                }
+              }
+            ' \
+            -F prId="$PR_ID" \
+            -F issueId="$ISSUE_ID"

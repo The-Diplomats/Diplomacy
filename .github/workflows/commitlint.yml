@@ -1,0 +1,29 @@
+name: Commitlint
+
+on:
+  pull_request_target:
+    types: [opened, edited, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint-pr-title:
+    name: PR title
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ProjectSourceCode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --filter diplomacy
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: echo "$PR_TITLE" | pnpm exec commitlint

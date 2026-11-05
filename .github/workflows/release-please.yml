@@ -1,0 +1,65 @@
+name: Release Please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    name: Release PR / Tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - id: release
+        uses: googleapis/release-please-action@v4
+        with:
+          release-type: node
+          path: ProjectSourceCode
+
+  release-notes-file:
+    name: Write release notes file
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          persist-credentials: true
+
+      - name: Compose release notes markdown
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          VERSION: ${{ needs.release-please.outputs.version }}
+        run: |
+          set -euo pipefail
+          BODY=$(gh release view "$TAG" --json body --jq .body)
+          DIR="MilestoneSubmissions/release-notes"
+          FILE="$DIR/$TAG.md"
+          mkdir -p "$DIR"
+          {
+            printf 'Release: Diplomacy %s\n\n' "$VERSION"
+            printf 'Tag: %s\n\n' "$TAG"
+            printf '%s\n' "$BODY"
+          } > "$FILE"
+
+      - name: Commit and push
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "MilestoneSubmissions/release-notes/$TAG.md"
+          git commit -m "docs(release-notes): add $TAG notes"
+          git push

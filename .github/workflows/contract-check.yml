@@ -1,0 +1,37 @@
+name: Contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'ProjectSourceCode/packages/contracts/**'
+      - '.github/workflows/contract-check.yml'
+  merge_group:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Generated client in sync
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ProjectSourceCode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'pnpm'
+          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --filter '@diplomacy/contracts...'
+      - name: Regenerate client
+        run: pnpm --filter @diplomacy/contracts generate
+      - name: Assert no drift
+        run: git diff --exit-code packages/contracts/src/generated/

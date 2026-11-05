@@ -1,0 +1,42 @@
+api:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "ProjectSourceCode/packages/contracts/**"
+
+backend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "ProjectSourceCode/apps/backend/**"
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ".github/**"
+
+db:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "ProjectSourceCode/packages/db/**"
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "**/*.md"
+
+frontend:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "ProjectSourceCode/apps/frontend/**"
+
+platform:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "ProjectSourceCode/docker-compose.yaml"
+          - "ProjectSourceCode/apps/*/Dockerfile"
+
+worker:
+  - changed-files:
+      - any-glob-to-any-file:
+          - "ProjectSourceCode/apps/worker/**"
+          - "ProjectSourceCode/packages/queues/**"
+          - "ProjectSourceCode/packages/adjudicator/**"
