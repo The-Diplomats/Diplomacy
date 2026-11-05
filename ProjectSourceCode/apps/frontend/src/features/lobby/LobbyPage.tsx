@@ -90,12 +90,13 @@ export function LobbyPage() {
 
             {/* Game Rules and New Game buttons */}
             <div className="flex items-center gap-2">
-              <Button variant="outline" asChild>
-                <Link to="/rules">
-                  <BookOpen className="h-4 w-4" />
-                  How to Play
-                </Link>
-              </Button>
+              <Link
+                to="/rules"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground shadow-xs transition-all hover:bg-muted"
+              >
+                <BookOpen className="h-4 w-4" />
+                How to Play
+              </Link>
 
               <NewGameButton />
             </div>
@@ -202,4 +203,3 @@ function NewGameButton() {
     </Button>
   );
 }
-
