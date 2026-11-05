@@ -3,7 +3,7 @@ name: Commitlint
 on:
   pull_request:
     branches: [main]
-    types: [opened, edited, reopened]
+    types: [opened, edited, reopened, synchronize]
 
 permissions:
   pull-requests: read
