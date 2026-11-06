@@ -3,7 +3,8 @@ name: Commitlint
 on:
   pull_request:
     branches: [main]
-    types: [opened, edited, reopened]
+    types: [opened, edited, reopened, synchronize]
+  merge_group:
 
 permissions:
   pull-requests: read
@@ -17,16 +18,23 @@ jobs:
         working-directory: ProjectSourceCode
     steps:
       - uses: actions/checkout@v4
+        with:
+          # merge_group runs against the queue's merge commit; pull_request against the PR head.
+          ref: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.sha }}
       - uses: pnpm/action-setup@v4
         with:
           package_json_file: ProjectSourceCode/package.json
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'pnpm'
+          node-version: "24"
+          cache: "pnpm"
           cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --filter diplomacy
-      - name: Check PR title
+      - name: Check PR title (pull_request)
+        if: github.event_name == 'pull_request'
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: echo "$PR_TITLE" | pnpm exec commitlint
+      - name: Check squash commit subject (merge_group)
+        if: github.event_name == 'merge_group'
+        run: git log -1 --format=%s HEAD | pnpm exec commitlint

@@ -3,11 +3,6 @@ name: Contract Lint
 on:
   pull_request:
     branches: [main]
-    paths:
-      - 'ProjectSourceCode/packages/contracts/**'
-      - 'ProjectSourceCode/pnpm-workspace.yaml'
-      - 'ProjectSourceCode/pnpm-lock.yaml'
-      - '.github/workflows/contract-lint.yml'
   merge_group:
 
 concurrency:
@@ -16,6 +11,7 @@ concurrency:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   lint:
@@ -26,14 +22,33 @@ jobs:
         working-directory: ProjectSourceCode
     steps:
       - uses: actions/checkout@v4
+
+      # Always run so the required check reports; gate real work by path changes.
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            contracts:
+              - 'ProjectSourceCode/packages/contracts/**'
+              - 'ProjectSourceCode/pnpm-workspace.yaml'
+              - 'ProjectSourceCode/pnpm-lock.yaml'
+              - '.github/workflows/contract-lint.yml'
+
+      - if: steps.filter.outputs.contracts != 'true'
+        run: echo "No contract changes; skipping lint."
+
       - uses: pnpm/action-setup@v4
+        if: steps.filter.outputs.contracts == 'true'
         with:
           package_json_file: ProjectSourceCode/package.json
       - uses: actions/setup-node@v4
+        if: steps.filter.outputs.contracts == 'true'
         with:
-          node-version: '24'
-          cache: 'pnpm'
+          node-version: "24"
+          cache: "pnpm"
           cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile --filter '@diplomacy/contracts...'
+        if: steps.filter.outputs.contracts == 'true'
       - name: Lint OpenAPI spec
+        if: steps.filter.outputs.contracts == 'true'
         run: pnpm --filter @diplomacy/contracts exec redocly lint api/public/openapi.yaml
