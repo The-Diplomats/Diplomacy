@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 
+import { createDbClient } from '@diplomacy/db';
 import cors from 'cors';
 
 import { createApp } from './app.js';
@@ -7,6 +8,7 @@ import { logger } from './log.js';
 import { openApiErrorHandler } from './middleware/openapi-error-handler.js';
 import { createOpenApiValidator } from './middleware/openapi-validator.js';
 import { createSessionMiddleware } from './middleware/session.js';
+import { createUserRepository } from './repositories/users.js';
 import { createSocketServer } from './socket.js';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -39,11 +41,13 @@ const openApiValidator = createOpenApiValidator({
   validateResponses: process.env.NODE_ENV !== 'production',
 });
 const { middleware: sessionMiddleware, pool } = createSessionMiddleware(databaseUrl, sessionSecret);
+const db = createDbClient(databaseUrl);
 const app = createApp({
   corsMiddleware,
   openApiValidator,
   openApiErrorHandler,
   sessionMiddleware,
+  users: createUserRepository(db),
 });
 const httpServer = createServer(app);
 const socketServer = createSocketServer(httpServer, {
@@ -77,7 +81,7 @@ async function shutdown(signal: string): Promise<void> {
 
   try {
     await socketServer.close();
-    await pool.end();
+    await Promise.all([pool.end(), db.$client.end()]);
     clearTimeout(forceExit);
     logger.info('backend shutdown complete');
     process.exit(0);

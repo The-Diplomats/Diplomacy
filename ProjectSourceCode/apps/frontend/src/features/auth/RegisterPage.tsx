@@ -1,98 +1,157 @@
 import { ChevronRight } from 'lucide-react';
-import { Link } from 'react-router';
+import { type ChangeEvent, type FormEvent, useState } from 'react';
+import { Link, useNavigate } from 'react-router';
 
-import { Themed } from '../../components/Themed';
+import { ApiError } from '../../api/client';
+import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
-import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
 import { Separator } from '../../components/ui/separator';
+import { AuthField, AuthShell, PasswordInput, PasswordStrengthMeter } from './AuthShell';
+import { SignedInPanel } from './SignedInPanel';
+import { authErrorMessage, useRegister, useSession } from './useSession';
+import { isValidEmail } from './validation';
+
+type Field = 'email' | 'password' | 'confirm';
+type Errors = Partial<Record<Field, string>>;
+
+const MIN_PASSWORD_LENGTH = 8; // matches RegisterRequest.password.minLength
 
 export function RegisterPage() {
+  const navigate = useNavigate();
+  const session = useSession();
+  const register = useRegister();
+
+  const [form, setForm] = useState<Record<Field, string>>({ email: '', password: '', confirm: '' });
+  const [errors, setErrors] = useState<Errors>({});
+  const [formError, setFormError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const footer = (
+    <>
+      Already have an account?{' '}
+      <Link to="/login" className="font-medium text-foreground underline underline-offset-2">
+        Sign in
+      </Link>
+    </>
+  );
+
+  if (session.data) {
+    return (
+      <AuthShell subtitle="You already have an account">
+        <SignedInPanel user={session.data} />
+      </AuthShell>
+    );
+  }
+
+  const bind = (key: Field) => ({
+    value: form[key],
+    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+      const { value } = e.target;
+      setForm((f) => ({ ...f, [key]: value }));
+      setErrors((er) => ({ ...er, [key]: undefined }));
+    },
+    'aria-invalid': !!errors[key],
+    'aria-describedby': errors[key] ? `${key}-msg` : undefined,
+  });
+
+  const validate = (): Errors => {
+    const er: Errors = {};
+    if (!isValidEmail(form.email.trim())) {
+      er.email = 'Enter a valid email address.';
+    }
+    if (form.password.length < MIN_PASSWORD_LENGTH) {
+      er.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
+    }
+    if (form.confirm !== form.password) {
+      er.confirm = "Passwords don't match.";
+    }
+    return er;
+  };
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    setFormError('');
+    const er = validate();
+    setErrors(er);
+    if (Object.keys(er).length) {
+      return;
+    }
+
+    register.mutate(
+      { email: form.email.trim(), password: form.password },
+      {
+        onSuccess: () => navigate('/lobby'),
+        onError: (err) => {
+          if (err instanceof ApiError && err.status === 409) {
+            setErrors({ email: 'An account with this email already exists.' });
+          } else {
+            setFormError(authErrorMessage(err));
+          }
+        },
+      },
+    );
+  };
+
   return (
-    <Themed className="pointer-events-none fixed inset-0 z-10 flex items-center justify-center">
-      <div
-        className="relative flex items-center justify-center p-6"
-        style={{
-          aspectRatio: '2120 / 1427',
-          width: 'min(100vw, calc(100vh * 2120 / 1427))',
-          height: 'min(100vh, calc(100vw * 1427 / 2120))',
-        }}
-      >
-        <div className="absolute inset-0 bg-background/10 backdrop-blur-sm" aria-hidden />
-        <Card
-          size="sm"
-          className="pointer-events-auto relative w-96 gap-5 bg-card/95 shadow-xl backdrop-blur-sm"
+    <AuthShell subtitle="Create an account to play" footer={footer}>
+      {formError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription className="text-destructive">{formError}</AlertDescription>
+        </Alert>
+      )}
+
+      <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
+        <AuthField id="email" label="Email" error={errors.email}>
+          <Input
+            id="email"
+            type="email"
+            placeholder="you@diplomacy.gg"
+            autoComplete="email"
+            {...bind('email')}
+          />
+        </AuthField>
+        <AuthField
+          id="password"
+          label="Password"
+          error={errors.password}
+          hint={`At least ${MIN_PASSWORD_LENGTH} characters. Mix letters, numbers and symbols.`}
         >
-          <CardHeader className="items-center space-y-1 text-center">
-            <h1
-              className="text-5xl text-foreground"
-              style={{ fontFamily: '"Great Vibes", cursive' }}
-            >
-              Diplomacy
-            </h1>
-            <p className="text-sm text-muted-foreground">Create an account to play</p>
-          </CardHeader>
+          <PasswordInput
+            id="password"
+            placeholder="••••••••"
+            autoComplete="new-password"
+            visible={showPassword}
+            onToggleVisible={() => setShowPassword((v) => !v)}
+            {...bind('password')}
+          />
+          {form.password && <PasswordStrengthMeter password={form.password} />}
+        </AuthField>
+        <AuthField id="confirm" label="Confirm password" error={errors.confirm}>
+          <Input
+            id="confirm"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••"
+            autoComplete="new-password"
+            {...bind('confirm')}
+          />
+        </AuthField>
+        <Button type="submit" className="w-full" disabled={register.isPending}>
+          {register.isPending ? 'Creating account…' : 'Create account'}
+          {!register.isPending && <ChevronRight />}
+        </Button>
+      </form>
 
-          <CardContent>
-            <form className="flex flex-col gap-4" onSubmit={(event) => event.preventDefault()}>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="display-name">Display name</Label>
-                <Input id="display-name" type="text" placeholder="Rez Haleem" autoComplete="name" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@diplomacy.gg"
-                  autoComplete="email"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="confirm-password">Confirm password</Label>
-                <Input
-                  id="confirm-password"
-                  type="password"
-                  placeholder="••••••••"
-                  autoComplete="new-password"
-                />
-              </div>
-              <Button type="submit" className="w-full">
-                Create account
-                <ChevronRight />
-              </Button>
-            </form>
-
-            <div className="relative py-4">
-              <Separator />
-              <span className="absolute inset-0 flex items-center justify-center">
-                <span className="bg-card px-2 text-xs text-muted-foreground uppercase">or</span>
-              </span>
-            </div>
-
-            <Button type="button" variant="outline" className="w-full">
-              Continue with Microsoft
-            </Button>
-          </CardContent>
-
-          <div className="pb-5 text-center text-xs text-muted-foreground">
-            Already have an account?{' '}
-            <Link to="/login" className="font-medium text-foreground underline underline-offset-2">
-              Sign in
-            </Link>
-          </div>
-        </Card>
+      <div className="relative py-4">
+        <Separator />
+        <span className="absolute inset-0 flex items-center justify-center">
+          <span className="bg-card px-2 text-xs text-muted-foreground uppercase">or</span>
+        </span>
       </div>
-    </Themed>
+
+      <Button type="button" variant="outline" className="w-full">
+        Continue with Microsoft
+      </Button>
+    </AuthShell>
   );
 }

@@ -6,6 +6,7 @@ import { describe, expect, test } from 'vitest';
 import { createApp } from './app.js';
 import { openApiErrorHandler } from './middleware/openapi-error-handler.js';
 import { createOpenApiValidator } from './middleware/openapi-validator.js';
+import { createInMemoryUserRepository } from './test/in-memory-users.js';
 
 const corsMiddleware = cors({ origin: ['http://localhost'], credentials: true });
 
@@ -24,6 +25,7 @@ function app() {
     openApiValidator,
     openApiErrorHandler,
     sessionMiddleware,
+    users: createInMemoryUserRepository(),
   });
 }
 
