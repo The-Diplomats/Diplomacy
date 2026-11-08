@@ -163,13 +163,15 @@ export function ChatDrawer({ onClose }: Props) {
                         )}
                         <div
                           className={`rounded-2xl px-3.5 py-2 text-sm ${
-                            self ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+                            self
+                              ? 'self-end px-1 bg-primary text-primary-foreground'
+                              : 'self-start bg-muted text-foreground'
                           }`}
                         >
                           {message.text}
                         </div>
                         {self && (
-                          <div className="px-1 text-[10px] text-muted-foreground">
+                          <div className="self-end px-1 text-[10px] text-muted-foreground">
                             {message.time}
                           </div>
                         )}
