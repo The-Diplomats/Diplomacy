@@ -1,4 +1,5 @@
 import { ArrowUp, Plus, RefreshCcw, X } from 'lucide-react';
+import { type FormEvent, useState } from 'react';
 
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -89,6 +90,32 @@ type Props = {
 };
 
 export function ChatDrawer({ onClose }: Props) {
+  const [messages, setMessages] = useState<ChatMessage[]>(MESSAGES);
+  const [draft, setDraft] = useState('');
+
+  function handleSend(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = draft.trim();
+    if (text === '') {
+      return;
+    }
+
+    const newMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      power: SELF_POWER,
+      sender: 'You',
+      text: text,
+      time: new Date().toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }),
+    };
+
+    setMessages([...messages, newMessage]);
+    setDraft('');
+  }
+
   return (
     <Card className="pointer-events-auto flex h-full w-full flex-col gap-0 overflow-hidden bg-card/95 p-0 shadow-xl backdrop-blur-sm">
       <div className="flex items-start justify-between gap-2 px-5 pt-4 pb-3">
@@ -111,7 +138,7 @@ export function ChatDrawer({ onClose }: Props) {
         <MessageScroller>
           <MessageScrollerViewport aria-label="Chat messages">
             <MessageScrollerContent className="gap-4 px-4 py-4">
-              {MESSAGES.map((message) => {
+              {messages.map((message) => {
                 const self = message.power === SELF_POWER;
                 const color = POWER_COLORS[message.power].fill;
                 return (
@@ -160,7 +187,7 @@ export function ChatDrawer({ onClose }: Props) {
       <div className="p-3">
         <form
           className="flex items-end gap-2 rounded-2xl border border-border bg-muted/40 px-2 py-2"
-          onSubmit={(event) => event.preventDefault()}
+          onSubmit={handleSend}
         >
           <Button variant="ghost" size="icon-sm" type="button" aria-label="Attach">
             <Plus />
@@ -170,6 +197,8 @@ export function ChatDrawer({ onClose }: Props) {
             type="text"
             placeholder="Send a message"
             className="flex-1 bg-transparent px-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
           />
           <Button type="submit" size="icon-sm" className="rounded-full" aria-label="Send">
             <ArrowUp />
