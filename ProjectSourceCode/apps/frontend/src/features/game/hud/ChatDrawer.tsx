@@ -194,13 +194,19 @@ export function ChatDrawer({ onClose }: Props) {
           <Button variant="ghost" size="icon-sm" type="button" aria-label="Attach">
             <Plus />
           </Button>
-          <input
+          <textarea
             aria-label="Message"
-            type="text"
+            rows={1}
             placeholder="Send a message"
-            className="flex-1 bg-transparent px-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            className="flex-1 bg-transparent px-1 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none field-sizing-content max-h-32 resize-none"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
           />
           <Button type="submit" size="icon-sm" className="rounded-full" aria-label="Send">
             <ArrowUp />
