@@ -20,6 +20,7 @@
     "@socket.io/redis-adapter": "catalog:",
     "connect-pg-simple": "catalog:",
     "cors": "catalog:",
+    "drizzle-orm": "catalog:",
     "express": "catalog:",
     "express-openapi-validator": "catalog:",
     "express-rate-limit": "catalog:",
