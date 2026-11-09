@@ -1,5 +1,8 @@
 import { createHash, randomInt } from 'node:crypto';
 
+export const VERIFICATION_CODE_TTL_MINUTES = 15;
+export const VERIFICATION_CODE_TTL_MS = VERIFICATION_CODE_TTL_MINUTES * 60 * 1000;
+
 /** Six-digit numeric code, zero-padded. Short enough to type from an email. */
 export function generateVerificationCode(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, '0');

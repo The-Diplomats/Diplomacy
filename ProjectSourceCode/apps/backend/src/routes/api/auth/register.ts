@@ -2,7 +2,11 @@ import { type Request, type Response, Router } from 'express';
 
 import { hashPassword } from '../../../auth/password.js';
 import { establishSession } from '../../../auth/session.js';
-import { generateVerificationCode, hashVerificationCode } from '../../../auth/verification-code.js';
+import {
+  generateVerificationCode,
+  hashVerificationCode,
+  VERIFICATION_CODE_TTL_MS,
+} from '../../../auth/verification-code.js';
 import { logger } from '../../../log.js';
 import {
   registerRateLimit,
@@ -11,8 +15,6 @@ import {
 } from '../../../middleware/auth-rate-limits.js';
 import { db } from '../../../services/db.js';
 import { emails } from '../../../services/emails.js';
-
-const CODE_TTL_MS = 15 * 60 * 1000;
 
 const INVALID_OR_EXPIRED = {
   title: 'Bad Request',
@@ -64,6 +66,11 @@ registerRouter.post(
           .catch((err) => logger.error({ err }, 'failed to send security notice'));
         return res.status(202).end();
       }
+      // Replace the stored hash so the password the user just typed is the one
+      // that works once they verify. Without this, re-registering with a new
+      // password silently keeps the old hash.
+      const passwordHash = await hashPassword(password);
+      await db.users.updatePasswordHash(existingByEmail.id, passwordHash);
       await issueVerificationEmail(
         existingByEmail.id,
         existingByEmail.email,
@@ -134,7 +141,7 @@ async function issueVerificationEmail(
     userId,
     purpose: 'email_verify',
     tokenHash: hashVerificationCode(code),
-    expiresAt: new Date(Date.now() + CODE_TTL_MS),
+    expiresAt: new Date(Date.now() + VERIFICATION_CODE_TTL_MS),
   });
   await emails.auth.verifyRegister(email, { username, code });
 }

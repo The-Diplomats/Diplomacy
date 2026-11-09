@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createDbClient, type DbClient } from '@diplomacy/db';
 import { pino } from 'pino';
 
+import { VERIFICATION_CODE_TTL_MINUTES } from '../auth/verification-code.js';
 import { createAuthEmails } from '../email/auth-emails.js';
 import { type EmailPayload, type EmailSender } from '../email/sender.js';
 import { initDb, shutdownDb } from '../services/db.js';
@@ -24,7 +25,7 @@ export function setupTestServices(): DbClient {
   setEmails({
     auth: createAuthEmails(capturingSender, {
       appUrl: 'http://localhost',
-      codeExpiresInMinutes: 15,
+      codeExpiresInMinutes: VERIFICATION_CODE_TTL_MINUTES,
     }),
   });
   return client;

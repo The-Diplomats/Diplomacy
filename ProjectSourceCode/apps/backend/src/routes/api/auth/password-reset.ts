@@ -2,15 +2,17 @@ import { type Request, type Response, Router } from 'express';
 
 import { hashPassword } from '../../../auth/password.js';
 import { establishSession } from '../../../auth/session.js';
-import { generateVerificationCode, hashVerificationCode } from '../../../auth/verification-code.js';
+import {
+  generateVerificationCode,
+  hashVerificationCode,
+  VERIFICATION_CODE_TTL_MS,
+} from '../../../auth/verification-code.js';
 import {
   passwordResetRateLimit,
   passwordResetVerifyRateLimit,
 } from '../../../middleware/auth-rate-limits.js';
 import { db } from '../../../services/db.js';
 import { emails } from '../../../services/emails.js';
-
-const CODE_TTL_MS = 15 * 60 * 1000;
 
 const INVALID_OR_EXPIRED = {
   title: 'Bad Request',
@@ -44,7 +46,7 @@ passwordResetRouter.post(
         userId: user.id,
         purpose: 'password_reset',
         tokenHash: hashVerificationCode(code),
-        expiresAt: new Date(Date.now() + CODE_TTL_MS),
+        expiresAt: new Date(Date.now() + VERIFICATION_CODE_TTL_MS),
       });
       await emails.auth.passwordReset(user.email, { username: user.username, code });
     }

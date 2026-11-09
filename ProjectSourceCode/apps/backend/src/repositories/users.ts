@@ -1,5 +1,5 @@
 import { type DbClient, users } from '@diplomacy/db';
-import { or, sql } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
 
 export interface PublicUser {
   id: string;
@@ -78,13 +78,16 @@ export function createUserRepository(db: DbClient): UserRepository {
     },
 
     async findByIdentifier(identifier) {
+      // Route on '@' so an email identifier never matches a username row and
+      // vice versa. Avoids nondeterminism when a username and another user's
+      // email collide after case-folding.
+      const isEmail = identifier.includes('@');
       const row = await db.query.users.findFirst({
         columns: selectCredentialColumns,
         where: (u, { eq }) =>
-          or(
-            eq(u.email, identifier.toLowerCase()),
-            sql`lower(${u.username}) = lower(${identifier})`,
-          ),
+          isEmail
+            ? eq(u.email, identifier.toLowerCase())
+            : sql`lower(${u.username}) = lower(${identifier})`,
       });
       return row ?? null;
     },

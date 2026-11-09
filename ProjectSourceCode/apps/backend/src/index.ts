@@ -4,6 +4,7 @@ import { createDbClient } from '@diplomacy/db';
 import cors from 'cors';
 
 import { createApp } from './app.js';
+import { VERIFICATION_CODE_TTL_MINUTES } from './auth/verification-code.js';
 import { logger } from './log.js';
 import { openApiErrorHandler } from './middleware/openapi-error-handler.js';
 import { createOpenApiValidator } from './middleware/openapi-validator.js';
@@ -59,7 +60,7 @@ initEmails(
     resendApiKey: process.env.RESEND_API_KEY?.trim() || undefined,
     from: emailFrom,
     appUrl,
-    codeExpiresInMinutes: 15,
+    codeExpiresInMinutes: VERIFICATION_CODE_TTL_MINUTES,
   },
   logger,
 );
