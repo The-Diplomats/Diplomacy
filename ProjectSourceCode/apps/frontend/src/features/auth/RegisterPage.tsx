@@ -12,17 +12,23 @@ import { SignedInPanel } from './SignedInPanel';
 import { authErrorMessage, useRegister, useSession } from './useSession';
 import { isValidEmail } from './validation';
 
-type Field = 'email' | 'password' | 'confirm';
+type Field = 'email' | 'username' | 'password' | 'confirm';
 type Errors = Partial<Record<Field, string>>;
 
 const MIN_PASSWORD_LENGTH = 8; // matches RegisterRequest.password.minLength
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,20}$/; // matches RegisterRequest.username.pattern
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const session = useSession();
   const register = useRegister();
 
-  const [form, setForm] = useState<Record<Field, string>>({ email: '', password: '', confirm: '' });
+  const [form, setForm] = useState<Record<Field, string>>({
+    email: '',
+    username: '',
+    password: '',
+    confirm: '',
+  });
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -60,6 +66,9 @@ export function RegisterPage() {
     if (!isValidEmail(form.email.trim())) {
       er.email = 'Enter a valid email address.';
     }
+    if (!USERNAME_PATTERN.test(form.username.trim())) {
+      er.username = '3-20 characters, letters, numbers or underscore.';
+    }
     if (form.password.length < MIN_PASSWORD_LENGTH) {
       er.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
     }
@@ -79,12 +88,16 @@ export function RegisterPage() {
     }
 
     register.mutate(
-      { email: form.email.trim(), password: form.password },
+      {
+        email: form.email.trim(),
+        username: form.username.trim(),
+        password: form.password,
+      },
       {
         onSuccess: () => navigate('/lobby'),
         onError: (err) => {
           if (err instanceof ApiError && err.status === 409) {
-            setErrors({ email: 'An account with this email already exists.' });
+            setErrors({ email: 'An account with this email or username already exists.' });
           } else {
             setFormError(authErrorMessage(err));
           }
@@ -109,6 +122,15 @@ export function RegisterPage() {
             placeholder="you@diplomacy.gg"
             autoComplete="email"
             {...bind('email')}
+          />
+        </AuthField>
+        <AuthField id="username" label="Username" error={errors.username}>
+          <Input
+            id="username"
+            type="text"
+            placeholder="your_handle"
+            autoComplete="username"
+            {...bind('username')}
           />
         </AuthField>
         <AuthField

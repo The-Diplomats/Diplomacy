@@ -1,12 +1,12 @@
 import cors from 'cors';
 import session from 'express-session';
 import supertest from 'supertest';
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { createApp } from '../../../app.js';
 import { openApiErrorHandler } from '../../../middleware/openapi-error-handler.js';
 import { createOpenApiValidator } from '../../../middleware/openapi-validator.js';
-import { createInMemoryUserRepository } from '../../../test/in-memory-users.js';
+import { makeTestCredentials, setupTestServices, teardownTestServices } from '../../../test/db.js';
 
 const openApiValidator = createOpenApiValidator({ validateResponses: true });
 
@@ -25,7 +25,6 @@ function app(): App {
       saveUninitialized: false,
       cookie: { secure: true, httpOnly: true, sameSite: 'lax' },
     }),
-    users: createInMemoryUserRepository(),
   });
 }
 
@@ -59,15 +58,26 @@ function https(instance: App) {
   };
 }
 
-const credentials = { email: 'Player@Example.com', password: 'correct-horse' };
-
 describe('auth routes', () => {
+  beforeAll(() => {
+    setupTestServices();
+  });
+
+  afterAll(async () => {
+    await teardownTestServices();
+  });
+
   test('register signs the user in; logout signs them out', async () => {
+    const creds = makeTestCredentials();
     const client = https(app());
 
-    const registered = await client.post('/auth/register', credentials);
+    const registered = await client.post('/auth/register', creds);
     expect(registered.status).toBe(201);
-    expect(registered.body).toEqual({ id: expect.any(String), email: 'player@example.com' });
+    expect(registered.body).toEqual({
+      id: expect.any(String),
+      email: creds.email.toLowerCase(),
+      username: creds.username,
+    });
 
     const me = await client.get('/auth/me');
     expect(me.status).toBe(200);
@@ -79,23 +89,39 @@ describe('auth routes', () => {
     expect((await client.get('/auth/me')).status).toBe(401);
   });
 
-  test('login with correct password establishes a session', async () => {
+  test('login by email establishes a session', async () => {
+    const creds = makeTestCredentials();
     const instance = app();
-    await https(instance).post('/auth/register', credentials);
+    await https(instance).post('/auth/register', creds);
 
     const client = https(instance);
     const login = await client.post('/auth/login', {
-      email: 'PLAYER@example.com',
-      password: credentials.password,
+      identifier: creds.email.toUpperCase(),
+      password: creds.password,
     });
     expect(login.status).toBe(200);
-    expect(login.body.email).toBe('player@example.com');
+    expect(login.body.email).toBe(creds.email.toLowerCase());
 
-    expect((await client.get('/auth/me')).body.email).toBe('player@example.com');
+    expect((await client.get('/auth/me')).body.email).toBe(creds.email.toLowerCase());
+  });
+
+  test('login by username establishes a session', async () => {
+    const creds = makeTestCredentials();
+    const instance = app();
+    await https(instance).post('/auth/register', creds);
+
+    const client = https(instance);
+    const login = await client.post('/auth/login', {
+      identifier: creds.username.toLowerCase(),
+      password: creds.password,
+    });
+    expect(login.status).toBe(200);
+    expect(login.body.username).toBe(creds.username);
   });
 
   test('session cookie is Secure, HttpOnly and SameSite=Lax', async () => {
-    const res = await https(app()).post('/auth/register', credentials);
+    const creds = makeTestCredentials();
+    const res = await https(app()).post('/auth/register', creds);
     expect(res.status).toBe(201);
 
     const [cookie] = res.headers['set-cookie'] as unknown as string[];
@@ -106,24 +132,28 @@ describe('auth routes', () => {
   });
 
   test('no session cookie is issued over plain HTTP', async () => {
+    const creds = makeTestCredentials();
     const instance = app();
-    await https(instance).post('/auth/register', credentials);
+    await https(instance).post('/auth/register', creds);
 
-    const login = await supertest(instance).post('/auth/login').send(credentials);
+    const login = await supertest(instance)
+      .post('/auth/login')
+      .send({ identifier: creds.email, password: creds.password });
     expect(login.status).toBe(200);
     expect(login.headers['set-cookie']).toBeUndefined();
   });
 
-  test('login rejects wrong password and unknown email with the same 401', async () => {
+  test('login rejects wrong password and unknown identifier with the same 401', async () => {
+    const creds = makeTestCredentials();
     const instance = app();
-    await https(instance).post('/auth/register', credentials);
+    await https(instance).post('/auth/register', creds);
 
     const wrong = await https(instance).post('/auth/login', {
-      email: credentials.email,
+      identifier: creds.email,
       password: 'nope-nope',
     });
     const unknown = await https(instance).post('/auth/login', {
-      email: 'nobody@example.com',
+      identifier: `nobody-${Date.now()}@test.local`,
       password: 'whatever1',
     });
 
@@ -134,40 +164,68 @@ describe('auth routes', () => {
   });
 
   test('register rejects a duplicate email with 409', async () => {
+    const creds = makeTestCredentials();
+    const other = makeTestCredentials();
     const instance = app();
-    await https(instance).post('/auth/register', credentials);
+    await https(instance).post('/auth/register', creds);
 
     const dup = await https(instance).post('/auth/register', {
-      email: 'player@example.com',
+      email: creds.email,
+      username: other.username,
+      password: 'another-pass',
+    });
+    expect(dup.status).toBe(409);
+  });
+
+  test('register rejects a duplicate username with 409', async () => {
+    const creds = makeTestCredentials();
+    const other = makeTestCredentials();
+    const instance = app();
+    await https(instance).post('/auth/register', creds);
+
+    const dup = await https(instance).post('/auth/register', {
+      email: other.email,
+      username: creds.username,
       password: 'another-pass',
     });
     expect(dup.status).toBe(409);
   });
 
   test('register rejects a short password via the OpenAPI validator', async () => {
+    const creds = makeTestCredentials();
     const res = await https(app()).post('/auth/register', {
-      email: 'a@example.com',
+      email: creds.email,
+      username: creds.username,
       password: 'short',
     });
     expect(res.status).toBe(400);
   });
 
   test('login rejects unknown fields via the OpenAPI validator', async () => {
-    const res = await https(app()).post('/auth/login', { ...credentials, remember: true });
+    const creds = makeTestCredentials();
+    const res = await https(app()).post('/auth/login', {
+      identifier: creds.email,
+      password: creds.password,
+      remember: true,
+    });
     expect(res.status).toBe(400);
   });
 
   test('login is rate limited after repeated failures for one account', async () => {
+    const creds = makeTestCredentials();
     const instance = app();
-    await https(instance).post('/auth/register', credentials);
-    const wrong = { email: credentials.email, password: 'nope-nope' };
+    await https(instance).post('/auth/register', creds);
+    const wrong = { identifier: creds.email, password: 'nope-nope' };
 
     for (let i = 0; i < 5; i++) {
       expect((await https(instance).post('/auth/login', wrong)).status).toBe(401);
     }
 
     // Further attempts are blocked, even with the correct password.
-    const blocked = await https(instance).post('/auth/login', credentials);
+    const blocked = await https(instance).post('/auth/login', {
+      identifier: creds.email,
+      password: creds.password,
+    });
     expect(blocked.status).toBe(429);
     expect(blocked.body).toEqual({
       title: 'Too Many Requests',
@@ -177,19 +235,28 @@ describe('auth routes', () => {
     expect(blocked.headers['ratelimit-policy']).toBeDefined();
 
     // A different account from the same IP is unaffected.
-    const other = await https(instance).post('/auth/login', {
-      email: 'someone-else@example.com',
+    const other = makeTestCredentials();
+    const otherLogin = await https(instance).post('/auth/login', {
+      identifier: other.email,
       password: 'whatever1',
     });
-    expect(other.status).toBe(401);
+    expect(otherLogin.status).toBe(401);
   });
 
   test('successful logins do not count toward the failure limit', async () => {
+    const creds = makeTestCredentials();
     const instance = app();
-    await https(instance).post('/auth/register', credentials);
+    await https(instance).post('/auth/register', creds);
 
     for (let i = 0; i < 6; i++) {
-      expect((await https(instance).post('/auth/login', credentials)).status).toBe(200);
+      expect(
+        (
+          await https(instance).post('/auth/login', {
+            identifier: creds.email,
+            password: creds.password,
+          })
+        ).status,
+      ).toBe(200);
     }
   });
 

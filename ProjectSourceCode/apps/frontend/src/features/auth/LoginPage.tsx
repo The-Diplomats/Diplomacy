@@ -61,7 +61,7 @@ export function LoginPage() {
     }
 
     login.mutate(
-      { email: email.trim(), password },
+      { identifier: email.trim(), password },
       {
         onSuccess: () => navigate('/lobby'),
         onError: (err) => setFormError(authErrorMessage(err)),
