@@ -218,7 +218,7 @@ Both roles are purpose-built for Redis. Postgres can technically do either, poor
 
 **Kept from the lab stack:**
 - Node + Express + PostgreSQL (the backbone)
-- bcryptjs + express-session (lab auth pattern)
+- Password hashing + express-session (lab auth pattern, now with Node-native `crypto.scrypt`)
 - Docker Compose for local dev
 - Incremental schema evolution via committed SQL files
 
@@ -716,7 +716,7 @@ For each decision below, the **recommended** choice is what we plan to implement
 | DB client | **Drizzle ORM** | Typed queries; schema-in-TS as single source of truth; auto-generated migrations | Learning curve vs Lab 7's pg-promise | pg-promise | Lab standard; direct SQL | No typed queries; hand-written migrations scale poorly |
 | OpenAPI validation | **express-openapi-validator** | Spec is source of truth; enforced at request + response time | Reflection overhead; opaque deep-schema errors | Zod schemas → generate OpenAPI | Code as truth; best TS inference | Inverts contract-first; loses human-authored spec |
 | Session store | **connect-pg-simple** | Postgres already present; durable | 1 SELECT per authenticated request | connect-redis | Sub-ms lookups | Durability depends on Redis AOF |
-| Password hashing | **bcryptjs** | Pure JS; no native compile | ~10x slower than native (fine for login rate) | argon2 | Modern; GPU-resistant | Native compile; node-gyp pain in Alpine |
+| Password hashing | **`crypto.scrypt` (Node native)** | Zero dependencies; memory-hard; OWASP-approved tier | Slightly less modern than argon2 | argon2 | Current best-in-class; GPU-resistant | Native compile; node-gyp pain in Alpine |
 | OAuth library | **openid-client** | Generic OIDC; swap-in Google/GitHub later | Not Microsoft-specific | @azure/msal-node | Official Microsoft support | Azure-specific lock-in |
 | Logger | **pino** | Fast, JSON-structured, request-scoped child loggers | Terminal readability needs pino-pretty | winston | More transport plugins | Slower; more config |
 | Error handling | **Central middleware + plain `throw`** | Simple; Express 5 native async rejection | none | RFC 7807 Problem Details | Standardized error shape | More boilerplate |
@@ -771,7 +771,7 @@ Other decisions are more locked (e.g., Express 5 matches the lab stack directly;
 | Concern | Mitigation |
 |---|---|
 | **SQL injection** | Drizzle query builder (`db.select().from(...).where(eq(...))`) parameterizes by construction; any raw escape hatch (`db.execute(sql`…`)`) uses tagged-template parameters, never string concatenation. express-openapi-validator rejects malformed input before it reaches handlers. |
-| **Password storage** | bcryptjs with cost factor 10+. Never log passwords. |
+| **Password storage** | Node native `crypto.scrypt` (N=16384, r=8, p=1, OWASP-recommended). Never log passwords. |
 | **Session hijacking** | HTTP-only cookies; `SameSite=Lax; Secure` cookie scoped to `.<apex>` so frontend subdomain and api subdomain share one same-site context (HTTPS enforced in all envs). Sessions stored in Postgres (survives backend restarts). |
 | **XSS** | React auto-escapes by default. No `dangerouslySetInnerHTML` on user input. Content Security Policy header via helmet. |
 | **CSRF** | `SameSite=Lax` on the session cookie is the primary defense (browser enforced): the cookie is only sent on top-level navigations and same-site subresource requests. Defense-in-depth: strict `Origin` header check on both REST (CORS) and WebSocket (`allowRequest`) handshakes. CSRF tokens are optional given the SameSite=Lax baseline; we add them only if we introduce a cross-site workflow that requires `SameSite=None`. |
@@ -834,7 +834,7 @@ See the full week-by-week breakdown in the implementation plan. Summary:
 | **Adjudicator correctness**, writing a Diplomacy rules engine from scratch is famously edge-case heavy (60+ DATC cases) | High | Treat as isolated math library; port DATC cases from day 1; each PR touching adjudicator must keep DATC green; one file per DATC section maps to milestone progress |
 | **4-week timeline is 3.25x the per-week velocity of a semester plan** | High | Explicit ship-list vs stretch-list per week; clear slip order so cuts aren't improvised at the last moment |
 | **AI quality** on local Ollama may be poor | Medium | Acceptance threshold is "AI submits legal orders consistently," not "AI plays well." Fallback to §10 phase-default orders if 3 retries fail. Context pack can be iteratively improved |
-| **User authentication / data security** | High | bcryptjs, parameterized queries, `SameSite=Lax` cookies on a shared apex domain, HTTPS everywhere, OAuth via standard OIDC flow |
+| **User authentication / data security** | High | `crypto.scrypt`, parameterized queries, `SameSite=Lax` cookies on a shared apex domain, HTTPS everywhere, OAuth via standard OIDC flow |
 | **Cross-env config drift** | Medium | GH env secrets + ACA environment separation prevent values leaking. Infrastructure identical across envs (only values differ) |
 | **Teammate schedule disruption** (illness, etc.) | Medium | WS-4 holds flex-support role across all streams. WS-1 (adjudicator) is pure-function TypeScript with no I/O, so it's self-contained and easy for any stream to help with |
 | **Compose startup complexity** | Low | WS-4 scaffolds everything in M1; teammates don't touch framework config |

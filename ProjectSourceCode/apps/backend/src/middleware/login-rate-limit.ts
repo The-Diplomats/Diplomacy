@@ -50,10 +50,12 @@ export function createLoginRateLimit(
     limit: options.maxFailuresPerAccount,
     skipSuccessfulRequests: true,
     keyGenerator: (req) => {
-      const email = String((req.body as { email?: unknown } | undefined)?.email ?? '')
+      const identifier = String(
+        (req.body as { identifier?: unknown } | undefined)?.identifier ?? '',
+      )
         .trim()
         .toLowerCase();
-      return `${ipKeyGenerator(req.ip ?? '')}:${email}`;
+      return `${ipKeyGenerator(req.ip ?? '')}:${identifier}`;
     },
   });
 

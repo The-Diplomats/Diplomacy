@@ -4,16 +4,20 @@ import { createDbClient } from '@diplomacy/db';
 import cors from 'cors';
 
 import { createApp } from './app.js';
+import { VERIFICATION_CODE_TTL_MINUTES } from './auth/verification-code.js';
 import { logger } from './log.js';
 import { openApiErrorHandler } from './middleware/openapi-error-handler.js';
 import { createOpenApiValidator } from './middleware/openapi-validator.js';
 import { createSessionMiddleware } from './middleware/session.js';
-import { createUserRepository } from './repositories/users.js';
+import { initDb, shutdownDb } from './services/db.js';
+import { initEmails } from './services/emails.js';
 import { createSocketServer } from './socket.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 const sessionSecret = process.env.SESSION_SECRET;
 const frontendOriginsRaw = process.env.FRONTEND_ORIGINS;
+const emailFrom = process.env.EMAIL_FROM;
+const appUrl = process.env.APP_URL;
 
 if (!databaseUrl?.trim()) {
   logger.error('DATABASE_URL is required');
@@ -25,6 +29,14 @@ if (!sessionSecret?.trim()) {
 }
 if (!frontendOriginsRaw?.trim()) {
   logger.error('FRONTEND_ORIGINS is required (comma-separated list of allowed origins)');
+  process.exit(1);
+}
+if (!emailFrom?.trim()) {
+  logger.error('EMAIL_FROM is required');
+  process.exit(1);
+}
+if (!appUrl?.trim()) {
+  logger.error('APP_URL is required');
   process.exit(1);
 }
 
@@ -41,13 +53,23 @@ const openApiValidator = createOpenApiValidator({
   validateResponses: process.env.NODE_ENV !== 'production',
 });
 const { middleware: sessionMiddleware, pool } = createSessionMiddleware(databaseUrl, sessionSecret);
-const db = createDbClient(databaseUrl);
+
+initDb(createDbClient(databaseUrl));
+initEmails(
+  {
+    resendApiKey: process.env.RESEND_API_KEY?.trim() || undefined,
+    from: emailFrom,
+    appUrl,
+    codeExpiresInMinutes: VERIFICATION_CODE_TTL_MINUTES,
+  },
+  logger,
+);
+
 const app = createApp({
   corsMiddleware,
   openApiValidator,
   openApiErrorHandler,
   sessionMiddleware,
-  users: createUserRepository(db),
 });
 const httpServer = createServer(app);
 const socketServer = createSocketServer(httpServer, {
@@ -81,7 +103,7 @@ async function shutdown(signal: string): Promise<void> {
 
   try {
     await socketServer.close();
-    await Promise.all([pool.end(), db.$client.end()]);
+    await Promise.all([pool.end(), shutdownDb()]);
     clearTimeout(forceExit);
     logger.info('backend shutdown complete');
     process.exit(0);

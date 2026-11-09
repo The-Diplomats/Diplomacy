@@ -1,21 +1,10 @@
-import {
-  getAuthMe,
-  type LoginRequest,
-  postAuthLogin as postAuthLoginRequest,
-  postAuthLogout as postAuthLogoutRequest,
-  postAuthRegister as postAuthRegisterRequest,
-  type ProblemDetails,
-  type RegisterRequest,
-  type User,
-} from '@diplomacy/contracts';
+import type { getAuthMe, ProblemDetails } from '@diplomacy/contracts';
 
-// The generated client functions accept a pluggable `client`; derive its type
-// from them so the frontend doesn't need a direct dep on @kubb/plugin-client.
+// Derived from a generated client fn so this file doesn't depend on Kubb.
 type Client = NonNullable<NonNullable<Parameters<typeof getAuthMe>[0]>['client']>;
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? '/api';
 
-/** Thrown for any non-2xx response; carries the RFC 7807 problem body when present. */
 export class ApiError extends Error {
   readonly status: number;
   readonly title?: string;
@@ -31,11 +20,10 @@ export class ApiError extends Error {
 }
 
 /**
- * Fetch adapter for the generated Kubb client. Unlike Kubb's default fetch
- * client it prefixes VITE_API_URL, sends JSON with a Content-Type header,
- * includes the session cookie, and throws ApiError on non-2xx responses.
+ * Fetch adapter for the generated Kubb client. Prefixes VITE_API_URL, sends
+ * JSON, includes the session cookie, and throws ApiError on non-2xx.
  */
-const apiClient: Client = async (config) => {
+export const apiClient: Client = async (config) => {
   const headers = new Headers(config.headers);
   const hasBody = config.data !== undefined;
   if (hasBody) {
@@ -51,7 +39,9 @@ const apiClient: Client = async (config) => {
   });
 
   const body: unknown =
-    response.status === 204 ? undefined : await response.json().catch(() => undefined);
+    response.status === 204 || response.status === 202
+      ? undefined
+      : await response.json().catch(() => undefined);
 
   if (!response.ok) {
     throw new ApiError(response.status, body as Partial<ProblemDetails> | undefined);
@@ -64,27 +54,3 @@ const apiClient: Client = async (config) => {
     headers: response.headers,
   };
 };
-
-/** Current session user, or null when not signed in. */
-export async function getAuthUser(signal?: AbortSignal): Promise<User | null> {
-  try {
-    return await getAuthMe({ client: apiClient, signal });
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
-      return null;
-    }
-    throw err;
-  }
-}
-
-export function postAuthLogin(body: LoginRequest): Promise<User> {
-  return postAuthLoginRequest(body, { client: apiClient });
-}
-
-export function postAuthRegister(body: RegisterRequest): Promise<User> {
-  return postAuthRegisterRequest(body, { client: apiClient });
-}
-
-export async function postAuthLogout(): Promise<void> {
-  await postAuthLogoutRequest({ client: apiClient });
-}

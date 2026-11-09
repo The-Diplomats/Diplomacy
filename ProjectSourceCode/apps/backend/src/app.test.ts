@@ -1,12 +1,12 @@
 import cors from 'cors';
 import session from 'express-session';
 import supertest from 'supertest';
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
 import { createApp } from './app.js';
 import { openApiErrorHandler } from './middleware/openapi-error-handler.js';
 import { createOpenApiValidator } from './middleware/openapi-validator.js';
-import { createInMemoryUserRepository } from './test/in-memory-users.js';
+import { setupTestServices, teardownTestServices } from './test/db.js';
 
 const corsMiddleware = cors({ origin: ['http://localhost'], credentials: true });
 
@@ -25,11 +25,18 @@ function app() {
     openApiValidator,
     openApiErrorHandler,
     sessionMiddleware,
-    users: createInMemoryUserRepository(),
   });
 }
 
 describe('backend app', () => {
+  beforeAll(() => {
+    setupTestServices();
+  });
+
+  afterAll(async () => {
+    await teardownTestServices();
+  });
+
   test('GET /health returns ok', async () => {
     const response = await supertest(app()).get('/health');
     expect(response.status).toBe(200);

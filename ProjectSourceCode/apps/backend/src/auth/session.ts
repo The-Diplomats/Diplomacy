@@ -16,7 +16,7 @@ export async function establishSession(
   await new Promise<void>((resolve, reject) => {
     req.session.regenerate((err) => (err ? reject(err) : resolve()));
   });
-  req.session.user = { id: user.id, email: user.email };
+  req.session.user = { id: user.id, email: user.email, username: user.username };
   await new Promise<void>((resolve, reject) => {
     req.session.save((err) => (err ? reject(err) : resolve()));
   });

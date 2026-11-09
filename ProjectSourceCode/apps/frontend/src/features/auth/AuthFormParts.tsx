@@ -1,57 +1,10 @@
 import { cn } from 'cn';
 import { type ComponentProps, type ReactNode, useState } from 'react';
 
-import { Themed } from '../../components/Themed';
-import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { passwordStrength } from './validation';
 
-/** Card centered over the map backdrop, shared by the login and register pages. */
-export function AuthShell({
-  subtitle,
-  footer,
-  children,
-}: {
-  subtitle: string;
-  footer?: ReactNode;
-  children: ReactNode;
-}) {
-  return (
-    <Themed className="pointer-events-none fixed inset-0 z-10 flex items-center justify-center">
-      <div
-        className="relative flex items-center justify-center p-6"
-        style={{
-          aspectRatio: '2120 / 1427',
-          width: 'min(100vw, calc(100vh * 2120 / 1427))',
-          height: 'min(100vh, calc(100vw * 1427 / 2120))',
-        }}
-      >
-        <div className="absolute inset-0 bg-background/10 backdrop-blur-sm" aria-hidden />
-        <Card
-          size="sm"
-          className="pointer-events-auto relative w-96 gap-5 bg-card/95 shadow-xl backdrop-blur-sm"
-        >
-          <CardHeader className="items-center space-y-1 text-center">
-            <h1
-              className="text-5xl text-foreground"
-              style={{ fontFamily: '"Great Vibes", cursive' }}
-            >
-              Diplomacy
-            </h1>
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          </CardHeader>
-
-          <CardContent>{children}</CardContent>
-
-          {footer && <div className="pb-5 text-center text-xs text-muted-foreground">{footer}</div>}
-        </Card>
-      </div>
-    </Themed>
-  );
-}
-
-/** Label + input slot + inline error (or hint). Wire `aria-describedby={`${id}-msg`}` on the input. */
 export function AuthField({
   id,
   label,
@@ -82,7 +35,6 @@ export function AuthField({
   );
 }
 
-/** Password input with a Show/Hide toggle. */
 export function PasswordInput({
   visible,
   onToggleVisible,

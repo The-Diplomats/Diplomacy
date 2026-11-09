@@ -3,12 +3,11 @@ import { ThemeProvider } from 'next-themes';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
 import { LoadingOverlay } from './components/LoadingOverlay.tsx';
-import { LoginPage } from './features/auth/LoginPage.tsx';
-import { RegisterPage } from './features/auth/RegisterPage.tsx';
+import { AuthGate } from './features/auth/AuthGate.tsx';
+import { AuthPanel } from './features/auth/AuthPanel.tsx';
 import { GamePage } from './features/game/GamePage.tsx';
 import { LobbyPage } from './features/lobby/LobbyPage.tsx';
 import { MapBackdrop } from './features/map/MapBackdrop.tsx';
-// New: Import Game Rules Page
 import GameRules from './features/rules/GameRules.tsx';
 
 const queryClient = new QueryClient();
@@ -27,16 +26,33 @@ export function App() {
         <BrowserRouter>
           <MapBackdrop />
           <Routes>
-            <Route path="/" element={<Navigate to="/game/test" replace />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/lobby" element={<LobbyPage />} />
-            <Route path="/game/:id" element={<GamePage />} />
-
-            {/* New: Game Rules Page route */}
+            <Route path="/" element={<Navigate to="/lobby" replace />} />
+            <Route path="/auth/login" element={<AuthPanel mode="login" />} />
+            <Route path="/auth/register" element={<AuthPanel mode="register" />} />
+            <Route path="/auth/register/verify" element={<AuthPanel mode="register-verify" />} />
+            <Route path="/auth/password-reset" element={<AuthPanel mode="password-reset" />} />
+            <Route
+              path="/auth/password-reset/verify"
+              element={<AuthPanel mode="password-reset-verify" />}
+            />
+            <Route
+              path="/lobby"
+              element={
+                <AuthGate>
+                  <LobbyPage />
+                </AuthGate>
+              }
+            />
+            <Route
+              path="/game/:id"
+              element={
+                <AuthGate>
+                  <GamePage />
+                </AuthGate>
+              }
+            />
             <Route path="/rules" element={<GameRules />} />
-
-            <Route path="*" element={<LobbyPage />} />
+            <Route path="*" element={<Navigate to="/lobby" replace />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>
