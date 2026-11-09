@@ -126,6 +126,9 @@ catalogs:
     express-openapi-validator:
       specifier: ^5.6.2
       version: 5.6.2
+    express-rate-limit:
+      specifier: ^8.7.3
+      version: 8.7.3
     express-session:
       specifier: ^1.19.0
       version: 1.19.0
@@ -275,6 +278,9 @@ importers:
       express-openapi-validator:
         specifier: 'catalog:'
         version: 5.6.2(@types/json-schema@7.0.15)(express@5.3.0(supports-color@10.2.2))
+      express-rate-limit:
+        specifier: 'catalog:'
+        version: 8.7.3(express@5.3.0(supports-color@10.2.2))(supports-color@10.2.2)
       express-session:
         specifier: 'catalog:'
         version: 1.19.0(supports-color@10.2.2)
@@ -3300,6 +3306,12 @@ packages:
     resolution: {integrity: sha512-fkDn4+ImUC4HTJ1g0cek/ItqYhmEO19AglJd2Iw2OJco0jLIbxIlDGVazmXbvvYeziU4Bnah2h+S2tb6NtWg8w==}
     peerDependencies:
       express: '*'
+
+  express-rate-limit@8.7.3:
+    resolution: {integrity: sha512-zPLqDI2f0gV2WmGnacLf9XSSqn4VldRyP5LCzOwx0BKH40mO6+2PCFkoSsRO2jePx87/Kf6NUF6P2QOTKXHbQA==}
+    engines: {node: '>= 16'}
+    peerDependencies:
+      express: '>= 4.11'
 
   express-session@1.19.0:
     resolution: {integrity: sha512-0csaMkGq+vaiZTmSMMGkfdCOabYv192VbytFypcvI0MANrp+4i/7yEkJ0sbAEhycQjntaKGzYfjfXQyVb7BHMA==}
@@ -8253,6 +8265,14 @@ snapshots:
       qs: 6.17.1
     transitivePeerDependencies:
       - '@types/json-schema'
+
+  express-rate-limit@8.7.3(express@5.3.0(supports-color@10.2.2))(supports-color@10.2.2):
+    dependencies:
+      debug: 4.4.3(supports-color@10.2.2)
+      express: 5.3.0(supports-color@10.2.2)
+      ip-address: 10.7.5
+    transitivePeerDependencies:
+      - supports-color
 
   express-session@1.19.0(supports-color@10.2.2):
     dependencies:

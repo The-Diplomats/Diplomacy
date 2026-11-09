@@ -1,4 +1,4 @@
-import { openApiSpec } from '@diplomacy/contracts';
+import { openApiSpec } from '@diplomacy/contracts/spec';
 import { type RequestHandler } from 'express';
 import { middleware as createOpenApiMiddleware } from 'express-openapi-validator';
 

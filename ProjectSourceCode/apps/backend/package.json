@@ -17,18 +17,19 @@
   "dependencies": {
     "@diplomacy/contracts": "workspace:^",
     "@diplomacy/db": "workspace:^",
+    "@socket.io/redis-adapter": "catalog:",
     "connect-pg-simple": "catalog:",
     "cors": "catalog:",
     "express": "catalog:",
     "express-openapi-validator": "catalog:",
+    "express-rate-limit": "catalog:",
     "express-session": "catalog:",
     "helmet": "catalog:",
     "ioredis": "catalog:",
     "pg": "catalog:",
     "pino": "catalog:",
     "pino-http": "catalog:",
-    "socket.io": "catalog:",
-    "@socket.io/redis-adapter": "catalog:"
+    "socket.io": "catalog:"
   },
   "devDependencies": {
     "@types/connect-pg-simple": "catalog:",

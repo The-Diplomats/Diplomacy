@@ -4,6 +4,7 @@ import { pinoHttp } from 'pino-http';
 
 import { logger } from './log.js';
 import { surfaceRouter } from './middleware/surface-router.js';
+import { type UserRepository } from './repositories/users.js';
 import { createAdminSurface } from './routes/admin/index.js';
 import { createApiSurface } from './routes/api/index.js';
 
@@ -12,6 +13,7 @@ interface AppConfig {
   openApiValidator: RequestHandler[];
   openApiErrorHandler: ErrorRequestHandler;
   sessionMiddleware: RequestHandler;
+  users: UserRepository;
 }
 
 export function createApp(config: AppConfig): Express {
@@ -28,7 +30,7 @@ export function createApp(config: AppConfig): Express {
   app.use(config.sessionMiddleware);
 
   app.use(createAdminSurface());
-  app.use(createApiSurface(config.openApiValidator));
+  app.use(createApiSurface(config.openApiValidator, { users: config.users }));
 
   app.use(config.openApiErrorHandler);
 
