@@ -1,17 +1,28 @@
-import type { LoginRequest, RegisterRequest, User } from '@diplomacy/contracts';
+import type {
+  LoginRequest,
+  PasswordResetRequest,
+  PasswordResetVerifyRequest,
+  RegisterRequest,
+  RegisterResendRequest,
+  RegisterVerifyRequest,
+  User,
+} from '@diplomacy/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { ApiError } from '../../api/client';
 import {
-  ApiError,
   getAuthUser,
   postAuthLogin,
   postAuthLogout,
+  postAuthPasswordReset,
+  postAuthPasswordResetVerify,
   postAuthRegister,
-} from '../../api/client';
+  postAuthRegisterResend,
+  postAuthRegisterVerify,
+} from './api';
 
 export const sessionQueryKey = ['session'] as const;
 
-/** The signed-in user (`null` when signed out), restored from the session cookie. */
 export function useSession() {
   return useQuery({
     queryKey: sessionQueryKey,
@@ -29,10 +40,37 @@ export function useLogin() {
   });
 }
 
+/** 202 only: no session established until the user verifies via the emailed code. */
 export function useRegister() {
-  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: RegisterRequest) => postAuthRegister(body),
+  });
+}
+
+export function useRegisterVerify() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RegisterVerifyRequest) => postAuthRegisterVerify(body),
+    onSuccess: (user) => queryClient.setQueryData<User | null>(sessionQueryKey, user),
+  });
+}
+
+export function useRegisterResend() {
+  return useMutation({
+    mutationFn: (body: RegisterResendRequest) => postAuthRegisterResend(body),
+  });
+}
+
+export function usePasswordReset() {
+  return useMutation({
+    mutationFn: (body: PasswordResetRequest) => postAuthPasswordReset(body),
+  });
+}
+
+export function usePasswordResetVerify() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: PasswordResetVerifyRequest) => postAuthPasswordResetVerify(body),
     onSuccess: (user) => queryClient.setQueryData<User | null>(sessionQueryKey, user),
   });
 }
@@ -41,18 +79,19 @@ export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: postAuthLogout,
-    // The session may already be gone server-side; clear local state regardless.
     onSettled: () => queryClient.setQueryData<User | null>(sessionQueryKey, null),
   });
 }
 
-/** Form-level message for a failed auth request (field-specific cases are handled by callers). */
 export function authErrorMessage(err: unknown): string {
   if (!(err instanceof ApiError)) {
     return "Couldn't reach the server. Check your connection and try again.";
   }
   if (err.status === 401) {
-    return 'Incorrect email or password.';
+    return 'Invalid credentials.';
+  }
+  if (err.status === 403) {
+    return 'Please verify your email before signing in.';
   }
   if (err.status === 429) {
     return 'Too many attempts. Please wait a moment and try again.';
