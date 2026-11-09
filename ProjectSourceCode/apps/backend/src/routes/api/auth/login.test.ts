@@ -1,6 +1,7 @@
 import supertest from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
+import { resetAuthRateLimits } from '../../../middleware/auth-rate-limits.js';
 import { createTestApp, httpsClient, registerAndVerify } from '../../../test/auth-client.js';
 import {
   capturedEmails,
@@ -16,6 +17,7 @@ describe('POST /auth/login', () => {
 
   beforeEach(() => {
     capturedEmails.length = 0;
+    resetAuthRateLimits();
   });
 
   afterAll(async () => {

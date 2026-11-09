@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
+import { resetAuthRateLimits } from '../../../middleware/auth-rate-limits.js';
 import { createTestApp, httpsClient, registerAndVerify } from '../../../test/auth-client.js';
 import {
   capturedEmails,
@@ -15,6 +16,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   capturedEmails.length = 0;
+  resetAuthRateLimits();
 });
 
 afterAll(async () => {
@@ -155,6 +157,18 @@ describe('POST /auth/register/verify', () => {
       code: '000000',
     });
     expect(res.status).toBe(400);
+  });
+});
+
+describe('POST /auth/register rate limit', () => {
+  test('returns 429 after 5 attempts from the same IP within the window', async () => {
+    const instance = createTestApp();
+    for (let i = 0; i < 5; i++) {
+      const res = await httpsClient(instance).post('/auth/register', makeTestCredentials());
+      expect(res.status).toBe(202);
+    }
+    const blocked = await httpsClient(instance).post('/auth/register', makeTestCredentials());
+    expect(blocked.status).toBe(429);
   });
 });
 

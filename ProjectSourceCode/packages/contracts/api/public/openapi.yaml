@@ -118,6 +118,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
   /auth/register/verify:
     post:
@@ -143,6 +149,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
   /auth/register/resend:
     post:
@@ -158,6 +170,12 @@ paths:
       responses:
         '202':
           description: Fresh verification email sent (enumeration-safe)
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
   /auth/password-reset:
     post:
@@ -173,6 +191,12 @@ paths:
       responses:
         '202':
           description: Reset email sent (enumeration-safe)
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
   /auth/password-reset/verify:
     post:
@@ -194,6 +218,12 @@ paths:
                 $ref: '#/components/schemas/User'
         '400':
           description: Invalid or expired code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
           content:
             application/json:
               schema:

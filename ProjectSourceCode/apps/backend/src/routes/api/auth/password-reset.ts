@@ -3,6 +3,10 @@ import { type Request, type Response, Router } from 'express';
 import { hashPassword } from '../../../auth/password.js';
 import { establishSession } from '../../../auth/session.js';
 import { generateVerificationCode, hashVerificationCode } from '../../../auth/verification-code.js';
+import {
+  passwordResetRateLimit,
+  passwordResetVerifyRateLimit,
+} from '../../../middleware/auth-rate-limits.js';
 import { db } from '../../../services/db.js';
 import { emails } from '../../../services/emails.js';
 
@@ -26,31 +30,36 @@ interface VerifyBody {
 
 export const passwordResetRouter = Router();
 
-passwordResetRouter.post('/', async (req: Request<object, unknown, BeginBody>, res: Response) => {
-  const email = req.body.email.trim().toLowerCase();
-  const user = await db.users.findByEmail(email);
+passwordResetRouter.post(
+  '/',
+  passwordResetRateLimit,
+  async (req: Request<object, unknown, BeginBody>, res: Response) => {
+    const email = req.body.email.trim().toLowerCase();
+    const user = await db.users.findByEmail(email);
 
-  if (user && user.emailVerifiedAt && user.passwordHash) {
-    await db.verificationTokens.invalidateOutstanding(user.id, 'password_reset');
-    const code = generateVerificationCode();
-    const token = await db.verificationTokens.create({
-      userId: user.id,
-      purpose: 'password_reset',
-      tokenHash: hashVerificationCode(code),
-      expiresAt: new Date(Date.now() + CODE_TTL_MS),
-    });
-    await emails.auth.passwordReset(user.email, {
-      username: user.username,
-      code,
-      tokenId: token.id,
-    });
-  }
+    if (user && user.emailVerifiedAt && user.passwordHash) {
+      await db.verificationTokens.invalidateOutstanding(user.id, 'password_reset');
+      const code = generateVerificationCode();
+      const token = await db.verificationTokens.create({
+        userId: user.id,
+        purpose: 'password_reset',
+        tokenHash: hashVerificationCode(code),
+        expiresAt: new Date(Date.now() + CODE_TTL_MS),
+      });
+      await emails.auth.passwordReset(user.email, {
+        username: user.username,
+        code,
+        tokenId: token.id,
+      });
+    }
 
-  return res.status(202).end();
-});
+    return res.status(202).end();
+  },
+);
 
 passwordResetRouter.post(
   '/verify',
+  passwordResetVerifyRateLimit,
   async (req: Request<object, unknown, VerifyBody>, res: Response) => {
     const email = req.body.email.trim().toLowerCase();
     const code = req.body.code;
