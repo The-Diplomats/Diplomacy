@@ -10,6 +10,7 @@ import { LobbyPage } from './features/lobby/LobbyPage.tsx';
 import { MapBackdrop } from './features/map/MapBackdrop.tsx';
 // New: Import Game Rules Page
 import GameRules from './features/rules/GameRules.tsx';
+import SiteRules from './features/rules/SiteRules.tsx';
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ export function App() {
 
             {/* New: Game Rules Page route */}
             <Route path="/rules" element={<GameRules />} />
+            <Route path="/site-rules" element={<SiteRules />} />
 
             <Route path="*" element={<LobbyPage />} />
           </Routes>

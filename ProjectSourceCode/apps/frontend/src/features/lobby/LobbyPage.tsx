@@ -1,4 +1,4 @@
-import { BookOpen, Plus, Users } from 'lucide-react';
+import { BookOpen, Plus, ScrollText, Users } from 'lucide-react';
 import { Link } from 'react-router';
 
 import mapThumbnail from '../../../maps/classical.svg?url';
@@ -93,6 +93,14 @@ export function LobbyPage() {
               >
                 <BookOpen className="h-4 w-4" />
                 How to Play
+              </Link>
+
+              <Link
+                to="/site-rules"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2.5 text-sm font-medium text-foreground shadow-xs transition-all hover:bg-muted"
+              >
+                <ScrollText className="h-4 w-4" />
+                Site Rules
               </Link>
 
               <NewGameButton />
