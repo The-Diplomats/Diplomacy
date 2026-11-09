@@ -2,6 +2,7 @@ import { Link } from 'react-router';
 
 import { Themed } from '../../components/Themed';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
+import { HUDSlot } from '../game/HUDSlot';
 import { LoginForm } from './LoginForm';
 import { PasswordResetForm } from './PasswordResetForm';
 import { PasswordResetVerifyForm } from './PasswordResetVerifyForm';
@@ -14,33 +15,57 @@ export type AuthMode =
 
 export function AuthPanel({ mode }: { mode: AuthMode }) {
   return (
-    <Themed className="pointer-events-none fixed inset-0 z-10 flex items-center justify-start p-6">
-      <Card
-        size="sm"
-        className="pointer-events-auto w-96 gap-5 bg-card/95 shadow-xl backdrop-blur-sm"
+    <Themed className="fixed inset-0 z-10 flex items-center justify-center overflow-hidden">
+      <div
+        className="relative"
+        style={{
+          aspectRatio: '2120 / 1427',
+          width: 'min(100vw, calc(100vh * 2120 / 1427))',
+          height: 'min(100vh, calc(100vw * 1427 / 2120))',
+        }}
       >
-        <CardHeader className="items-center space-y-1 text-center">
-          <h1 className="text-5xl text-foreground" style={{ fontFamily: '"Great Vibes", cursive' }}>
-            Diplomacy
-          </h1>
-          <p className="text-sm text-muted-foreground">{subtitleFor(mode)}</p>
-        </CardHeader>
+        <HUDSlot position="left">
+          <Card
+            size="sm"
+            className="pointer-events-auto w-96 gap-5 bg-card/95 shadow-xl backdrop-blur-sm"
+          >
+            <CardHeader className="items-center space-y-1 text-center">
+              <h1 className="text-xl font-semibold text-foreground">{titleFor(mode)}</h1>
+              <p className="text-sm text-muted-foreground">{subtitleFor(mode)}</p>
+            </CardHeader>
 
-        <CardContent>
-          {mode === 'login' && <LoginForm />}
-          {mode === 'register' && <RegisterForm />}
-          {mode === 'register-verify' && <RegisterVerifyForm />}
-          {mode === 'password-reset' && <PasswordResetForm />}
-          {mode === 'password-reset-verify' && <PasswordResetVerifyForm />}
-        </CardContent>
+            <CardContent>
+              {mode === 'login' && <LoginForm />}
+              {mode === 'register' && <RegisterForm />}
+              {mode === 'register-verify' && <RegisterVerifyForm />}
+              {mode === 'password-reset' && <PasswordResetForm />}
+              {mode === 'password-reset-verify' && <PasswordResetVerifyForm />}
+            </CardContent>
 
-        <div className="space-y-2 pb-5 text-center text-xs text-muted-foreground">
-          {mode === 'register-verify' && <RegisterResendButton />}
-          {footerFor(mode)}
-        </div>
-      </Card>
+            <div className="space-y-2 pb-5 text-center text-xs text-muted-foreground">
+              {mode === 'register-verify' && <RegisterResendButton />}
+              {footerFor(mode)}
+            </div>
+          </Card>
+        </HUDSlot>
+      </div>
     </Themed>
   );
+}
+
+function titleFor(mode: AuthMode): string {
+  switch (mode) {
+    case 'login':
+      return 'Sign in';
+    case 'register':
+      return 'Register';
+    case 'register-verify':
+      return 'Verify email';
+    case 'password-reset':
+      return 'Reset password';
+    case 'password-reset-verify':
+      return 'Set a new password';
+  }
 }
 
 function subtitleFor(mode: AuthMode): string {
