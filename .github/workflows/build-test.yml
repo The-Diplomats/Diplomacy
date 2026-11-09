@@ -61,4 +61,6 @@ jobs:
       - name: Install Playwright Chromium for frontend browser tests
         run: pnpm --filter frontend exec playwright install --with-deps chromium
       - run: pnpm -r build
+      - name: Apply database migrations
+        run: pnpm --filter @diplomacy/db migrate
       - run: pnpm -r test
