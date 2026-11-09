@@ -15,7 +15,7 @@ export type AuthMode =
 
 export function AuthPanel({ mode }: { mode: AuthMode }) {
   return (
-    <Themed className="fixed inset-0 z-10 flex items-center justify-center overflow-hidden">
+    <Themed className="pointer-events-none fixed inset-0 z-10 flex items-center justify-center overflow-hidden">
       <div
         className="relative"
         style={{
