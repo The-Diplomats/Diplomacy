@@ -3,8 +3,10 @@ import { randomUUID } from 'node:crypto';
 import { createDbClient, type DbClient } from '@diplomacy/db';
 import { pino } from 'pino';
 
+import { createAuthEmails } from '../email/auth-emails.js';
+import { type EmailPayload, type EmailSender } from '../email/sender.js';
 import { initDb, shutdownDb } from '../services/db.js';
-import { initEmails } from '../services/emails.js';
+import { setEmails } from '../services/emails.js';
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl?.trim()) {
@@ -15,36 +17,26 @@ const silentLogger = pino({ level: 'silent' });
 
 let client: DbClient | undefined;
 
-/**
- * Initialize services against the real Postgres pointed at by DATABASE_URL.
- * Call once per test file in `beforeAll`; pair with `teardownTestServices` in
- * `afterAll` to close the connection pool.
- */
+/** Call in beforeAll; pair with teardownTestServices in afterAll. */
 export function setupTestServices(): DbClient {
   client = createDbClient(databaseUrl!);
   initDb(client);
-  initEmails(
-    {
-      // Unset so the sender logs instead of delivering during tests.
-      resendApiKey: undefined,
-      from: 'test@test.local',
+  setEmails({
+    auth: createAuthEmails(capturingSender, {
       appUrl: 'http://localhost',
       codeExpiresInMinutes: 15,
-    },
-    silentLogger,
-  );
+    }),
+  });
   return client;
 }
 
 export async function teardownTestServices(): Promise<void> {
+  // Ignore the silent logger reference; vitest will tear the module down.
+  silentLogger.level = 'silent';
   await shutdownDb();
 }
 
-/**
- * Generates fresh unique credentials for a test. Tests that need two distinct
- * users call it twice. Tests that need duplicates deliberately reuse fields.
- * The randomized local parts keep tests parallel-safe against a shared DB.
- */
+/** Randomized per call, so tests run in parallel against a shared DB without collisions. */
 export function makeTestCredentials() {
   const id = randomUUID().slice(0, 8);
   return {
@@ -52,4 +44,29 @@ export function makeTestCredentials() {
     username: `User_${id}`,
     password: 'correct-horse',
   };
+}
+
+/** Reset per-test via `capturedEmails.length = 0`. */
+export const capturedEmails: EmailPayload[] = [];
+
+const capturingSender: EmailSender = {
+  async send(payload) {
+    capturedEmails.push(payload);
+  },
+};
+
+export function lastCapturedEmail(): EmailPayload | undefined {
+  return capturedEmails.at(-1);
+}
+
+export function extractCodeFromLastEmail(): string {
+  const email = lastCapturedEmail();
+  if (!email) {
+    throw new Error('No email was captured');
+  }
+  const match = email.text.match(/\b(\d{6})\b/);
+  if (!match?.[1]) {
+    throw new Error('No 6-digit code found in captured email');
+  }
+  return match[1];
 }

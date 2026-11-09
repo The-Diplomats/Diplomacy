@@ -99,10 +99,10 @@ paths:
     post:
       operationId: postAuthRegister
       tags: [Auth]
-      summary: Create an account and sign in
+      summary: Begin account registration (verification email sent)
       description: >
-        Current scaffold shim: creates the account eagerly and establishes a session.
-        Changes to a 202 enumeration-safe response once the verify-email flow lands.
+        Creates the user in an unverified state and emails a verification code.
+        Response is intentionally generic to prevent email enumeration.
       requestBody:
         required: true
         content:
@@ -110,20 +110,10 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
-        '201':
-          description: Account created (session cookie set)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
+        '202':
+          description: Verification email sent (or would have been; response is enumeration-safe)
         '400':
           description: Validation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '409':
-          description: Email or username already registered
           content:
             application/json:
               schema:

@@ -42,6 +42,24 @@ services:
     command: ['pnpm', '--filter', '@diplomacy/db', 'run', 'migrate']
     restart: 'no'
 
+  # One-shot: seeds 5 dev teammate accounts. Local-compose only; the production
+  # Docker image doesn't ship src/scripts/ and the NODE_ENV guard blocks it.
+  seeder:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+      target: dev
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgres://diplomacy:diplomacy@postgres:5432/diplomacy
+    volumes:
+      - ./apps/backend/src:/app/apps/backend/src
+      - ./packages/db/dist:/app/packages/db/dist
+    command: ['pnpm', '--filter', 'backend', 'run', 'seed:container']
+    restart: 'no'
+
   backend:
     build:
       context: .

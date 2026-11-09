@@ -16,6 +16,12 @@ const INVALID_CREDENTIALS = {
   detail: 'Invalid credentials.',
 } as const;
 
+const NOT_VERIFIED = {
+  title: 'Forbidden',
+  status: 403,
+  detail: 'Please verify your email before signing in.',
+} as const;
+
 // Verified against when no usable account exists, so unknown identifiers take
 // roughly as long as wrong passwords (avoids account enumeration by timing).
 const dummyHash = hashPassword('timing-equalization-placeholder');
@@ -33,6 +39,10 @@ loginRouter.post(
     const valid = await verifyPassword(req.body.password, user?.passwordHash ?? (await dummyHash));
     if (!user?.passwordHash || !valid) {
       return res.status(401).json(INVALID_CREDENTIALS);
+    }
+
+    if (!user.emailVerifiedAt) {
+      return res.status(403).json(NOT_VERIFIED);
     }
 
     const publicUser = { id: user.id, email: user.email, username: user.username };

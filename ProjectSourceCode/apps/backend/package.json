@@ -11,6 +11,8 @@
     "test:watch": "vitest",
     "dev": "tsx watch --env-file=.env src/index.ts | pnpm exec pino-pretty",
     "dev:container": "tsx watch src/index.ts",
+    "seed": "tsx --env-file=.env src/scripts/seed.ts | pnpm exec pino-pretty",
+    "seed:container": "tsx src/scripts/seed.ts",
     "start": "node dist/index.js",
     "clean": "rm -rf dist"
   },
@@ -18,7 +20,6 @@
     "@diplomacy/contracts": "workspace:^",
     "@diplomacy/db": "workspace:^",
     "@socket.io/redis-adapter": "catalog:",
-    "drizzle-orm": "catalog:",
     "connect-pg-simple": "catalog:",
     "cors": "catalog:",
     "drizzle-orm": "catalog:",

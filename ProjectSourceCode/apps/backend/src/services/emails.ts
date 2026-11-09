@@ -9,6 +9,11 @@ export interface Emails {
 
 export let emails: Emails;
 
+/** Escape hatch for tests: swap the emails singleton for one backed by a capturing sender. */
+export function setEmails(instance: Emails): void {
+  emails = instance;
+}
+
 export interface EmailsConfig {
   resendApiKey?: string;
   from: string;
