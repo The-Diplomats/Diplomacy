@@ -18,6 +18,7 @@
     "@diplomacy/contracts": "workspace:^",
     "@diplomacy/db": "workspace:^",
     "@socket.io/redis-adapter": "catalog:",
+    "drizzle-orm": "catalog:",
     "connect-pg-simple": "catalog:",
     "cors": "catalog:",
     "drizzle-orm": "catalog:",

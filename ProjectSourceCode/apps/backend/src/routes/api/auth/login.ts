@@ -47,7 +47,7 @@ export function createLoginRouter(
         return res.status(401).json(INVALID_CREDENTIALS);
       }
 
-      const publicUser = { id: user.id, email: user.email };
+      const publicUser = { id: user.id, email: user.email, username: user.username };
       await establishSession(req, publicUser);
       return res.status(200).json(publicUser);
     },
