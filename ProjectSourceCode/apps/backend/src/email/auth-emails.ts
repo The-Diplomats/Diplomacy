@@ -11,22 +11,8 @@ export interface AuthEmailsConfig {
 }
 
 export interface AuthEmails {
-  verifyRegister(
-    to: string,
-    params: {
-      username: string;
-      code: string;
-      tokenId: string;
-    },
-  ): Promise<void>;
-  passwordReset(
-    to: string,
-    params: {
-      username: string;
-      code: string;
-      tokenId: string;
-    },
-  ): Promise<void>;
+  verifyRegister(to: string, params: { username: string; code: string }): Promise<void>;
+  passwordReset(to: string, params: { username: string; code: string }): Promise<void>;
   securityNotice(to: string, params: { username: string }): Promise<void>;
 }
 
@@ -34,8 +20,9 @@ export function createAuthEmails(sender: EmailSender, config: AuthEmailsConfig):
   const { appUrl, codeExpiresInMinutes } = config;
 
   return {
-    async verifyRegister(to, { username, code, tokenId }) {
-      const verifyUrl = `${appUrl}/auth/register/verify?code=${code}&id=${tokenId}`;
+    async verifyRegister(to, { username, code }) {
+      const params = new URLSearchParams({ code, identifier: to });
+      const verifyUrl = `${appUrl}/auth/register/verify?${params.toString()}`;
       await sender.send({
         to,
         ...verifyRegisterTemplate({
@@ -47,8 +34,9 @@ export function createAuthEmails(sender: EmailSender, config: AuthEmailsConfig):
       });
     },
 
-    async passwordReset(to, { username, code, tokenId }) {
-      const resetUrl = `${appUrl}/auth/password-reset/verify?code=${code}&id=${tokenId}`;
+    async passwordReset(to, { username, code }) {
+      const params = new URLSearchParams({ code, email: to });
+      const resetUrl = `${appUrl}/auth/password-reset/verify?${params.toString()}`;
       await sender.send({
         to,
         ...passwordResetTemplate({

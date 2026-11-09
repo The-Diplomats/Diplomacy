@@ -77,6 +77,8 @@ services:
       REDIS_URL: redis://redis:6379
       SESSION_SECRET: dev-only-change-me-minimum-32-chars-long-string
       FRONTEND_ORIGINS: http://localhost:5173
+      EMAIL_FROM: no-reply@email.diplomacy.gg
+      APP_URL: http://localhost:5173
       PORT: '3001'
       LOG_LEVEL: info
       NODE_ENV: development

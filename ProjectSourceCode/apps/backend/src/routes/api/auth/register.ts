@@ -130,11 +130,11 @@ async function issueVerificationEmail(
 ): Promise<void> {
   await db.verificationTokens.invalidateOutstanding(userId, 'email_verify');
   const code = generateVerificationCode();
-  const token = await db.verificationTokens.create({
+  await db.verificationTokens.create({
     userId,
     purpose: 'email_verify',
     tokenHash: hashVerificationCode(code),
     expiresAt: new Date(Date.now() + CODE_TTL_MS),
   });
-  await emails.auth.verifyRegister(email, { username, code, tokenId: token.id });
+  await emails.auth.verifyRegister(email, { username, code });
 }

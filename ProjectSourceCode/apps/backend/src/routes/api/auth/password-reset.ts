@@ -40,17 +40,13 @@ passwordResetRouter.post(
     if (user && user.emailVerifiedAt && user.passwordHash) {
       await db.verificationTokens.invalidateOutstanding(user.id, 'password_reset');
       const code = generateVerificationCode();
-      const token = await db.verificationTokens.create({
+      await db.verificationTokens.create({
         userId: user.id,
         purpose: 'password_reset',
         tokenHash: hashVerificationCode(code),
         expiresAt: new Date(Date.now() + CODE_TTL_MS),
       });
-      await emails.auth.passwordReset(user.email, {
-        username: user.username,
-        code,
-        tokenId: token.id,
-      });
+      await emails.auth.passwordReset(user.email, { username: user.username, code });
     }
 
     return res.status(202).end();

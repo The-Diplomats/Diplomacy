@@ -31,6 +31,25 @@ instant. `--kill-others-on-fail` tears down all three lanes together if any one 
 Edit any `apps/*/src/*`: tsx reloads inside the container. Edit any `packages/*/src/*`: host tsc rebuilds dist, the
 bind-mount propagates into the container, tsx reloads. Zero manual steps.
 
+## Dev accounts (local only)
+
+The `seeder` compose service inserts five pre-verified teammate accounts on `pnpm dev` / `docker compose up`. All share
+the same password so you can log in without running the verify-email flow. Login accepts either the email or the
+username as the identifier.
+
+| Identifier                          | Password               |
+| ----------------------------------- | ---------------------- |
+| `rez@diplomacy.gg` (or `rez`)       | `diplomacy-dev-shared` |
+| `brynne@diplomacy.gg` (or `brynne`) | `diplomacy-dev-shared` |
+| `justin@diplomacy.gg` (or `justin`) | `diplomacy-dev-shared` |
+| `nabl@diplomacy.gg` (or `nate`)     | `diplomacy-dev-shared` |
+| `deven@diplomacy.gg` (or `deven`)   | `diplomacy-dev-shared` |
+
+The seed script refuses to run when `NODE_ENV=production`; cloud envs never get these accounts.
+
+To exercise the register / verify / password-reset flows, register a fresh email instead. With `RESEND_API_KEY` unset
+(the local default), codes print to the backend logs: `docker compose logs backend`.
+
 ## VS Code
 
 On first open, click yes to "Would you like to use the workspace's version of TypeScript?" so IDE diagnostics match CLI
