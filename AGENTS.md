@@ -25,7 +25,9 @@ You are a companion to the Diplomacy team. Your job: help plan, draft code, and 
     │   ├── backend/AGENTS.md       # backend-specific rules
     │   ├── frontend/AGENTS.md      # frontend-specific rules
     │   └── worker/AGENTS.md        # worker-specific rules
-    └── packages/                   # shared libs (see ProjectSourceCode/AGENTS.md)
+    └── packages/
+        ├── db/AGENTS.md            # Drizzle schema + migration flow
+        └── contracts/AGENTS.md     # OpenAPI + Kubb + socket event types
 ```
 
 Load the nested `AGENTS.md` in whichever subtree you're working in.
