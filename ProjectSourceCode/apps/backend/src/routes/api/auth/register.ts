@@ -2,34 +2,146 @@ import { type Request, type Response, Router } from 'express';
 
 import { hashPassword } from '../../../auth/password.js';
 import { establishSession } from '../../../auth/session.js';
-import { type UserRepository } from '../../../repositories/users.js';
+import {
+  generateVerificationCode,
+  hashVerificationCode,
+  VERIFICATION_CODE_TTL_MS,
+} from '../../../auth/verification-code.js';
+import { logger } from '../../../log.js';
+import {
+  registerRateLimit,
+  registerResendRateLimit,
+  registerVerifyRateLimit,
+} from '../../../middleware/auth-rate-limits.js';
+import { db } from '../../../services/db.js';
+import { emails } from '../../../services/emails.js';
 
-// Request shape (email format, password minLength 8, no extra fields) is
-// enforced by the OpenAPI validator before this handler runs.
-interface RegisterBody {
+const INVALID_OR_EXPIRED = {
+  title: 'Bad Request',
+  status: 400,
+  detail: 'Invalid or expired code.',
+} as const;
+
+interface BeginBody {
   email: string;
+  username: string;
   password: string;
 }
 
-export function createRegisterRouter(users: UserRepository): Router {
-  const router = Router();
+interface VerifyBody {
+  identifier: string;
+  code: string;
+}
 
-  router.post('/register', async (req: Request<object, unknown, RegisterBody>, res: Response) => {
+interface ResendBody {
+  identifier: string;
+}
+
+export const registerRouter = Router();
+
+registerRouter.post(
+  '/',
+  registerRateLimit,
+  async (req: Request<object, unknown, BeginBody>, res: Response) => {
     const email = req.body.email.trim().toLowerCase();
-    const passwordHash = await hashPassword(req.body.password);
+    const username = req.body.username.trim();
+    const password = req.body.password;
 
-    const user = await users.create({ email, passwordHash });
-    if (!user) {
-      return res.status(409).json({
-        title: 'Conflict',
-        status: 409,
-        detail: 'An account with this email already exists.',
-      });
+    const existingByUsername = await db.users.findByUsername(username);
+    const existingByEmail = await db.users.findByEmail(email);
+
+    if (existingByUsername && existingByUsername.email !== email) {
+      if (existingByUsername.emailVerifiedAt) {
+        void emails.auth
+          .securityNotice(existingByUsername.email, { username: existingByUsername.username })
+          .catch((err) => logger.error({ err }, 'failed to send security notice'));
+      }
+      return res.status(202).end();
     }
 
-    await establishSession(req, user);
-    return res.status(201).json(user);
-  });
+    if (existingByEmail) {
+      if (existingByEmail.emailVerifiedAt) {
+        void emails.auth
+          .securityNotice(existingByEmail.email, { username: existingByEmail.username })
+          .catch((err) => logger.error({ err }, 'failed to send security notice'));
+        return res.status(202).end();
+      }
+      // Replace the stored hash so the password the user just typed is the one
+      // that works once they verify. Without this, re-registering with a new
+      // password silently keeps the old hash.
+      const passwordHash = await hashPassword(password);
+      await db.users.updatePasswordHash(existingByEmail.id, passwordHash);
+      await issueVerificationEmail(
+        existingByEmail.id,
+        existingByEmail.email,
+        existingByEmail.username,
+      );
+      return res.status(202).end();
+    }
 
-  return router;
+    const passwordHash = await hashPassword(password);
+    const created = await db.users.create({ email, username, passwordHash });
+    if (!created) {
+      return res.status(202).end();
+    }
+    await issueVerificationEmail(created.id, created.email, created.username);
+    return res.status(202).end();
+  },
+);
+
+registerRouter.post(
+  '/verify',
+  registerVerifyRateLimit,
+  async (req: Request<object, unknown, VerifyBody>, res: Response) => {
+    const identifier = req.body.identifier.trim();
+    const code = req.body.code;
+
+    const user = await db.users.findByIdentifier(identifier);
+    if (!user || user.emailVerifiedAt) {
+      return res.status(400).json(INVALID_OR_EXPIRED);
+    }
+
+    const token = await db.verificationTokens.findActive(user.id, 'email_verify');
+    if (!token || token.tokenHash !== hashVerificationCode(code)) {
+      return res.status(400).json(INVALID_OR_EXPIRED);
+    }
+
+    await db.verificationTokens.markUsed(token.id);
+    await db.users.markEmailVerified(user.id);
+
+    const publicUser = { id: user.id, email: user.email, username: user.username };
+    await establishSession(req, publicUser);
+    return res.status(200).json(publicUser);
+  },
+);
+
+registerRouter.post(
+  '/resend',
+  registerResendRateLimit,
+  async (req: Request<object, unknown, ResendBody>, res: Response) => {
+    const identifier = req.body.identifier.trim();
+    const user = await db.users.findByIdentifier(identifier);
+
+    if (user && !user.emailVerifiedAt) {
+      await issueVerificationEmail(user.id, user.email, user.username);
+    }
+
+    return res.status(202).end();
+  },
+);
+
+async function issueVerificationEmail(
+  userId: string,
+  email: string,
+  username: string,
+): Promise<void> {
+  await db.verificationTokens.invalidateOutstanding(userId, 'email_verify');
+  const code = generateVerificationCode();
+  await db.verificationTokens.create({
+    userId,
+    purpose: 'email_verify',
+    tokenHash: hashVerificationCode(code),
+    expiresAt: new Date(Date.now() + VERIFICATION_CODE_TTL_MS),
+  });
+  await emails.auth.verifyRegister(email, { username, code });
 }

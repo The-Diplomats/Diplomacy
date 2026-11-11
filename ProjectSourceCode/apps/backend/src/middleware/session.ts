@@ -2,7 +2,7 @@ import connectPgSimple from 'connect-pg-simple';
 import session, { type SessionOptions } from 'express-session';
 import pg from 'pg';
 
-import { logger } from '../log';
+import { logger } from '../log.js';
 
 const PgStore = connectPgSimple(session);
 
@@ -29,10 +29,11 @@ export function createSessionMiddleware(connectionString: string, secret: string
     resave: false,
     saveUninitialized: false,
     cookie: {
+      domain: process.env.COOKIE_DOMAIN || undefined,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+      maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days,
     },
   };
 

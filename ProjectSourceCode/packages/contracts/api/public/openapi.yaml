@@ -62,7 +62,7 @@ paths:
     post:
       operationId: postAuthLogin
       tags: [Auth]
-      summary: Log in with email and password
+      summary: Log in with email-or-username and password
       requestBody:
         required: true
         content:
@@ -77,7 +77,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/User'
         '401':
-          description: Invalid email or password
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Email not yet verified
           content:
             application/json:
               schema:
@@ -93,7 +99,10 @@ paths:
     post:
       operationId: postAuthRegister
       tags: [Auth]
-      summary: Create an account and sign in
+      summary: Begin account registration (verification email sent)
+      description: >
+        Creates the user in an unverified state and emails a verification code.
+        Response is intentionally generic to prevent email enumeration.
       requestBody:
         required: true
         content:
@@ -101,20 +110,114 @@ paths:
             schema:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
-        '201':
-          description: Account created (session cookie set)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '409':
-          description: Email already registered
+        '202':
+          description: Verification email sent (or would have been; response is enumeration-safe)
+        '400':
+          description: Validation failed
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-        '422':
-          description: Validation failed
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/register/verify:
+    post:
+      operationId: postAuthRegisterVerify
+      tags: [Auth]
+      summary: Complete registration with the emailed verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterVerifyRequest'
+      responses:
+        '200':
+          description: Verified and logged in (session cookie set)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid or expired code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/register/resend:
+    post:
+      operationId: postAuthRegisterResend
+      tags: [Auth]
+      summary: Resend the email verification code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterResendRequest'
+      responses:
+        '202':
+          description: Fresh verification email sent (enumeration-safe)
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/password-reset:
+    post:
+      operationId: postAuthPasswordReset
+      tags: [Auth]
+      summary: Request a password reset code via email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetRequest'
+      responses:
+        '202':
+          description: Reset email sent (enumeration-safe)
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/password-reset/verify:
+    post:
+      operationId: postAuthPasswordResetVerify
+      tags: [Auth]
+      summary: Complete password reset with the emailed code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetVerifyRequest'
+      responses:
+        '200':
+          description: Password updated, logged in (session cookie set)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid or expired code
           content:
             application/json:
               schema:
@@ -152,7 +255,7 @@ components:
 
     User:
       type: object
-      required: [id, email]
+      required: [id, email, username]
       additionalProperties: false
       properties:
         id:
@@ -161,27 +264,80 @@ components:
         email:
           type: string
           format: email
+        username:
+          type: string
 
     LoginRequest:
       type: object
-      required: [email, password]
+      required: [identifier, password]
       additionalProperties: false
       properties:
-        email:
+        identifier:
           type: string
-          format: email
+          description: Email address or username
+          minLength: 1
         password:
           type: string
+          minLength: 1
 
     RegisterRequest:
       type: object
-      required: [email, password]
+      required: [email, username, password]
       additionalProperties: false
       properties:
         email:
           type: string
           format: email
+        username:
+          type: string
+          pattern: '^[a-zA-Z0-9_]{3,20}$'
+          description: 3-20 chars, alphanumeric or underscore
         password:
+          type: string
+          minLength: 8
+
+    RegisterVerifyRequest:
+      type: object
+      required: [identifier, code]
+      additionalProperties: false
+      properties:
+        identifier:
+          type: string
+          description: Email address or username
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+
+    RegisterResendRequest:
+      type: object
+      required: [identifier]
+      additionalProperties: false
+      properties:
+        identifier:
+          type: string
+          description: Email address or username
+
+    PasswordResetRequest:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+
+    PasswordResetVerifyRequest:
+      type: object
+      required: [email, code, newPassword]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+        newPassword:
           type: string
           minLength: 8
 

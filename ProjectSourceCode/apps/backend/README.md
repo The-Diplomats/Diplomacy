@@ -16,13 +16,19 @@ environments set env vars via the container runtime config, not from `.env`.
 
 ### Required env vars
 
-- `DATABASE_URL`: Postgres connection string (session store)
+- `DATABASE_URL`: Postgres connection string (session store + application data)
 - `SESSION_SECRET`: cookie signing secret
 - `FRONTEND_ORIGINS`: comma-separated list of allowed origins (CORS + Socket.IO)
+- `EMAIL_FROM`: sender address for transactional email (e.g. `no-reply@email.diplomacy.gg`)
+- `APP_URL`: base URL of the frontend app, used to build email links (e.g. `http://localhost:5173` in dev)
 
 ### Optional env vars
 
 - `REDIS_URL`: enables the Socket.IO Redis adapter. Without it, the in-memory adapter is used.
+- `COOKIE_DOMAIN`: cookie domain for cross-subdomain session sharing (e.g. `.diplomacy.gg` in cloud envs). Leave unset
+  locally.
+- `RESEND_API_KEY`: Resend API key for sending transactional email. Without it, emails are logged to the console instead
+  of delivered.
 - `PORT` (default 3001), `LOG_LEVEL` (default info), `NODE_ENV` (default development)
 
 ## Scripts
@@ -31,6 +37,30 @@ environments set env vars via the container runtime config, not from `.env`.
 - `pnpm --filter backend test`: Vitest + supertest
 - `pnpm --filter backend... build`: compile backend + its workspace deps in dep order
 - `pnpm --filter backend start`: run compiled dist/index.js
+- `pnpm --filter backend seed`: insert the dev teammate accounts (auto-run by `docker compose up` via the `seeder`
+  service; credentials documented in the monorepo README)
+
+## Testing
+
+Tests are integration tests: they hit a real Postgres via `DATABASE_URL`, go through the full Express stack, and
+generate unique data per test so they run in parallel safely.
+
+Before running `pnpm --filter backend test` locally:
+
+1. Start Postgres via docker compose: `docker compose up -d postgres`
+2. Apply migrations: `pnpm --filter @diplomacy/db migrate`
+3. Ensure `DATABASE_URL` in `.env` points to the local Postgres
+
+Tests do not truncate between runs. Rows accumulate in the local DB over time; the unique-data-per-test pattern keeps
+them non-colliding. If local data gets cluttered, reset with `docker compose down -v && docker compose up -d postgres`
+then re-run step 2. CI uses an ephemeral Postgres container, so accumulation is irrelevant there.
+
+For writing tests, use the helpers in `src/test/db.ts`:
+
+- `setupTestServices()` in `beforeAll` wires the service singletons against the real DB.
+- `teardownTestServices()` in `afterAll` closes the pool.
+- `makeTestCredentials()` returns fresh unique credentials each call. Use twice for tests needing two distinct users;
+  reuse specific fields for duplicate-detection tests.
 
 ## Surfaces
 

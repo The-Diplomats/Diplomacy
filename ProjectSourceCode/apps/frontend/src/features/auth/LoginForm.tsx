@@ -1,49 +1,37 @@
 import { ChevronRight } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Separator } from '../../components/ui/separator';
-import { AuthField, AuthShell, PasswordInput } from './AuthShell';
+import { AuthField, PasswordInput } from './AuthFormParts';
 import { SignedInPanel } from './SignedInPanel';
+import { useNextPath } from './useNextPath';
 import { authErrorMessage, useLogin, useSession } from './useSession';
-import { isValidEmail } from './validation';
 
-type Errors = Partial<Record<'email' | 'password', string>>;
+type Errors = Partial<Record<'identifier' | 'password', string>>;
 
-export function LoginPage() {
+export function LoginForm() {
   const navigate = useNavigate();
   const session = useSession();
   const login = useLogin();
+  const next = useNextPath();
 
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState('');
 
-  const footer = (
-    <>
-      No account?{' '}
-      <Link to="/register" className="font-medium text-foreground underline underline-offset-2">
-        Register
-      </Link>
-    </>
-  );
-
   if (session.data) {
-    return (
-      <AuthShell subtitle="Welcome back">
-        <SignedInPanel user={session.data} />
-      </AuthShell>
-    );
+    return <SignedInPanel user={session.data} />;
   }
 
   const validate = (): Errors => {
     const er: Errors = {};
-    if (!isValidEmail(email.trim())) {
-      er.email = 'Enter a valid email address.';
+    if (!identifier.trim()) {
+      er.identifier = 'Enter your email or username.';
     }
     if (!password) {
       er.password = 'Enter your password.';
@@ -51,7 +39,7 @@ export function LoginPage() {
     return er;
   };
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: { preventDefault(): void }) => {
     event.preventDefault();
     setFormError('');
     const er = validate();
@@ -61,16 +49,16 @@ export function LoginPage() {
     }
 
     login.mutate(
-      { email: email.trim(), password },
+      { identifier: identifier.trim(), password },
       {
-        onSuccess: () => navigate('/lobby'),
+        onSuccess: () => navigate(next, { replace: true }),
         onError: (err) => setFormError(authErrorMessage(err)),
       },
     );
   };
 
   return (
-    <AuthShell subtitle="Sign in to join the next round" footer={footer}>
+    <>
       {formError && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription className="text-destructive">{formError}</AlertDescription>
@@ -78,19 +66,19 @@ export function LoginPage() {
       )}
 
       <form className="flex flex-col gap-4" onSubmit={submit} noValidate>
-        <AuthField id="email" label="Email" error={errors.email}>
+        <AuthField id="identifier" label="Email or username" error={errors.identifier}>
           <Input
-            id="email"
-            type="email"
+            id="identifier"
+            type="text"
             placeholder="you@diplomacy.gg"
-            autoComplete="email"
-            value={email}
+            autoComplete="username"
+            value={identifier}
             onChange={(e) => {
-              setEmail(e.target.value);
-              setErrors((er) => ({ ...er, email: undefined }));
+              setIdentifier(e.target.value);
+              setErrors((er) => ({ ...er, identifier: undefined }));
             }}
-            aria-invalid={!!errors.email}
-            aria-describedby={errors.email ? 'email-msg' : undefined}
+            aria-invalid={!!errors.identifier}
+            aria-describedby={errors.identifier ? 'identifier-msg' : undefined}
           />
         </AuthField>
         <AuthField id="password" label="Password" error={errors.password}>
@@ -107,6 +95,14 @@ export function LoginPage() {
             aria-describedby={errors.password ? 'password-msg' : undefined}
           />
         </AuthField>
+        <div className="text-right">
+          <Link
+            to="/auth/password-reset"
+            className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+          >
+            Forgot password?
+          </Link>
+        </div>
         <Button type="submit" className="w-full" disabled={login.isPending}>
           {login.isPending ? 'Signing in…' : 'Sign in'}
           {!login.isPending && <ChevronRight />}
@@ -123,6 +119,6 @@ export function LoginPage() {
       <Button type="button" variant="outline" className="w-full">
         Continue with Microsoft
       </Button>
-    </AuthShell>
+    </>
   );
 }

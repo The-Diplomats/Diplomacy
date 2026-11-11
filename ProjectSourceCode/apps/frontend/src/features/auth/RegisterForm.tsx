@@ -1,47 +1,40 @@
 import { ChevronRight } from 'lucide-react';
-import { type ChangeEvent, type FormEvent, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { type ChangeEvent, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 
-import { ApiError } from '../../api/client';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Separator } from '../../components/ui/separator';
-import { AuthField, AuthShell, PasswordInput, PasswordStrengthMeter } from './AuthShell';
+import { AuthField, PasswordInput, PasswordStrengthMeter } from './AuthFormParts';
 import { SignedInPanel } from './SignedInPanel';
 import { authErrorMessage, useRegister, useSession } from './useSession';
 import { isValidEmail } from './validation';
 
-type Field = 'email' | 'password' | 'confirm';
+type Field = 'email' | 'username' | 'password' | 'confirm';
 type Errors = Partial<Record<Field, string>>;
 
-const MIN_PASSWORD_LENGTH = 8; // matches RegisterRequest.password.minLength
+const MIN_PASSWORD_LENGTH = 8;
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,20}$/;
 
-export function RegisterPage() {
+export function RegisterForm() {
   const navigate = useNavigate();
   const session = useSession();
   const register = useRegister();
+  const [searchParams] = useSearchParams();
 
-  const [form, setForm] = useState<Record<Field, string>>({ email: '', password: '', confirm: '' });
+  const [form, setForm] = useState<Record<Field, string>>({
+    email: '',
+    username: '',
+    password: '',
+    confirm: '',
+  });
   const [errors, setErrors] = useState<Errors>({});
   const [formError, setFormError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const footer = (
-    <>
-      Already have an account?{' '}
-      <Link to="/login" className="font-medium text-foreground underline underline-offset-2">
-        Sign in
-      </Link>
-    </>
-  );
-
   if (session.data) {
-    return (
-      <AuthShell subtitle="You already have an account">
-        <SignedInPanel user={session.data} />
-      </AuthShell>
-    );
+    return <SignedInPanel user={session.data} />;
   }
 
   const bind = (key: Field) => ({
@@ -60,6 +53,9 @@ export function RegisterPage() {
     if (!isValidEmail(form.email.trim())) {
       er.email = 'Enter a valid email address.';
     }
+    if (!USERNAME_PATTERN.test(form.username.trim())) {
+      er.username = '3-20 characters, letters, numbers or underscore.';
+    }
     if (form.password.length < MIN_PASSWORD_LENGTH) {
       er.password = `Use at least ${MIN_PASSWORD_LENGTH} characters.`;
     }
@@ -69,7 +65,7 @@ export function RegisterPage() {
     return er;
   };
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: { preventDefault(): void }) => {
     event.preventDefault();
     setFormError('');
     const er = validate();
@@ -79,22 +75,27 @@ export function RegisterPage() {
     }
 
     register.mutate(
-      { email: form.email.trim(), password: form.password },
       {
-        onSuccess: () => navigate('/lobby'),
-        onError: (err) => {
-          if (err instanceof ApiError && err.status === 409) {
-            setErrors({ email: 'An account with this email already exists.' });
-          } else {
-            setFormError(authErrorMessage(err));
+        email: form.email.trim(),
+        username: form.username.trim(),
+        password: form.password,
+      },
+      {
+        onSuccess: () => {
+          const params = new URLSearchParams({ identifier: form.email.trim() });
+          const next = searchParams.get('next');
+          if (next) {
+            params.set('next', next);
           }
+          navigate(`/auth/register/verify?${params.toString()}`);
         },
+        onError: (err) => setFormError(authErrorMessage(err)),
       },
     );
   };
 
   return (
-    <AuthShell subtitle="Create an account to play" footer={footer}>
+    <>
       {formError && (
         <Alert variant="destructive" className="mb-4">
           <AlertDescription className="text-destructive">{formError}</AlertDescription>
@@ -109,6 +110,15 @@ export function RegisterPage() {
             placeholder="you@diplomacy.gg"
             autoComplete="email"
             {...bind('email')}
+          />
+        </AuthField>
+        <AuthField id="username" label="Username" error={errors.username}>
+          <Input
+            id="username"
+            type="text"
+            placeholder="your_handle"
+            autoComplete="username"
+            {...bind('username')}
           />
         </AuthField>
         <AuthField
@@ -137,7 +147,7 @@ export function RegisterPage() {
           />
         </AuthField>
         <Button type="submit" className="w-full" disabled={register.isPending}>
-          {register.isPending ? 'Creating account…' : 'Create account'}
+          {register.isPending ? 'Sending code…' : 'Create account'}
           {!register.isPending && <ChevronRight />}
         </Button>
       </form>
@@ -152,6 +162,6 @@ export function RegisterPage() {
       <Button type="button" variant="outline" className="w-full">
         Continue with Microsoft
       </Button>
-    </AuthShell>
+    </>
   );
 }

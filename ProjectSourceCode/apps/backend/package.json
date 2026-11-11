@@ -11,6 +11,8 @@
     "test:watch": "vitest",
     "dev": "tsx watch --env-file=.env src/index.ts | pnpm exec pino-pretty",
     "dev:container": "tsx watch src/index.ts",
+    "seed": "tsx --env-file=.env src/scripts/seed.ts | pnpm exec pino-pretty",
+    "seed:container": "tsx src/scripts/seed.ts",
     "start": "node dist/index.js",
     "clean": "rm -rf dist"
   },
@@ -30,6 +32,7 @@
     "pg": "catalog:",
     "pino": "catalog:",
     "pino-http": "catalog:",
+    "resend": "catalog:",
     "socket.io": "catalog:"
   },
   "devDependencies": {
@@ -40,6 +43,7 @@
     "@types/node": "catalog:",
     "@types/pg": "catalog:",
     "@types/supertest": "catalog:",
+    "dotenv": "catalog:",
     "pino-pretty": "catalog:",
     "socket.io-client": "catalog:",
     "supertest": "catalog:",

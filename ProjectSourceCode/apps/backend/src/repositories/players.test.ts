@@ -17,9 +17,10 @@ const players = createPlayerRepository(db);
 const testUserIds: string[] = [];
 
 async function createTestUser() {
+  const uid = randomUUID().slice(0, 8);
   const [user] = await db
     .insert(users)
-    .values({ email: `${randomUUID()}@example.com` })
+    .values({ email: `test-${uid}@test.local`, username: `test_${uid}` })
     .returning({ id: users.id });
 
   if (!user) {

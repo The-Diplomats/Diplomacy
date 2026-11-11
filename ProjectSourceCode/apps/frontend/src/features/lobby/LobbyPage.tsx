@@ -23,8 +23,8 @@ type LobbyGame = {
 
 const MOCK_GAMES: LobbyGame[] = [
   {
-    id: 'autumn-classic',
-    name: 'Autumn Classic',
+    id: 'test',
+    name: 'Dev Test',
     players: 7,
     maxPlayers: 7,
     phase: 'Fall 1904 · Movement',
@@ -116,47 +116,50 @@ export function LobbyPage() {
 
 function GameCard({ game }: { game: LobbyGame }) {
   return (
-    <Card
-      size="sm"
-      className="flex-row gap-0 overflow-hidden bg-card/95 p-0 shadow-lg backdrop-blur-sm transition hover:shadow-xl"
+    <Link
+      to={`/game/${game.id}`}
+      className="block rounded-xl focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
     >
-      <div className="w-52 shrink-0 self-stretch bg-muted">
-        <img src={mapThumbnail} alt="" className="h-full w-full object-cover object-center" />
-      </div>
+      <Card
+        size="sm"
+        className="flex-row gap-0 overflow-hidden bg-card/95 p-0 shadow-lg backdrop-blur-sm transition hover:-translate-y-0.5 hover:shadow-xl"
+      >
+        <div className="w-52 shrink-0 self-stretch bg-muted">
+          <img src={mapThumbnail} alt="" className="h-full w-full object-cover object-center" />
+        </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex flex-col gap-0.5">
-            <CardTitle className="text-base font-bold">{game.name}</CardTitle>
+        <div className="flex flex-1 flex-col gap-3 p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-0.5">
+              <CardTitle className="text-base font-bold">{game.name}</CardTitle>
 
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Users className="h-3.5 w-3.5" />
-              <span>
-                {game.players}/{game.maxPlayers} players
-              </span>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Users className="h-3.5 w-3.5" />
+                <span>
+                  {game.players}/{game.maxPlayers} players
+                </span>
+              </div>
             </div>
+
+            <Badge variant={game.status === 'active' ? 'default' : 'secondary'}>
+              {STATUS_LABEL[game.status]}
+            </Badge>
           </div>
 
-          <Badge variant={game.status === 'active' ? 'default' : 'secondary'}>
-            {STATUS_LABEL[game.status]}
-          </Badge>
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground">{game.phase}</span>
+
+            {game.deadline && (
+              <span className="font-mono text-xs font-semibold text-foreground">
+                {game.deadline}
+              </span>
+            )}
+          </div>
         </div>
-
-        <Separator />
-
-        <div className="flex items-center justify-between">
-          <span className="text-xs text-muted-foreground">{game.phase}</span>
-
-          {game.deadline && (
-            <span className="font-mono text-xs font-semibold text-foreground">{game.deadline}</span>
-          )}
-        </div>
-
-        <Button variant="outline" size="sm" className="self-end">
-          Open
-        </Button>
-      </div>
-    </Card>
+      </Card>
+    </Link>
   );
 }
 

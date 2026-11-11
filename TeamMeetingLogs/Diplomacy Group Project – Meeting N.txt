@@ -2,6 +2,25 @@ Diplomacy Group Project – Meeting Notes
 Course: CSCI 3308 – Software Development Methods
 Meeting Type: Weekly TA Review
 
+Date: November 9, 2026
+Note: Automation made two releases
+
+Completed this week:
+Rez - Completed board updates, looked into other AI options, and added email verification to registration page. 
+Deven - Chat messages sends locally database work is in progress.
+Brynne - Login and registration flow work from end to end.
+Nathan - Databases configured for users and players, integration with chat messages and further tables pending.
+Justin - Began work on OpenAPI contract for game board, implementation to be completed. 
+
+Moving forward:
+Inclusion of AI LLM, Gemini Flash (free tier)
+Setting up cloud environments
+Chats finalization
+Frontend game states move from start to finish
+
+Major Blockers:
+Interdependent parts are slowing progress, notably the database infrastructure and the adjudicator need to be completed before the game can really be completed, though base functionality still seems achievable. 
+
 
 Date: November 2, 2026
 Scaffolding and project/repo frame is almost complete.
