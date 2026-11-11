@@ -16,6 +16,10 @@ export interface PlayerRepository {
 
   /** Retrieves a player profile by username. */
   findByUsername(username: string): Promise<PlayerProfile | null>;
+
+  /** Retrieves a player profile by user id **/
+  /** This may need to change later after database adjustments **/
+  findByUserId(userId: string): Promise<PlayerProfile | null>;
 }
 
 export function createPlayerRepository(db: DbClient): PlayerRepository {
@@ -41,6 +45,14 @@ export function createPlayerRepository(db: DbClient): PlayerRepository {
     async findByUsername(username) {
       const row = await db.query.players.findFirst({
         where: (p, { eq }) => eq(p.username, username),
+      });
+
+      return row ?? null;
+    },
+
+    async findByUserId(userId) {
+      const row = await db.query.players.findFirst({
+        where: (p, { eq }) => eq(p.userId, userId),
       });
 
       return row ?? null;
