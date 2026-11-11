@@ -77,6 +77,10 @@ gamesRouter.get('/', (_req: Request, res: Response<GamesList>) => {
 
 - **Provider is Resend** via `src/email/sender.ts`. `RESEND_API_KEY` unset → emails print to backend logs (logging
   sender). No teammate needs a real inbox for local dev.
+- **Logging sender is dev-only.** It writes verification codes and reset links straight into backend logs; a log reader
+  with those values can take over any account that got a code in the window. **Never deploy to stage/prod without
+  `RESEND_API_KEY` set.** The cloud env configs already provide it; the risk is a misconfigured one-off deploy or a
+  rotated key that wasn't re-applied. Treat an unset `RESEND_API_KEY` in a cloud env as a P0 incident, not a warning.
 - **Templates in `src/email/templates/`.** One file per email. Keep them plain HTML + small text fallback.
 - **Auth emails route through `emails.auth.*`** (`src/services/emails.ts`). Don't call `sender.send` directly from route
   handlers — go through the typed `AuthEmails` interface.

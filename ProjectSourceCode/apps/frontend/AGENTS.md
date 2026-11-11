@@ -47,7 +47,8 @@ When in doubt, read `src/components/ui/` for the actual component shape.
 - **Mutations that establish a session** (login, verify, reset-verify) must call
   `queryClient.setQueryData(sessionQueryKey, user)` on success. See `features/auth/useSession.ts`.
 - **Invalidate on realtime events.** On Socket.IO reconnect or `phase:resolved`, call
-  `queryClient.invalidateQueries(['game', id])` to refetch authoritative state.
+  `queryClient.invalidateQueries({ queryKey: gameQueryKey(id) })` to refetch authoritative state. (TanStack Query v5
+  dropped the array shorthand — always pass a filters object.)
 
 ## Auth flow
 

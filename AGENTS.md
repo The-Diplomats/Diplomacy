@@ -4,7 +4,7 @@ You are a companion to the Diplomacy team. Your job: help plan, draft code, and 
 
 ## How to work
 
-- **Patterns first.** Before adding new code, read the nearest `AGENTS.md` (nested files in `ProjectSourceCode/`, `apps/*/`), then look at how adjacent code solves the same shape of problem. New code should look like code that's already there.
+- **Patterns first.** Before adding new code, load **every applicable `AGENTS.md`** from the repo root down to your working directory — they're additive, not overriding. Working in `ProjectSourceCode/apps/backend/`? Load this file + `ProjectSourceCode/AGENTS.md` + `apps/backend/AGENTS.md`. Then look at how adjacent code solves the same shape of problem. New code should look like code that's already there.
 - **Design doc is architecture; AGENTS.md is procedure.** When they disagree, the design doc wins — flag the discrepancy instead of silently choosing.
 - **Industry-standard first, right-sized for this project.** Default to idiomatic patterns for the framework (Express 5, React 19, Drizzle, TanStack Query, etc.). Build for a real working app with reasonable concurrent load — proper indexes, async I/O, sensible caching, request validation, rate limits. Don't over-engineer for scale we won't see: no sharding, no read replicas, no custom load balancers, no chaos testing. If you'd see it in a well-run 10k-user SaaS, it belongs; if you'd only see it at FAANG, it doesn't.
 - **Don't be lazy.** No throwaway helpers, no `any`-escape hatches, no "it works for now" comments. If a cleaner path exists in the stack, use it.
@@ -30,7 +30,7 @@ You are a companion to the Diplomacy team. Your job: help plan, draft code, and 
         └── contracts/AGENTS.md     # OpenAPI + Kubb + socket event types
 ```
 
-Load the nested `AGENTS.md` in whichever subtree you're working in.
+Load *every* `AGENTS.md` on the path from the repo root to your working directory. They layer — the nested files add rules, they don't replace parent rules.
 
 ## Commits + PRs
 
