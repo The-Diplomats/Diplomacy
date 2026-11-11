@@ -101,11 +101,11 @@ gamesRouter.get('/', (_req: Request, res: Response<GamesList>) => {
 
 `src/surface.ts` classifies requests by hostname into three surfaces:
 
-| Hostname                 | Surface | Serves                           |
-| ------------------------ | ------- | -------------------------------- |
-| `api.*.diplomacy.gg`     | `api`   | HTTP routes + Socket.IO upgrades |
-| `admin.*.diplomacy.gg`   | `admin` | Bull Board + admin routes        |
-| `localhost`, `127.0.0.1` | `dev`   | Both api + admin routes          |
+| Hostname                                                                          | Surface | Serves                           |
+| --------------------------------------------------------------------------------- | ------- | -------------------------------- |
+| `api.diplomacy.gg` (prod), `api.stage.diplomacy.gg`, `api.dev.diplomacy.gg`       | `api`   | HTTP routes + Socket.IO upgrades |
+| `admin.diplomacy.gg` (prod), `admin.stage.diplomacy.gg`, `admin.dev.diplomacy.gg` | `admin` | Bull Board + admin routes        |
+| `localhost`, `127.0.0.1`                                                          | `dev`   | Both api + admin routes          |
 
 Unknown hosts return 404 at the first middleware. `require-admin.ts` gates admin routes by email allowlist.
 
@@ -159,8 +159,8 @@ Unknown hosts return 404 at the first middleware. `require-admin.ts` gates admin
 
 ## What not to do
 
-- Don't mount `express-openapi-validator` outside `/api`. It would reject the `/socket.io/` handshake with 404 and break
-  the WS upgrade.
+- Don't mount `express-openapi-validator` outside the API surface. It wraps only the API-surface routes; wrapping the
+  socket surface (`/socket.io/`) would reject the WS handshake with 404 and break the upgrade.
 - Don't construct a new DB client per handler. Use the service singleton.
 - Don't branch the enumeration-safe 202 responses based on user state. The response must look identical for new /
   existing-unverified / existing-verified.

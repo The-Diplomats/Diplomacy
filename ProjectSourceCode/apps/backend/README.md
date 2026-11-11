@@ -66,8 +66,8 @@ For writing tests, use the helpers in `src/test/db.ts`:
 
 Requests are classified by hostname into one of three surfaces:
 
-- `api.*.diplomacy.gg`: HTTP routes + Socket.IO upgrades
-- `admin.*.diplomacy.gg`: admin router
+- `api.diplomacy.gg` (prod) / `api.stage.diplomacy.gg` / `api.dev.diplomacy.gg`: HTTP routes + Socket.IO upgrades
+- `admin.diplomacy.gg` (prod) / `admin.stage.diplomacy.gg` / `admin.dev.diplomacy.gg`: admin router
 - `localhost`, `127.0.0.1`: dev surface, serves both api and admin routes
 
 Unknown hosts return 404 at the first middleware. The classifier lives in `src/surface.ts`.

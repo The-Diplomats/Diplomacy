@@ -131,4 +131,5 @@ pnpm -r <script>                        # every workspace
 - Don't add a new state library. TanStack Query for server state, Zustand for client state.
 - Don't introduce lodash/underscore. Native + small focused deps.
 - Don't write SQL migrations by hand. Use `drizzle-kit generate`.
-- Don't bypass `express-openapi-validator` by mounting outside `/api`.
+- Don't bypass `express-openapi-validator` by mounting routes outside the API surface. Every HTTP route under the API
+  surface must be covered by the spec; put non-spec routes (`/socket.io/`, admin tooling) on their own surface.
