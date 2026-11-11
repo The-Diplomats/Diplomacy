@@ -136,7 +136,7 @@ Unknown hosts return 404 at the first middleware. `require-admin.ts` gates admin
 ## Socket.IO
 
 - **Mounted at `/socket.io/`** on the `api` surface only. `express-openapi-validator` doesn't see WS handshakes by
-  design (it's mounted on `/api`).
+  design — it wraps only the API surface routes, not the socket surface.
 - **Event types come from `@diplomacy/contracts`** (`packages/contracts/src/sockets/events.ts`).
 - **Session is attached to the WS handshake** via `io.engine.use(sessionMiddleware)`. `socket.request.session` matches
   `req.session` from HTTP handlers.

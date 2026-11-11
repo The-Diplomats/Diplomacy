@@ -32,7 +32,9 @@ The spec at `packages/contracts/api/public/openapi.yaml` is **the** API contract
   the handler. The compiler will enforce the response shape via `@diplomacy/contracts` types.
 - **Never hand-edit `packages/contracts/src/generated/`** — it's regenerated from the spec.
 - **Breaking changes** need the `breaking-change-approved` PR label.
-- The validator is mounted on `/api` only — the Socket.IO handshake at `/socket.io/` is intentionally outside its scope.
+- The validator wraps the API surface routes only. The Socket.IO handshake at `/socket.io/` is a separate surface and
+  intentionally outside the validator's scope. The `/api` prefix some URLs use is a frontend+Vite-proxy convention, not
+  a backend mount path — see `packages/contracts/AGENTS.md` for the full explanation.
 
 ## Database (Drizzle)
 

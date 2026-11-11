@@ -12,7 +12,7 @@ packages/contracts/
 │   └── public/
 │       └── openapi.yaml        # the source of truth
 ├── src/
-│   ├── generated/              # Kubb output; committed; never hand-edit
+│   ├── generated/              # Kubb output; gitignored, regenerated at build time; never hand-edit
 │   ├── sockets/
 │   │   └── events.ts           # hand-written Socket.IO event types
 │   ├── spec.ts                 # loads the bundled spec for express-openapi-validator
@@ -33,15 +33,19 @@ The authoring workflow is strictly spec-first.
    `useListGames()`). Prefer verbs: `listGames`, `createGame`, `getGame`, `updateOrders`.
 3. **Regenerate the client**: `pnpm --filter @diplomacy/contracts build`. Writes TS types + fns + hooks to
    `src/generated/`.
-4. **Commit the spec change and the regenerated output together.** Reviewer sees the contract intent (YAML) and the
-   compile-time surface (TS) in one diff.
+4. **Commit the spec change** (the regenerated output under `src/generated/` is gitignored — don't try to add it).
+   Reviewers audit intent from the YAML diff; consumers regenerate locally via
+   `pnpm --filter @diplomacy/contracts build`.
 5. **Backend handler + frontend hook** both now typecheck against the same contract. See `apps/backend/AGENTS.md` for
    the handler side and `apps/frontend/AGENTS.md` for the client side.
 
 ## Spec conventions
 
-- **Mount-relative paths.** The validator is mounted on `/api`, so spec paths omit that prefix: `/games/{id}` in the
-  spec → `/api/games/123` on the wire. Kubb client sets its baseURL to `/api` to match.
+- **Spec paths are API-surface-root-relative.** The `express-openapi-validator` runs on the API surface at its root —
+  spec paths start with `/health`, `/auth/...`, `/games/...`. The `/api` prefix is a **frontend** convention:
+  `apiClient` defaults to `BASE_URL = /api`, and in local dev the Vite proxy strips `/api` before forwarding to the
+  backend. In cloud, the frontend hits `api.<env>.diplomacy.gg/...` directly with no prefix. Don't write `/api/foo` into
+  the spec.
 - **Schemas close by default.** Every object schema uses `additionalProperties: false` and an explicit `required:` list.
   Open schemas leak accidentally-included fields.
 - **Error responses use `ProblemDetails`** (RFC 7807 shape): `{ title, status, detail }`. One component schema,
@@ -77,8 +81,9 @@ The authoring workflow is strictly spec-first.
   `@kubb/plugin-react-query` (TanStack Query hooks).
 - **Don't add custom plugins** without discussion — Kubb's plugin order matters and misconfiguration often produces
   output that compiles but diverges from the spec at runtime.
-- **Generated code lives in-repo** (`src/generated/`) so the diff is reviewable on every spec change. The
-  `contract-check.yml` workflow regenerates and asserts the committed output matches.
+- **Generated code is gitignored** (`src/generated/`); it's a build-time artifact, not a reviewable diff.
+  `pnpm --filter @diplomacy/contracts build` regenerates it. The intent of each spec change is audited via the YAML
+  diff; the compile-time surface is enforced by consumers' `tsc` runs in CI.
 
 ## Redocly lint
 
@@ -95,10 +100,9 @@ The authoring workflow is strictly spec-first.
 
 ## What not to do
 
-- Don't hand-edit `src/generated/`. It's regenerated from the spec; your edit will be wiped on the next
-  `pnpm --filter @diplomacy/contracts build`.
-- Don't add OpenAPI endpoints that live outside `/api` (like `/socket.io/*`). The validator is mounted on `/api` only
-  and the spec reflects that scope.
+- Don't hand-edit `src/generated/`. It's gitignored and rewritten on every `pnpm --filter @diplomacy/contracts build`.
+- Don't add OpenAPI entries for non-HTTP surfaces (like `/socket.io/*`). WebSocket events are typed by hand in
+  `src/sockets/events.ts`; the OpenAPI spec is HTTP-only.
 - Don't skip `additionalProperties: false`. Open schemas leak fields the backend didn't intend to expose.
 - Don't use inline schemas for anything referenced more than once. Pull into `components.schemas:` so a future rename
   doesn't require editing every operation.

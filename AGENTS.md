@@ -4,7 +4,7 @@ You are a companion to the Diplomacy team. Your job: help plan, draft code, and 
 
 ## How to work
 
-- **Patterns first.** Before adding new code, load **every applicable `AGENTS.md`** from the repo root down to your working directory — they're additive, not overriding. Working in `ProjectSourceCode/apps/backend/`? Load this file + `ProjectSourceCode/AGENTS.md` + `apps/backend/AGENTS.md`. Then look at how adjacent code solves the same shape of problem. New code should look like code that's already there.
+- **Patterns first.** Before changing a file, load **every `AGENTS.md`** on the path from the repo root to **that file's directory** — not your working directory, the file's directory. Files are additive, not overriding. Editing `ProjectSourceCode/apps/backend/src/routes/api/foo.ts` means loading `AGENTS.md` + `ProjectSourceCode/AGENTS.md` + `ProjectSourceCode/apps/backend/AGENTS.md` regardless of where your shell is. Then look at how adjacent code solves the same shape of problem. New code should look like code that's already there.
 - **Design doc is architecture; AGENTS.md is procedure.** When they disagree, the design doc wins — flag the discrepancy instead of silently choosing.
 - **Industry-standard first, right-sized for this project.** Default to idiomatic patterns for the framework (Express 5, React 19, Drizzle, TanStack Query, etc.). Build for a real working app with reasonable concurrent load — proper indexes, async I/O, sensible caching, request validation, rate limits. Don't over-engineer for scale we won't see: no sharding, no read replicas, no custom load balancers, no chaos testing. If you'd see it in a well-run 10k-user SaaS, it belongs; if you'd only see it at FAANG, it doesn't.
 - **Don't be lazy.** No throwaway helpers, no `any`-escape hatches, no "it works for now" comments. If a cleaner path exists in the stack, use it.
@@ -30,14 +30,14 @@ You are a companion to the Diplomacy team. Your job: help plan, draft code, and 
         └── contracts/AGENTS.md     # OpenAPI + Kubb + socket event types
 ```
 
-Load *every* `AGENTS.md` on the path from the repo root to your working directory. They layer — the nested files add rules, they don't replace parent rules.
+For each file you're changing, load *every* `AGENTS.md` on the path from the repo root to that file's directory. They layer — nested files add rules, they don't replace parent rules.
 
 ## Commits + PRs
 
 - **Conventional Commits** are enforced by `commitlint` on PR titles and `commit-msg` hook. Format: `type(scope): subject`. Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`, `ci`, `perf`, `style`, `revert`.
 - **Don't commit directly to `main`.** `pre-commit` hook blocks it. Branch naming: `<author>/<type>/<issue-or-topic>` (e.g., `rez/feat/78/email-verify`).
 - **Breaking OpenAPI changes** require the `breaking-change-approved` label on the PR. `compat-check.yml` runs `oasdiff` and fails without the label.
-- **Don't use `--no-verify`.** Pre-commit / pre-push hooks exist on purpose. If one fails, fix the issue; don't bypass.
+- **Don't bypass pre-commit / pre-push hooks.** No `--no-verify` on commits or pushes. Hooks catch lint, typecheck, and format drift before they land; skipping them pushes the failure to CI where the whole team sees it. If a hook fails, fix the underlying issue and re-run. The only legitimate exception is an urgent hotfix where CI is faster than fixing locally — in that case, name the reason in the commit body and open a follow-up to fix what the hook caught. Agents should never bypass hooks autonomously; the teammate makes that call.
 - **One PR can contain multiple commits.** Preferred when splitting work logically (e.g., CP1 commit, CP2 commit, CP3 commit under one Session A PR). Don't open a PR per commit.
 
 ## Releases
@@ -46,7 +46,11 @@ Release-please owns versioning + changelog. It opens a Release PR against `main`
 
 ## CI gates
 
-A PR must pass: `commitlint`, `lint`, `test-build`, `contract-check` (when contracts changed), `compat-check` (when API spec changed), `e2e` (Compose stack). Post-merge: `deploy-dev` → `e2e-dev` → `release-please`. Tag → `deploy-stage` → `e2e-stage` → prod approval → `deploy-prod` → `smoke-prod`. Every E2E gate has a `workflow_dispatch` break-glass override requiring a `reason` input. See `DESIGN_DOC.md` §13.
+A PR must pass: `commitlint`, `lint`, `format`, `typecheck`, `build-test`, `contract-lint` (Redocly, when `packages/contracts/api/**` changed), `compat-check` (oasdiff breaking-change gate, when the spec changed). Post-merge deploy chain (planned): `deploy-dev` → `e2e-dev` → `release-please` → tag → `deploy-stage` → `e2e-stage` → prod approval → `deploy-prod` → `smoke-prod`, each E2E gate with a `workflow_dispatch` break-glass override requiring a `reason`. See `DESIGN_DOC.md` §13 for the full picture; `.github/workflows/` is the source of truth for what currently exists.
+
+## Troubleshooting
+
+- **Commit message / PR title rejected with an ambiguous "cannot be sentence case" error.** commitlint's conventional-commit rule requires the subject (everything after `type(scope): `) to start with a **lowercase** letter. `feat: Add login` fails; `feat: add login` passes. The error message doesn't mention casing clearly — if the lint fails and the title looks otherwise correct, check the first letter of the subject.
 
 ## When you're unsure
 
