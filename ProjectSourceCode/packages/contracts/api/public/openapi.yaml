@@ -17,6 +17,8 @@ tags:
     description: Service health
   - name: Auth
     description: Authentication
+  - name: Messages
+    description: Game chat
 
 paths:
   /health:
@@ -238,6 +240,51 @@ paths:
         '204':
           description: Signed out
 
+  /games/{gameId}/messages:
+    post:
+      operationId: postGameMessage
+      tags: [Messages]
+      summary: Send a chat message in a game
+      description: Sender is determined by which user is logged in, not sent in the request (to prevent impersonation)
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendMessageRequest'
+      responses:
+        '201':
+          description: Message saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Logged-in user is not in this game
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
 components:
   schemas:
     HealthStatus:
@@ -352,3 +399,37 @@ components:
           type: string
         status:
           type: integer
+
+    SendMessageRequest:
+      type: object
+      required: [text]
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
+    Message:
+      type: object
+      required: [id, gameId, fromPlayerId, toPlayerId, text, createdAt]
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        gameId:
+          type: string
+          format: uuid
+        fromPlayerId:
+          type: string
+          format: uuid
+        toPlayerId:
+          type: [string, 'null']
+          format: uuid
+          description: Null means public message
+        text:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
