@@ -57,6 +57,7 @@ services:
     volumes:
       - ./apps/backend/src:/app/apps/backend/src
       - ./packages/db/dist:/app/packages/db/dist
+      - ./packages/game-types/dist:/app/packages/game-types/dist
     command: ['pnpm', '--filter', 'backend', 'run', 'seed:container']
     restart: 'no'
 

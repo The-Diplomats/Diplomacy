@@ -1,5 +1,5 @@
 {
-  "id": "8558ca63-352d-47bd-8550-493484f0e838",
+  "id": "8005ecd2-2c54-48ec-9093-af91a05f39d5",
   "prevId": "e3516f13-b3ef-40e5-ad6a-794d52ff8a6b",
   "version": "7",
   "dialect": "postgresql",
@@ -46,8 +46,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.messages": {
-      "name": "messages",
+    "public.players": {
+      "name": "players",
       "schema": "",
       "columns": {
         "id": {
@@ -63,26 +63,28 @@
           "primaryKey": false,
           "notNull": true
         },
-        "from_player_id": {
-          "name": "from_player_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "to_player_id": {
-          "name": "to_player_id",
+        "user_id": {
+          "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
-        "text": {
-          "name": "text",
-          "type": "text",
+        "power": {
+          "name": "power",
+          "type": "power",
+          "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "created_at": {
-          "name": "created_at",
+        "is_ai": {
+          "name": "is_ai",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "joined_at": {
+          "name": "joined_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -90,8 +92,8 @@
         }
       },
       "indexes": {
-        "messages_game_id_created_at_idx": {
-          "name": "messages_game_id_created_at_idx",
+        "players_game_user_idx": {
+          "name": "players_game_user_idx",
           "columns": [
             {
               "expression": "game_id",
@@ -100,22 +102,43 @@
               "nulls": "last"
             },
             {
-              "expression": "created_at",
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": false,
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "players_game_power_idx": {
+          "name": "players_game_power_idx",
+          "columns": [
+            {
+              "expression": "game_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "power",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "messages_game_id_games_id_fk": {
-          "name": "messages_game_id_games_id_fk",
-          "tableFrom": "messages",
+        "players_game_id_games_id_fk": {
+          "name": "players_game_id_games_id_fk",
+          "tableFrom": "players",
           "tableTo": "games",
           "columnsFrom": [
             "game_id"
@@ -126,72 +149,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "messages_from_player_id_players_id_fk": {
-          "name": "messages_from_player_id_players_id_fk",
-          "tableFrom": "messages",
-          "tableTo": "players",
-          "columnsFrom": [
-            "from_player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "messages_to_player_id_players_id_fk": {
-          "name": "messages_to_player_id_players_id_fk",
-          "tableFrom": "messages",
-          "tableTo": "players",
-          "columnsFrom": [
-            "to_player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.players": {
-      "name": "players",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "username": {
-          "name": "username",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
         "players_user_id_users_id_fk": {
           "name": "players_user_id_users_id_fk",
           "tableFrom": "players",
@@ -207,22 +164,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "players_user_id_unique": {
-          "name": "players_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
-        },
-        "players_username_unique": {
-          "name": "players_username_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "username"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -486,6 +428,19 @@
         "active",
         "finished",
         "abandoned"
+      ]
+    },
+    "public.power": {
+      "name": "power",
+      "schema": "public",
+      "values": [
+        "austria",
+        "england",
+        "france",
+        "germany",
+        "italy",
+        "russia",
+        "turkey"
       ]
     }
   },

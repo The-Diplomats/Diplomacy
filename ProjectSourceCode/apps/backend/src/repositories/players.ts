@@ -1,60 +1,46 @@
 import { type DbClient, players } from '@diplomacy/db';
+import type { Power } from '@diplomacy/game-types';
 
-export interface PlayerProfile {
-  id: string;
-  userId: string;
-  username: string;
-  createdAt: Date;
-}
+export type PlayerSeat = typeof players.$inferSelect;
 
 export interface PlayerRepository {
-  /** Creates a player profile. Returns null if the username or user ID is taken. */
-  create(input: { userId: string; username: string }): Promise<PlayerProfile | null>;
+  /** Seats a user or AI into a game. Returns null when the seat (or power) is already taken. */
+  addSeat(input: {
+    gameId: string;
+    userId: string | null;
+    isAi?: boolean;
+    power?: Power;
+  }): Promise<PlayerSeat | null>;
 
-  /** Retrieves a player profile by its unique ID. */
-  findById(id: string): Promise<PlayerProfile | null>;
+  /** Lists every seat in a game. */
+  findByGame(gameId: string): Promise<PlayerSeat[]>;
 
-  /** Retrieves a player profile by username. */
-  findByUsername(username: string): Promise<PlayerProfile | null>;
-
-  /** Retrieves a player profile by user id **/
-  /** This may need to change later after database adjustments **/
-  findByUserId(userId: string): Promise<PlayerProfile | null>;
+  /** Retrieves a user's seat in a specific game. */
+  findByUserInGame(input: { gameId: string; userId: string }): Promise<PlayerSeat | null>;
 }
 
 export function createPlayerRepository(db: DbClient): PlayerRepository {
   return {
-    async create({ userId, username }) {
+    async addSeat({ gameId, userId, isAi = false, power }) {
       const [row] = await db
         .insert(players)
-        .values({ userId, username })
+        .values({ gameId, userId, isAi, power })
         .onConflictDoNothing()
         .returning();
 
       return row ?? null;
     },
 
-    async findById(id) {
-      const row = await db.query.players.findFirst({
-        where: (p, { eq }) => eq(p.id, id),
+    async findByGame(gameId) {
+      return db.query.players.findMany({
+        where: (p, { eq }) => eq(p.gameId, gameId),
       });
-
-      return row ?? null;
     },
 
-    async findByUsername(username) {
+    async findByUserInGame({ gameId, userId }) {
       const row = await db.query.players.findFirst({
-        where: (p, { eq }) => eq(p.username, username),
+        where: (p, { and, eq }) => and(eq(p.gameId, gameId), eq(p.userId, userId)),
       });
-
-      return row ?? null;
-    },
-
-    async findByUserId(userId) {
-      const row = await db.query.players.findFirst({
-        where: (p, { eq }) => eq(p.userId, userId),
-      });
-
       return row ?? null;
     },
   };

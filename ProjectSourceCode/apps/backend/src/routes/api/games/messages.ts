@@ -20,8 +20,10 @@ messagesRouter.post(
       return res.status(401).json({ title: 'Unauthorized', status: 401, detail: 'Not logged in.' });
     }
 
-    // TODO: come back here after players have game_id to look up which players are for this specific game
-    const player = await db.players.findByUserId(user.id);
+    const player = await db.players.findByUserInGame({
+      gameId: req.params.gameId,
+      userId: user.id,
+    });
     if (!player) {
       return res
         .status(403)
