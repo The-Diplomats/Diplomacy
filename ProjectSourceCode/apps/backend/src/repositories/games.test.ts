@@ -1,21 +1,21 @@
 import { randomUUID } from 'node:crypto';
 
-import { createDbClient, games, users } from '@diplomacy/db';
+import { type DbClient, games, users } from '@diplomacy/db';
 import { eq } from 'drizzle-orm';
-import { afterAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
-import { createGameRepository } from './games.js';
+import { setupTestServices, teardownTestServices } from '../test/db.js';
+import { createGameRepository, type GameRepository } from './games.js';
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error('DATABASE_URL is required for game repository tests');
-}
-
-const db = createDbClient(connectionString);
-const repo = createGameRepository(db);
+let db: DbClient;
+let repo: GameRepository;
 const testUserIds: string[] = [];
 const testGameIds: string[] = [];
+
+beforeAll(() => {
+  db = setupTestServices();
+  repo = createGameRepository(db);
+});
 
 async function createTestUser() {
   const uid = randomUUID().slice(0, 8);
@@ -39,6 +39,7 @@ afterAll(async () => {
   for (const id of testUserIds) {
     await db.delete(users).where(eq(users.id, id));
   }
+  await teardownTestServices();
 });
 
 describe('game repository', () => {
@@ -92,7 +93,6 @@ describe('game repository', () => {
     testGameIds.push(game.id);
 
     await db.delete(users).where(eq(users.id, userId));
-    // Pop from cleanup list since we've already deleted it.
     testUserIds.splice(testUserIds.indexOf(userId), 1);
 
     const found = await repo.findById(game.id);

@@ -1,21 +1,21 @@
 import { randomUUID } from 'node:crypto';
 
-import { createDbClient, games, users } from '@diplomacy/db';
+import { type DbClient, games, users } from '@diplomacy/db';
 import { eq } from 'drizzle-orm';
-import { afterAll, describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
-import { createPlayerRepository } from './players.js';
+import { setupTestServices, teardownTestServices } from '../test/db.js';
+import { createPlayerRepository, type PlayerRepository } from './players.js';
 
-const connectionString = process.env.DATABASE_URL;
-
-if (!connectionString) {
-  throw new Error('DATABASE_URL is required for player repository tests');
-}
-
-const db = createDbClient(connectionString);
-const players = createPlayerRepository(db);
+let db: DbClient;
+let players: PlayerRepository;
 const testUserIds: string[] = [];
 const testGameIds: string[] = [];
+
+beforeAll(() => {
+  db = setupTestServices();
+  players = createPlayerRepository(db);
+});
 
 async function createTestUser() {
   const uid = randomUUID().slice(0, 8);
@@ -54,6 +54,7 @@ afterAll(async () => {
   for (const id of testUserIds) {
     await db.delete(users).where(eq(users.id, id));
   }
+  await teardownTestServices();
 });
 
 describe('player repository', () => {
