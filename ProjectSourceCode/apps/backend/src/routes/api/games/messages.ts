@@ -1,20 +1,21 @@
+import type {
+  Message,
+  PostGameMessagePathParams,
+  ProblemDetails,
+  SendMessageRequest,
+} from '@diplomacy/contracts';
 import { type Request, type Response, Router } from 'express';
 
 import { db } from '../../../services/db.js';
-
-interface MessageParams {
-  gameId: string;
-}
-
-interface SendMessageBody {
-  text: string;
-}
 
 export const messagesRouter = Router();
 
 messagesRouter.post(
   '/:gameId/messages',
-  async (req: Request<MessageParams, unknown, SendMessageBody>, res: Response) => {
+  async (
+    req: Request<PostGameMessagePathParams, Message | ProblemDetails, SendMessageRequest>,
+    res: Response<Message | ProblemDetails>,
+  ) => {
     const user = req.session.user;
     if (!user) {
       return res.status(401).json({ title: 'Unauthorized', status: 401, detail: 'Not logged in.' });
