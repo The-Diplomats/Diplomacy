@@ -36,6 +36,13 @@
       "when": 1794501167872,
       "tag": "0004_wild_lorna_dane",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794502309289,
+      "tag": "0005_regular_chameleon",
+      "breakpoints": true
     }
   ]
 }

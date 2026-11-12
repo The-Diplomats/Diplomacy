@@ -33,7 +33,10 @@ async function createTestUser() {
 }
 
 async function createTestGame() {
-  const [game] = await db.insert(games).values({}).returning({ id: games.id });
+  const [game] = await db
+    .insert(games)
+    .values({ name: `test_${randomUUID().slice(0, 8)}` })
+    .returning({ id: games.id });
 
   if (!game) {
     throw new Error('Failed to create test game');
