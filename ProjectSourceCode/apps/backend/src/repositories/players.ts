@@ -1,14 +1,7 @@
 import { type DbClient, players } from '@diplomacy/db';
 import type { Power } from '@diplomacy/game-types';
 
-export interface PlayerSeat {
-  id: string;
-  gameId: string;
-  userId: string | null;
-  power: Power | null;
-  isAi: boolean;
-  joinedAt: Date;
-}
+export type PlayerSeat = typeof players.$inferSelect;
 
 export interface PlayerRepository {
   /** Seats a user or AI into a game. Returns null when the seat (or power) is already taken. */
@@ -35,21 +28,20 @@ export function createPlayerRepository(db: DbClient): PlayerRepository {
         .onConflictDoNothing()
         .returning();
 
-      return (row as PlayerSeat | undefined) ?? null;
+      return row ?? null;
     },
 
     async findByGame(gameId) {
-      const rows = await db.query.players.findMany({
+      return db.query.players.findMany({
         where: (p, { eq }) => eq(p.gameId, gameId),
       });
-      return rows as PlayerSeat[];
     },
 
     async findByUserInGame({ gameId, userId }) {
       const row = await db.query.players.findFirst({
         where: (p, { and, eq }) => and(eq(p.gameId, gameId), eq(p.userId, userId)),
       });
-      return (row as PlayerSeat | undefined) ?? null;
+      return row ?? null;
     },
   };
 }

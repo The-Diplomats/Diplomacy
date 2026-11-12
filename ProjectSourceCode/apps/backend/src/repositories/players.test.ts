@@ -103,14 +103,19 @@ describe('player repository', () => {
     expect(duplicate).toBeNull();
   });
 
-  test('lists every seat in a game', async () => {
+  test('lists every seat in a game and excludes other games', async () => {
     const gameId = await createTestGame();
     const userId = await createTestUser();
-    await players.addSeat({ gameId, userId });
-    await players.addSeat({ gameId, userId: null, isAi: true });
+    const humanSeat = await players.addSeat({ gameId, userId });
+    const aiSeat = await players.addSeat({ gameId, userId: null, isAi: true });
+
+    // Second game with its own seat to prove findByGame filters correctly.
+    const otherGameId = await createTestGame();
+    const otherUserId = await createTestUser();
+    await players.addSeat({ gameId: otherGameId, userId: otherUserId });
 
     const seats = await players.findByGame(gameId);
-    expect(seats).toHaveLength(2);
+    expect(seats.map((s) => s.id).sort()).toEqual([humanSeat!.id, aiSeat!.id].sort());
   });
 
   test('deletes seats when their game is deleted (cascade)', async () => {
