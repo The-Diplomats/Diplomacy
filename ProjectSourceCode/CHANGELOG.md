@@ -1,5 +1,25 @@
 # Changelog
 
+## [1.2.0](https://github.com/The-Diplomats/Diplomacy/compare/diplomacy-v1.1.0...diplomacy-v1.2.0) (2026-11-14)
+
+
+### Features
+
+* chat database and POST methods ([#93](https://github.com/The-Diplomats/Diplomacy/issues/93)) ([90d7bf7](https://github.com/The-Diplomats/Diplomacy/commit/90d7bf798b56a06588d9f7cf91be83cbed1fff37))
+* **db:** game db + game_players as players db ([#92](https://github.com/The-Diplomats/Diplomacy/issues/92)) ([39bb184](https://github.com/The-Diplomats/Diplomacy/commit/39bb184af3bb1d4de8940e8e3b3fef2b9de21fe0))
+* OpenAPI YAML boilerplate for remaining endpoints ([#95](https://github.com/The-Diplomats/Diplomacy/issues/95)) ([6644ad3](https://github.com/The-Diplomats/Diplomacy/commit/6644ad38236d593011b50889d97a97d1d53af0a1))
+* persistent public chat ([#94](https://github.com/The-Diplomats/Diplomacy/issues/94)) ([ed8754f](https://github.com/The-Diplomats/Diplomacy/commit/ed8754ffbe9c0443f5b17d5ef468da2b3047d388))
+
+
+### Documentation
+
+* ai guidelines + updated design doc ([#84](https://github.com/The-Diplomats/Diplomacy/issues/84)) ([8351d0e](https://github.com/The-Diplomats/Diplomacy/commit/8351d0e37e770fc5f5cac0e470c7bfa6c22fdb0e))
+
+
+### Miscellaneous
+
+* **commitlint:** Allow any subject case ([#86](https://github.com/The-Diplomats/Diplomacy/issues/86)) ([71b48ed](https://github.com/The-Diplomats/Diplomacy/commit/71b48edb9c2e3f146f308ed6e08aea098a6dffd2))
+
 ## [1.1.0](https://github.com/The-Diplomats/Diplomacy/compare/diplomacy-v1.0.0...diplomacy-v1.1.0) (2026-11-09)
 
 
