@@ -7,6 +7,7 @@ export interface MessageRepository {
     toPlayerId?: string | null;
     text: string;
   }): Promise<MessageRow>;
+  listPublicByGame(gameId: string): Promise<MessageRow[]>;
 }
 
 export function createMessageRepository(db: DbClient): MessageRepository {
@@ -21,6 +22,12 @@ export function createMessageRepository(db: DbClient): MessageRepository {
         throw new Error('Failed to save message');
       }
       return row;
+    },
+    async listPublicByGame(gameId) {
+      return db.query.messages.findMany({
+        where: (m, { and, eq, isNull }) => and(eq(m.gameId, gameId), isNull(m.toPlayerId)),
+        orderBy: (m, { asc }) => [asc(m.createdAt)],
+      });
     },
   };
 }

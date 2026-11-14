@@ -241,6 +241,42 @@ paths:
           description: Signed out
 
   /games/{gameId}/messages:
+    get:
+      operationId: getGameMessages
+      tags: [Messages]
+      summary: List game public chat messages, oldest first
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Messages in game
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MessageList'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: User is not in this game
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
     post:
       operationId: postGameMessage
       tags: [Messages]
@@ -433,3 +469,13 @@ components:
         createdAt:
           type: string
           format: date-time
+
+    MessageList:
+      type: object
+      required: [messages]
+      additionalProperties: false
+      properties:
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/Message'
