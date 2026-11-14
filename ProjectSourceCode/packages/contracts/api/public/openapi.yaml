@@ -1036,13 +1036,13 @@ components:
     Power:
       type: string
       enum:
-        - Austria
-        - England
-        - France
-        - Germany
-        - Italy
-        - Russia
-        - Turkey
+        - austria
+        - england
+        - france
+        - germany
+        - italy
+        - russia
+        - turkey
     # Summary information about one game, suitable for a lobby listing.
     Game:
       type: object
@@ -1056,8 +1056,11 @@ components:
         status:
           $ref: '#/components/schemas/GameStatus'
         creator_id:
-          type: string
-          format: uuid
+          oneOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          description: Null if the creator has deleted their account
         player_count:
           type: integer
           minimum: 0
