@@ -817,49 +817,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-  # GET reads messages; POST submits a new game message.
-  /games/{id}/messages:
-    get:
-      operationId: getGameMessages
-      tags:
-        - Messages
-      summary: List visible public and private messages
-      parameters:
-        - $ref: '#/components/parameters/GameId'
-        - $ref: '#/components/parameters/Limit'
-        - $ref: '#/components/parameters/Cursor'
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/MessageList'
-        '401':
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '403':
-          description: Forbidden
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
+
+  /games/{gameId}/messages:
     post:
       operationId: postGameMessage
-      tags:
-        - Messages
-      summary: Send public message or private 1-to-1 DM
+      tags: [Messages]
+      summary: Send a chat message in a game
+      description: Sender is determined by which user is logged in, not sent in the request (to prevent impersonation)
       parameters:
-        - $ref: '#/components/parameters/GameId'
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -868,35 +839,30 @@ paths:
               $ref: '#/components/schemas/SendMessageRequest'
       responses:
         '201':
-          description: Message sent
+          description: Message saved
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Message'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
         '401':
-          description: Not authenticated
+          description: Not logged in
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
         '403':
-          description: Forbidden
+          description: Logged-in user is not in this game
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-        '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '422':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
+
 # Reusable definitions referenced above with #/components/schemas/<Name>.
 components:
   # Shared request parameters, referenced with $ref: '#/components/parameters/<Name>'.
@@ -1359,65 +1325,37 @@ components:
         - affected_count
         - grace_active
         - skip_grace_votes
-    # One game chat message and its metadata.
+
+    SendMessageRequest:
+      type: object
+      required: [text]
+      additionalProperties: false
+      properties:
+        text:
+          type: string
+          minLength: 1
+          maxLength: 2000
+
     Message:
       type: object
+      required: [id, gameId, fromPlayerId, toPlayerId, text, createdAt]
+      additionalProperties: false
       properties:
         id:
           type: string
           format: uuid
-        game_id:
+        gameId:
           type: string
           format: uuid
-        from_player_id:
+        fromPlayerId:
           type: string
           format: uuid
-        to_player_id:
-          oneOf:
-            - type: string
-              format: uuid
-            - type: 'null'
-        content:
+        toPlayerId:
+          type: [string, 'null']
+          format: uuid
+          description: Null means public message
+        text:
           type: string
-        created_at:
+        createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - game_id
-        - from_player_id
-        - content
-        - created_at
-    # Response containing game messages.
-    MessageList:
-      type: object
-      additionalProperties: false
-      properties:
-        messages:
-          type: array
-          items:
-            $ref: '#/components/schemas/Message'
-        next_cursor:
-          oneOf:
-            - type: string
-            - type: 'null'
-      required:
-        - messages
-        - next_cursor
-    # Input body for creating a new game message.
-    SendMessageRequest:
-      type: object
-      properties:
-        content:
-          type: string
-          minLength: 1
-          maxLength: 4000
-          pattern: '\S'
-        to_player_id:
-          oneOf:
-            - type: string
-              format: uuid
-            - type: 'null'
-          description: Null or omitted for public messages; player ID for direct message
-      required:
-        - content

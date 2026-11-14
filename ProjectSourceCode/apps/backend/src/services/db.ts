@@ -1,5 +1,7 @@
 import { type DbClient } from '@diplomacy/db';
 
+import { createMessageRepository, type MessageRepository } from '../repositories/messages.js';
+import { createPlayerRepository, type PlayerRepository } from '../repositories/players.js';
 import { createUserRepository, type UserRepository } from '../repositories/users.js';
 import {
   createVerificationTokenRepository,
@@ -7,6 +9,8 @@ import {
 } from '../repositories/verification-tokens.js';
 
 export interface Db {
+  messages: MessageRepository;
+  players: PlayerRepository;
   users: UserRepository;
   verificationTokens: VerificationTokenRepository;
 }
@@ -20,6 +24,8 @@ let _client: DbClient | undefined;
 export function initDb(client: DbClient): void {
   _client = client;
   db = {
+    messages: createMessageRepository(client),
+    players: createPlayerRepository(client),
     users: createUserRepository(client),
     verificationTokens: createVerificationTokenRepository(client),
   };
