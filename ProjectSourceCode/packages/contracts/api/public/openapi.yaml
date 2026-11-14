@@ -377,8 +377,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-  # Look up a single game by its ID. {id} is a URL path parameter.
-  /games/{id}:
+  # Look up a single game by its ID. {gameId} is a URL path parameter.
+  /games/{gameId}:
     get:
       operationId: getGameById
       tags:
@@ -412,7 +412,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
   # Join the game using an invitation code or open slot, as permitted.
-  /games/{id}/join:
+  /games/{gameId}/join:
     post:
       operationId: postGameJoin
       tags:
@@ -464,7 +464,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
   # Host starts a game after all prerequisites are satisfied.
-  /games/{id}/start:
+  /games/{gameId}/start:
     post:
       operationId: postGameStart
       tags:
@@ -504,7 +504,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
   # POST casts/toggles a draw vote; DELETE removes the vote.
-  /games/{id}/draw-vote:
+  /games/{gameId}/draw-vote:
     post:
       operationId: postGameDrawVote
       tags:
@@ -578,7 +578,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
   # Get the game's current phase and progress.
-  /games/{id}/phases/current:
+  /games/{gameId}/phases/current:
     get:
       operationId: getCurrentPhase
       tags:
@@ -612,7 +612,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
   # GET reads player orders; PUT submits or replaces the current orders.
-  /games/{id}/phases/current/orders:
+  /games/{gameId}/phases/current/orders:
     get:
       operationId: getCurrentOrders
       tags:
@@ -700,7 +700,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
   # POST marks ready; DELETE clears readiness.
-  /games/{id}/phases/current/ready:
+  /games/{gameId}/phases/current/ready:
     post:
       operationId: postCurrentReady
       tags:
@@ -778,7 +778,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
   # Skip the current grace period according to game rules.
-  /games/{id}/phases/current/skip-grace:
+  /games/{gameId}/phases/current/skip-grace:
     post:
       operationId: postCurrentSkipGrace
       tags:
@@ -868,7 +868,7 @@ components:
   # Shared request parameters, referenced with $ref: '#/components/parameters/<Name>'.
   parameters:
     GameId:
-      name: id
+      name: gameId
       in: path
       required: true
       description: Game ID
@@ -1055,38 +1055,41 @@ components:
           type: string
         status:
           $ref: '#/components/schemas/GameStatus'
-        creator_id:
+        createdByUserId:
           oneOf:
             - type: string
               format: uuid
             - type: 'null'
           description: Null if the creator has deleted their account
-        player_count:
+        playerCount:
           type: integer
           minimum: 0
           maximum: 7
-        max_players:
+        maxPlayers:
           type: integer
           enum:
             - 7
-        movement_deadline_seconds:
+        movementDeadlineSeconds:
           type: integer
           minimum: 60
           default: 86400
-        created_at:
+        createdAt:
           type: string
           format: date-time
-        invite_code:
+        inviteCode:
           type: string
+        private:
+          type: boolean
       required:
         - id
         - name
         - status
-        - creator_id
-        - player_count
-        - max_players
-        - movement_deadline_seconds
-        - created_at
+        - createdByUserId
+        - playerCount
+        - maxPlayers
+        - movementDeadlineSeconds
+        - createdAt
+        - private
     # Response shape for the list of lobby games.
     GameList:
       type: object
@@ -1096,13 +1099,13 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Game'
-        next_cursor:
+        nextCursor:
           oneOf:
             - type: string
             - type: 'null'
       required:
         - games
-        - next_cursor
+        - nextCursor
     # Player membership and assigned power within a game.
     GamePlayer:
       type: object
@@ -1111,7 +1114,7 @@ components:
         id:
           type: string
           format: uuid
-        user_id:
+        userId:
           oneOf:
             - type: string
               format: uuid
@@ -1120,19 +1123,19 @@ components:
           oneOf:
             - $ref: '#/components/schemas/Power'
             - type: 'null'
-        is_ai:
+        isAi:
           type: boolean
-        afk_counter:
+        afkCounter:
           type: integer
           minimum: 0
         locked:
           type: boolean
       required:
         - id
-        - user_id
+        - userId
         - power
-        - is_ai
-        - afk_counter
+        - isAi
+        - afkCounter
         - locked
     # More complete game information than a lobby summary.
     GameDetail:
@@ -1159,7 +1162,7 @@ components:
           maxLength: 120
         private:
           type: boolean
-        movement_deadline_seconds:
+        movementDeadlineSeconds:
           type: integer
           minimum: 60
           default: 86400
@@ -1170,7 +1173,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        invite_code:
+        inviteCode:
           type: string
           description: Optional for open games; required for invite-only games
     # Current state or outcome of a proposed draw.
@@ -1183,7 +1186,7 @@ components:
         votes:
           type: integer
           minimum: 0
-        eligible_voters:
+        eligibleVoters:
           type: integer
           minimum: 0
         unanimous:
@@ -1191,7 +1194,7 @@ components:
       required:
         - voted
         - votes
-        - eligible_voters
+        - eligibleVoters
         - unanimous
     # Kinds of phases in a Diplomacy turn.
     PhaseType:
@@ -1208,20 +1211,20 @@ components:
         id:
           type: string
           format: uuid
-        game_id:
+        gameId:
           type: string
           format: uuid
-        phase_type:
+        phaseType:
           $ref: '#/components/schemas/PhaseType'
-        deadline_at:
+        deadlineAt:
           type: string
           format: date-time
-        resolved_at:
+        resolvedAt:
           oneOf:
             - type: string
               format: date-time
             - type: 'null'
-        board_state:
+        boardState:
           type: object
           additionalProperties: true
           description: Serialized board snapshot; exact schema must be aligned with game-types
@@ -1229,14 +1232,14 @@ components:
           $ref: '#/components/schemas/ReadinessStatus'
       required:
         - id
-        - game_id
-        - phase_type
-        - deadline_at
-        - resolved_at
-        - board_state
+        - gameId
+        - phaseType
+        - deadlineAt
+        - resolvedAt
+        - boardState
         - readiness
     # Kinds of Diplomacy orders a unit can be given.
-    OrderType:
+    OrderAction:
       type: string
       enum:
         - hold
@@ -1255,38 +1258,38 @@ components:
         id:
           type: string
           format: uuid
-        unit_id:
+        unit:
           type: string
-        type:
-          $ref: '#/components/schemas/OrderType'
+        action:
+          $ref: '#/components/schemas/OrderAction'
         from:
           type: string
         to:
           type: string
-        target_unit_id:
+        targetUnit:
           type: string
         result:
           type: string
       required:
         - id
-        - type
+        - action
     # One order as submitted by a player. Server-set fields (id, result) are excluded.
     OrderInput:
       type: object
       additionalProperties: false
       properties:
-        unit_id:
+        unit:
           type: string
-        type:
-          $ref: '#/components/schemas/OrderType'
+        action:
+          $ref: '#/components/schemas/OrderAction'
         from:
           type: string
         to:
           type: string
-        target_unit_id:
+        targetUnit:
           type: string
       required:
-        - type
+        - action
     # Payload that submits or updates player orders.
     SubmitOrdersRequest:
       type: object
@@ -1310,24 +1313,24 @@ components:
             retreat, or a build/disband in build). Always false for eliminated players.
         ready:
           type: boolean
-        ready_count:
+        readyCount:
           type: integer
           minimum: 0
-        affected_count:
+        affectedCount:
           type: integer
           minimum: 0
-        grace_active:
+        graceActive:
           type: boolean
-        skip_grace_votes:
+        skipGraceVotes:
           type: integer
           minimum: 0
       required:
         - affected
         - ready
-        - ready_count
-        - affected_count
-        - grace_active
-        - skip_grace_votes
+        - readyCount
+        - affectedCount
+        - graceActive
+        - skipGraceVotes
 
     SendMessageRequest:
       type: object
