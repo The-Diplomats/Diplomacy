@@ -6,16 +6,18 @@ import type {
   ProblemDetails,
   SendMessageRequest,
 } from '@diplomacy/contracts';
-import type { MessageRow } from '@diplomacy/db';
 import { type Request, type Response, Router } from 'express';
 
+import type { MessageWithSender } from '../../../repositories/messages.js';
 import { db } from '../../../services/db.js';
 
-function toMessage(row: MessageRow): Message {
+function toMessage(row: MessageWithSender): Message {
   return {
     id: row.id,
     gameId: row.gameId,
     fromPlayerId: row.fromPlayerId,
+    fromUsername: row.fromUsername,
+    fromPower: row.fromPower,
     toPlayerId: row.toPlayerId,
     text: row.text,
     createdAt: row.createdAt.toISOString(),
@@ -58,7 +60,9 @@ messagesRouter.post(
       text,
     });
 
-    return res.status(201).json(toMessage(message));
+    return res
+      .status(201)
+      .json(toMessage({ ...message, fromUsername: user.username, fromPower: player.power }));
   },
 );
 

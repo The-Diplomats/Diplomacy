@@ -1,4 +1,11 @@
-import { type DbClient, type MessageRow, messages } from '@diplomacy/db';
+import { type DbClient, type MessageRow, messages, players, users } from '@diplomacy/db';
+import type { Power } from '@diplomacy/game-types';
+import { and, asc, eq, getTableColumns, isNull } from 'drizzle-orm';
+
+export type MessageWithSender = MessageRow & {
+  fromUsername: string | null;
+  fromPower: Power | null;
+};
 
 export interface MessageRepository {
   create(input: {
@@ -7,7 +14,7 @@ export interface MessageRepository {
     toPlayerId?: string | null;
     text: string;
   }): Promise<MessageRow>;
-  listPublicByGame(gameId: string): Promise<MessageRow[]>;
+  listPublicByGame(gameId: string): Promise<MessageWithSender[]>;
 }
 
 export function createMessageRepository(db: DbClient): MessageRepository {
@@ -24,10 +31,17 @@ export function createMessageRepository(db: DbClient): MessageRepository {
       return row;
     },
     async listPublicByGame(gameId) {
-      return db.query.messages.findMany({
-        where: (m, { and, eq, isNull }) => and(eq(m.gameId, gameId), isNull(m.toPlayerId)),
-        orderBy: (m, { asc }) => [asc(m.createdAt)],
-      });
+      return db
+        .select({
+          ...getTableColumns(messages),
+          fromUsername: users.username,
+          fromPower: players.power,
+        })
+        .from(messages)
+        .innerJoin(players, eq(messages.fromPlayerId, players.id))
+        .leftJoin(users, eq(players.userId, users.id))
+        .where(and(eq(messages.gameId, gameId), isNull(messages.toPlayerId)))
+        .orderBy(asc(messages.createdAt));
     },
   };
 }

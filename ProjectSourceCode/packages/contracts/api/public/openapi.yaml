@@ -448,7 +448,7 @@ components:
 
     Message:
       type: object
-      required: [id, gameId, fromPlayerId, toPlayerId, text, createdAt]
+      required: [id, gameId, fromPlayerId, fromUsername, fromPower, toPlayerId, text, createdAt]
       additionalProperties: false
       properties:
         id:
@@ -460,6 +460,13 @@ components:
         fromPlayerId:
           type: string
           format: uuid
+        fromUsername:
+          type: [string, 'null']
+          description: Null for AI players
+        fromPower:
+          type: [string, 'null']
+          enum: [austria, england, france, germany, italy, russia, turkey, null]
+          description: Null when the game is still forming
         toPlayerId:
           type: [string, 'null']
           format: uuid
