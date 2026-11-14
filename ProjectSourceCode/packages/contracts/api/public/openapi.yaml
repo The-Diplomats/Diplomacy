@@ -1,37 +1,51 @@
 openapi: 3.1.0
-
+# API metadata shown in documentation and generated clients.
 info:
   title: Diplomacy API
   version: 0.0.0
-  description: Internal API contract for the Diplomacy monorepo.
+  description:
+    Internal API contract for the Diplomacy monorepo. New game-related payloads are proposed for team
+    review.
   license:
     name: GPL-3.0-or-later
     identifier: GPL-3.0-or-later
-
+# Base URL is relative to wherever the backend mounts this API.
 servers:
   - url: /
     description: Mount-relative base path
-
+# Endpoint groups used to organize generated API documentation.
 tags:
   - name: Health
     description: Service health
   - name: Auth
     description: Authentication
+  - name: Games
+    description: Game creation and management
+  - name: Phases
+    description: Phase status and resolution
+  - name: Orders
+    description: Order submission and retrieval
+  - name: Ready
+    description: Player readiness and grace handling
   - name: Messages
     description: Game chat
-
+# HTTP endpoints. Each path contains one or more methods (GET, POST, etc.).
+# operationId must be unique; $ref points to reusable schemas defined below.
 paths:
+  # Liveness probe for monitoring. HEAD has no body; GET returns uptime and status.
   /health:
     head:
       operationId: headHealth
-      tags: [Health]
+      tags:
+        - Health
       summary: Health check (headers only, for uptime monitors)
       responses:
         '200':
           description: Service is healthy
     get:
       operationId: getHealth
-      tags: [Health]
+      tags:
+        - Health
       summary: Health check
       responses:
         '200':
@@ -40,11 +54,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/HealthStatus'
-
+  # Returns the active session user; callers without a session receive 401.
   /auth/me:
     get:
       operationId: getAuthMe
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Current authenticated user
       responses:
         '200':
@@ -59,7 +74,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-
+  # Email/password login; a successful response establishes a session.
   /auth/login:
     post:
       operationId: postAuthLogin
@@ -96,7 +111,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-
+  # Begin registration: creates an unverified user and emails a code. Always 202 (enumeration-safe).
   /auth/register:
     post:
       operationId: postAuthRegister
@@ -230,15 +245,578 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
-
+  # Terminate the current session. HTTP 204 intentionally has no response body.
   /auth/logout:
     post:
       operationId: postAuthLogout
-      tags: [Auth]
+      tags:
+        - Auth
       summary: End the current session
       responses:
         '204':
           description: Signed out
+  # Start Microsoft OpenID Connect authentication and obtain the authorization URL.
+  /auth/oauth/microsoft/login:
+    post:
+      operationId: postMicrosoftOAuthLogin
+      tags:
+        - Auth
+      summary: Initiate Microsoft OpenID Connect login
+      responses:
+        '200':
+          description: Authorization URL created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthLoginResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      description:
+        Returns a Microsoft authorization URL and persists OIDC state, nonce and PKCE verifier in the
+        pre-auth session.
+  # Finish the Microsoft OAuth flow using the returned code/state.
+  /auth/oauth/microsoft/callback:
+    get:
+      operationId: getMicrosoftOAuthCallback
+      tags:
+        - Auth
+      summary: Complete Microsoft OIDC login
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Session created; redirect to frontend
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+      description:
+        Exchanges authorization code and establishes session. On success redirects to the frontend. An
+        OAuth error may be returned as query parameters.
+  # List lobby games (GET) or create a new game (POST).
+  /games:
+    get:
+      operationId: getGames
+      tags:
+        - Games
+      summary: List games in the lobby
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameList'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    post:
+      operationId: postGames
+      tags:
+        - Games
+      summary: Create a new game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGameRequest'
+      responses:
+        '201':
+          description: Game created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  # Look up a single game by its ID. {gameId} is a URL path parameter.
+  /games/{gameId}:
+    get:
+      operationId: getGameById
+      tags:
+        - Games
+      summary: Get game details
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  # Join the game using an invitation code or open slot, as permitted.
+  /games/{gameId}/join:
+    post:
+      operationId: postGameJoin
+      tags:
+        - Games
+      summary: Join forming game by invite code or open slot
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinGameRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  # Host starts a game after all prerequisites are satisfied.
+  /games/{gameId}/start:
+    post:
+      operationId: postGameStart
+      tags:
+        - Games
+      summary: Creator starts game; fill remaining seats with AI
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GameDetail'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  # POST casts/toggles a draw vote; DELETE removes the vote.
+  /games/{gameId}/draw-vote:
+    post:
+      operationId: postGameDrawVote
+      tags:
+        - Games
+      summary: Cast or toggle DIAS draw vote
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DrawVoteStatus'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      operationId: deleteGameDrawVote
+      tags:
+        - Games
+      summary: Remove own draw vote
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '204':
+          description: Draw vote removed
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  # Get the game's current phase and progress.
+  /games/{gameId}/phases/current:
+    get:
+      operationId: getCurrentPhase
+      tags:
+        - Phases
+      summary: Get current phase and board state
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Phase'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  # GET reads player orders; PUT submits or replaces the current orders.
+  /games/{gameId}/phases/current/orders:
+    get:
+      operationId: getCurrentOrders
+      tags:
+        - Orders
+      summary: List authenticated player orders for current phase
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    put:
+      operationId: putCurrentOrders
+      tags:
+        - Orders
+      summary: Replace or update own current-phase orders
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitOrdersRequest'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Order'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '422':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  # POST marks ready; DELETE clears readiness.
+  /games/{gameId}/phases/current/ready:
+    post:
+      operationId: postCurrentReady
+      tags:
+        - Ready
+      summary: Mark player ready
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+    delete:
+      operationId: deleteCurrentReady
+      tags:
+        - Ready
+      summary: Un-ready player; cancel grace if necessary
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+  # Skip the current grace period according to game rules.
+  /games/{gameId}/phases/current/skip-grace:
+    post:
+      operationId: postCurrentSkipGrace
+      tags:
+        - Ready
+      summary: Vote to skip 30-second grace period
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadinessStatus'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
 
   /games/{gameId}/messages:
     get:
@@ -321,21 +899,56 @@ paths:
               schema:
                 $ref: '#/components/schemas/ProblemDetails'
 
+# Reusable definitions referenced above with #/components/schemas/<Name>.
 components:
+  # Shared request parameters, referenced with $ref: '#/components/parameters/<Name>'.
+  parameters:
+    GameId:
+      name: gameId
+      in: path
+      required: true
+      description: Game ID
+      schema:
+        type: string
+        format: uuid
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+  # A schema defines the shape and validation rules of a JSON value.
+  # required: lists mandatory fields; additionalProperties: false rejects unknown fields.
+  # Schema names and payload details should be reviewed against backend implementations.
   schemas:
+    # Result of the GET /health uptime check.
     HealthStatus:
       type: object
-      required: [status, uptime]
       additionalProperties: false
       properties:
         status:
           type: string
-          enum: [ok, degraded, down]
+          enum:
+            - ok
+            - degraded
+            - down
         uptime:
           type: integer
           minimum: 0
           description: Server uptime in seconds
-
+      required:
+        - status
+        - uptime
+    # Public representation of an authenticated account.
     User:
       type: object
       required: [id, email, username]
@@ -426,7 +1039,6 @@ components:
 
     ProblemDetails:
       type: object
-      required: [title]
       additionalProperties: false
       properties:
         title:
@@ -435,6 +1047,326 @@ components:
           type: string
         status:
           type: integer
+      required:
+        - title
+    # Microsoft login authorization details returned to the client.
+    OAuthLoginResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          format: uri
+          description: Microsoft OIDC authorization URL
+      required:
+        - url
+    # Allowed lifecycle states of a game.
+    GameStatus:
+      type: string
+      enum:
+        - forming
+        - active
+        - finished
+        - abandoned
+    # Allowed Diplomacy powers / countries.
+    Power:
+      type: string
+      enum:
+        - austria
+        - england
+        - france
+        - germany
+        - italy
+        - russia
+        - turkey
+    # Summary information about one game, suitable for a lobby listing.
+    Game:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/GameStatus'
+        createdByUserId:
+          oneOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+          description: Null if the creator has deleted their account
+        playerCount:
+          type: integer
+          minimum: 0
+          maximum: 7
+        maxPlayers:
+          type: integer
+          enum:
+            - 7
+        movementDeadlineSeconds:
+          type: integer
+          minimum: 60
+          default: 86400
+        createdAt:
+          type: string
+          format: date-time
+        inviteCode:
+          type: string
+        private:
+          type: boolean
+      required:
+        - id
+        - name
+        - status
+        - createdByUserId
+        - playerCount
+        - maxPlayers
+        - movementDeadlineSeconds
+        - createdAt
+        - private
+    # Response shape for the list of lobby games.
+    GameList:
+      type: object
+      additionalProperties: false
+      properties:
+        games:
+          type: array
+          items:
+            $ref: '#/components/schemas/Game'
+        nextCursor:
+          oneOf:
+            - type: string
+            - type: 'null'
+      required:
+        - games
+        - nextCursor
+    # Player membership and assigned power within a game.
+    GamePlayer:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          oneOf:
+            - type: string
+              format: uuid
+            - type: 'null'
+        power:
+          oneOf:
+            - $ref: '#/components/schemas/Power'
+            - type: 'null'
+        isAi:
+          type: boolean
+        afkCounter:
+          type: integer
+          minimum: 0
+        locked:
+          type: boolean
+      required:
+        - id
+        - userId
+        - power
+        - isAi
+        - afkCounter
+        - locked
+    # More complete game information than a lobby summary.
+    GameDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        game:
+          $ref: '#/components/schemas/Game'
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/GamePlayer'
+      required:
+        - game
+        - players
+    # Input fields for creating a new game.
+    CreateGameRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        private:
+          type: boolean
+        movementDeadlineSeconds:
+          type: integer
+          minimum: 60
+          default: 86400
+      required:
+        - name
+    # Data used to request membership in an existing game.
+    JoinGameRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        inviteCode:
+          type: string
+          description: Optional for open games; required for invite-only games
+    # Current state or outcome of a proposed draw.
+    DrawVoteStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        voted:
+          type: boolean
+        votes:
+          type: integer
+          minimum: 0
+        eligibleVoters:
+          type: integer
+          minimum: 0
+        unanimous:
+          type: boolean
+      required:
+        - voted
+        - votes
+        - eligibleVoters
+        - unanimous
+    # Kinds of phases in a Diplomacy turn.
+    PhaseType:
+      type: string
+      enum:
+        - movement
+        - retreat
+        - build
+    # Current phase metadata, timing and state.
+    Phase:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        gameId:
+          type: string
+          format: uuid
+        phaseType:
+          $ref: '#/components/schemas/PhaseType'
+        deadlineAt:
+          type: string
+          format: date-time
+        resolvedAt:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+        boardState:
+          type: object
+          additionalProperties: true
+          description: Serialized board snapshot; exact schema must be aligned with game-types
+        readiness:
+          $ref: '#/components/schemas/ReadinessStatus'
+      required:
+        - id
+        - gameId
+        - phaseType
+        - deadlineAt
+        - resolvedAt
+        - boardState
+        - readiness
+    # Kinds of Diplomacy orders a unit can be given.
+    OrderAction:
+      type: string
+      enum:
+        - hold
+        - move
+        - support
+        - convoy
+        - retreat
+        - build
+        - disband
+        - waive
+    # One planned Diplomacy move or action, as returned by the server.
+    Order:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+        unit:
+          type: string
+        action:
+          $ref: '#/components/schemas/OrderAction'
+        from:
+          type: string
+        to:
+          type: string
+        targetUnit:
+          type: string
+        result:
+          type: string
+      required:
+        - id
+        - action
+    # One order as submitted by a player. Server-set fields (id, result) are excluded.
+    OrderInput:
+      type: object
+      additionalProperties: false
+      properties:
+        unit:
+          type: string
+        action:
+          $ref: '#/components/schemas/OrderAction'
+        from:
+          type: string
+        to:
+          type: string
+        targetUnit:
+          type: string
+      required:
+        - action
+    # Payload that submits or updates player orders.
+    SubmitOrdersRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderInput'
+      required:
+        - orders
+    # Who has marked ready and associated readiness state.
+    ReadinessStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        affected:
+          type: boolean
+          description:
+            Whether the requesting player must act this phase (has units in movement, a dislodged unit in
+            retreat, or a build/disband in build). Always false for eliminated players.
+        ready:
+          type: boolean
+        readyCount:
+          type: integer
+          minimum: 0
+        affectedCount:
+          type: integer
+          minimum: 0
+        graceActive:
+          type: boolean
+        skipGraceVotes:
+          type: integer
+          minimum: 0
+      required:
+        - affected
+        - ready
+        - readyCount
+        - affectedCount
+        - graceActive
+        - skipGraceVotes
 
     SendMessageRequest:
       type: object
