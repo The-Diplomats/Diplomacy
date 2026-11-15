@@ -249,7 +249,7 @@ Both roles are purpose-built for Redis. Postgres can technically do either, poor
 - OpenAPI contract (parallel frontend/backend work across 5 teammates)
 - Monorepo + shared packages (team scaling + type safety across apps)
 - 3 cloud envs with approval gate (demo-day safety)
-- Microsoft OAuth (university-friendly login)
+- Microsoft + Google OAuth (university-friendly login)
 
 **Deliberately NOT adopted:**
 
@@ -269,7 +269,7 @@ Both roles are purpose-built for Redis. Postgres can technically do either, poor
 - AI opponent via Groq-hosted `llama-3.1-8b-instant` with persistent memory, alliances, and betrayals
 - Civil Disorder handling for AFK players (per-phase defaults; per-player lockout after 3 consecutive missed phases)
 - 3-env deployment pipeline (dev / stage / prod)
-- Microsoft OAuth login (plus password auth)
+- Microsoft and Google OAuth login (plus password auth)
 
 ### Non-Goals (deliberately deferred)
 
@@ -439,7 +439,7 @@ erDiagram
 
 | Table                 | Purpose                                                                             | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | --------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `users` | Single identity row, auth credentials + public profile | `password_hash` nullable (OAuth users); `email_verified_at TIMESTAMPTZ NULL` — row is inserted at `/auth/register` but gated by the verification flow before login (Pattern B). `(oauth_provider, oauth_subject)` UNIQUE when non-null. For Microsoft: `oauth_subject = "{tid}:{oid}"` (NOT the OIDC `sub`, which is pairwise-per-app and documented as non-portable). Future profile fields (`display_name`, `avatar_url`, `rank`, `wins`, `losses`, `bio`) live on this row directly — no separate profile table. Matches webDip / Discord / GitHub single-table pattern. |
+| `users` | Single identity row, auth credentials + public profile | `password_hash` nullable (OAuth users); `email_verified_at TIMESTAMPTZ NULL` — row is inserted at `/auth/register` but gated by the verification flow before login (Pattern B). `(oauth_provider, oauth_subject)` UNIQUE when non-null. For Microsoft: `oauth_subject = "{tid}:{oid}"` (NOT the OIDC `sub`, which is pairwise-per-app and documented as non-portable). For Google: `oauth_subject = sub` (stable and portable). Enforced by the `users_oauth_identity_idx` unique index. One linked provider per account. Future profile fields (`display_name`, `avatar_url`, `rank`, `wins`, `losses`, `bio`) live on this row directly — no separate profile table. Matches webDip / Discord / GitHub single-table pattern. |
 | `verification_tokens` | Unified short-lived codes for email-verify + password-reset                         | NextAuth-style. One row per issued code with `purpose ∈ {email_verify, password_reset}`, `token_hash` (SHA-256), `expires_at`, `used_at`. New codes invalidate prior outstanding codes for the same `(user_id, purpose)`. Deleted on user deletion via `ON DELETE CASCADE`. TTL: 15 min (`VERIFICATION_CODE_TTL_MINUTES`).                                                                                                                           |
 | `games` | Game instances with lifecycle metadata | `status` ∈ `forming / active / finished / abandoned`. `movement_deadline_seconds INT NOT NULL DEFAULT 86400`; retreat and build deadlines computed as `movement_deadline_seconds / 2`. |
 | `players` | **(planned)** Many-to-many join between `users` and `games`; captures role (power), AI status, AFK counter | `user_id` FK to `users.id` (NULL for AI slots). `power` randomly assigned at start. `afk_counter INT NOT NULL DEFAULT 0` increments on phase resolve if the human submitted no orders and wasn't ready, resets to 0 on any order submission. `locked BOOLEAN NOT NULL DEFAULT false` (one-way) when `afk_counter` hits 3; locked powers have defaults auto-applied for the remaining game. |
@@ -473,8 +473,11 @@ Status legend: no tag = built; **(planned)** = reserved in spec but not implemen
 | Auth         | POST   | `/auth/login`                           | Password login (identifier = email OR username)                                                              |
 | Auth         | POST   | `/auth/logout`                          | Clear session                                                                                                |
 | Auth         | GET    | `/auth/me`                              | Current user                                                                                                 |
-| Auth (OAuth) | POST   | `/auth/oauth/microsoft/login`           | **(planned)** Returns OIDC auth URL                                                                          |
-| Auth (OAuth) | GET    | `/auth/oauth/microsoft/callback`        | **(planned)** Code exchange + session start                                                                  |
+| Auth (OAuth) | GET    | `/auth/oauth/providers`                 | Providers configured on this server (`google`, `microsoft`)                                                  |
+| Auth (OAuth) | POST   | `/auth/oauth/{provider}/login`          | Returns OIDC auth URL; stores PKCE/state/nonce + `next` on the session                                       |
+| Auth (OAuth) | GET    | `/auth/oauth/{provider}/callback`       | Code exchange; signs in, links by verified email, or redirects to the username step (302 to the frontend)    |
+| Auth (OAuth) | GET    | `/auth/oauth/pending`                   | Pending new-account identity awaiting a username (404 when none)                                             |
+| Auth (OAuth) | POST   | `/auth/oauth/complete`                  | Choose a username, create the verified password-less account, establish session                              |
 | Games        | GET    | `/games`                                | List games (lobby)                                                                                           |
 | Games        | POST   | `/games`                                | Create game                                                                                                  |
 | Games        | GET    | `/games/:id`                            | Get game detail                                                                                              |
@@ -495,6 +498,8 @@ Status legend: no tag = built; **(planned)** = reserved in spec but not implemen
 All rows above Auth (OAuth) and below `/auth/logout` are **(planned)** — the shape is reserved in the design but not yet in `openapi.yaml`.
 
 **OAuth transient state:** `state`, `nonce`, and the PKCE `code_verifier` persist on `req.session` between `/login` and `/callback` (openid-client canonical idiom). `connect-pg-simple` writes a pre-auth session row; `pruneSessionInterval` cleans the orphans.
+
+**OAuth account resolution (callback):** (1) identity already linked: sign in. (2) Provider has not verified the email (Google `email_verified`, Microsoft `xms_edov` optional claim): refuse, since the raw Microsoft `email` claim is tenant-editable (nOAuth). (3) Email matches an account with no linked identity: link and sign in; if that account was never verified, mark it verified and drop its password hash, because whoever set it never proved ownership. Email matches an account linked to another identity: refuse. (4) Otherwise: regenerate the session, store the verified identity as `oauthPending` (15-min TTL), and send the user to pick a username via `/auth/oauth/complete`. Callback failures redirect to `/auth/login?oauthError=cancelled|failed|email_unverified|linked_elsewhere`. Providers are enabled per env by `GOOGLE_CLIENT_ID/SECRET` and `MICROSOFT_CLIENT_ID/SECRET`; the redirect URI is `${API_PUBLIC_URL}/auth/oauth/{provider}/callback`.
 
 ### Socket.IO events
 
@@ -973,8 +978,8 @@ Workstreams define _areas of concern_ rather than fixed personal assignments. Ow
 - Final deploy URLs for each env (filled in during cloud bootstrap; apex `diplomacy.gg` + subdomain scheme already locked, see §21)
 - Which secondary provider to pre-provision as the Groq break-glass fallback: Together AI vs Fireworks AI vs DeepInfra (all host `llama-3.1-8b-instant`; decision on sign-up ergonomics + free-tier limits closer to demo week)
 - Per-game `movement_deadline_seconds` override at game creation (post-MVP nice-to-have; MVP hardcodes default 86400)
-- `oauth_subject` convention for future providers (Google: stable portable `sub`; GitHub: numeric user ID) if we add them post-MVP
-- Whether to add Google/GitHub OAuth alongside Microsoft (parked post-MVP)
+- `oauth_subject` convention for GitHub (numeric user ID) if we add it post-MVP
+- Whether to allow more than one linked provider per account (needs an identities table; today one provider per user)
 - Whether to display a global "Diplomacy clock" (world year, not real time) prominently in the UI (nice-to-have)
 - Synthetic monitoring in prod (Checkly / Datadog / GH Actions cron) — only worth it if we want uptime signal between deploys
 
@@ -1026,4 +1031,5 @@ Append-only. Record _when_ a decision was finalized, _who_ approved, _why_ over 
 | 2026-11-10 | Switch AI runtime from Ollama-in-ACA to Groq cloud API (`llama-3.1-8b-instant`) | Rez | The original 2026-10-27 Ollama plan assumed "zero API cost"; actual ACA cost for a pinned 6 GiB replica is ~$25/demo week + 2-min cold-starts in dev/stage break E2E. Groq's free tier (14,400 RPD, 500K TPD per key) covers our full project volume with 20×+ headroom at $0. Same llama 3.1 8B model as the original pick, so no prompt rework. Portability is the primary reason over Gemini: Meta owns the model, Groq is just the host; if Groq blips at demo, swap to Together / Fireworks / DeepInfra with zero prompt changes. Gemini 3.5 Flash-Lite is the documented backup; its schema-enforced JSON would retire the retry loop but locks us into a Google proprietary API surface and Gemini 2.5 just got a 3-week deprecation notice (model-family churn risk). The 2026-10-27 ACA `minReplicas=1` decision is superseded. |
 | 2026-11-10 | Local-dev + CI use `MOCK_AI=true` with MSW fixtures; real LLM is opt-in per-dev with a free-tier Groq key | Rez | Industry pattern for apps where AI is one feature (not the product): mock-first + per-dev key for the opt-in real path (Vercel AI SDK apps, Linear/Notion AI features, YC product shops). 95% of local dev (auth, lobby UI, order validation) doesn't need real AI; forcing every teammate to install Ollama or burn API quota is friction with no payoff. Per-dev Groq free-tier key takes 60s to sign up and requires no credit card. CI stays deterministic + parallel-safe via MSW fixtures. Prod + stage + dev deploys hit real Groq with env-scoped API keys in GH environment secrets. |
 | 2026-11-11 | `express-openapi-validator` wraps the API surface by hostname, not a `/api` path prefix; generated Kubb output is gitignored | Rez | Supersedes the 2026-10-27 "mounted on `/api`" decision. What actually shipped: `createApiSurface` is selected by hostname (`api.diplomacy.gg` prod, `api.stage.diplomacy.gg` stage, `api.dev.diplomacy.gg` dev, `localhost` for local dev — the 2026-11-02 apex decision keeps the `<env>` segment out of prod), and the validator wraps that surface at its root. Spec paths are API-surface-root-relative (`/health`, `/auth/login`, `/games/{id}`) — no `/api` prefix in the YAML. The `/api` prefix is a frontend convention: `apiClient` defaults to `BASE_URL = /api` and the Vite proxy strips it in dev; in cloud the frontend hits the full API hostname directly. Related: `src/generated/` is gitignored (the Kubb output is a build-time artifact), not committed as the 2026-10-27 decision implied. The `contract-check.yml` workflow envisioned there wasn't built; regeneration + `tsc` happen implicitly in `build-test.yml`. |
+| 2026-11-12 | Add Google OAuth alongside Microsoft; parameterize routes as `/auth/oauth/{provider}/*`; link to existing accounts only on provider-verified email; new OAuth users choose a username before the account is created | Pending team review | Requested for this milestone. openid-client made Google a config entry. Verified-email-only linking closes the nOAuth takeover class. A username step beats auto-generated names since usernames can't be changed yet. Kept single-table `oauth_provider`/`oauth_subject` per §7 rather than an identities table. |
 | | | | |
