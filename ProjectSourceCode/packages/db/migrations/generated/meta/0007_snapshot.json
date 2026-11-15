@@ -1,6 +1,6 @@
 {
-  "id": "12a18f90-fa12-4331-b13f-9c8abd30a4ad",
-  "prevId": "3144d18d-7a01-449e-a197-f34fa1942249",
+  "id": "0e9e6b93-7810-4872-a81c-1b8c31f26739",
+  "prevId": "9ae02bdc-4520-4e7a-9c49-12f0e3146f68",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -190,21 +190,6 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "draw_votes_player_game_fk": {
-          "name": "draw_votes_player_game_fk",
-          "tableFrom": "draw_votes",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id",
-            "game_id"
-          ],
-          "columnsTo": [
-            "id",
-            "game_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -291,6 +276,119 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.messages": {
+      "name": "messages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "game_id": {
+          "name": "game_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_player_id": {
+          "name": "from_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_player_id": {
+          "name": "to_player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "messages_game_id_created_at_idx": {
+          "name": "messages_game_id_created_at_idx",
+          "columns": [
+            {
+              "expression": "game_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "messages_game_id_games_id_fk": {
+          "name": "messages_game_id_games_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "messages_from_player_id_players_id_fk": {
+          "name": "messages_from_player_id_players_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "players",
+          "columnsFrom": [
+            "from_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "messages_to_player_id_players_id_fk": {
+          "name": "messages_to_player_id_players_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "players",
+          "columnsFrom": [
+            "to_player_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -419,36 +517,6 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        },
-        "orders_phase_game_fk": {
-          "name": "orders_phase_game_fk",
-          "tableFrom": "orders",
-          "tableTo": "phases",
-          "columnsFrom": [
-            "phase_id",
-            "game_id"
-          ],
-          "columnsTo": [
-            "id",
-            "game_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "orders_player_game_fk": {
-          "name": "orders_player_game_fk",
-          "tableFrom": "orders",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id",
-            "game_id"
-          ],
-          "columnsTo": [
-            "id",
-            "game_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -563,36 +631,6 @@
           ],
           "columnsTo": [
             "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "phase_readiness_phase_game_fk": {
-          "name": "phase_readiness_phase_game_fk",
-          "tableFrom": "phase_readiness",
-          "tableTo": "phases",
-          "columnsFrom": [
-            "phase_id",
-            "game_id"
-          ],
-          "columnsTo": [
-            "id",
-            "game_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "phase_readiness_player_game_fk": {
-          "name": "phase_readiness_player_game_fk",
-          "tableFrom": "phase_readiness",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id",
-            "game_id"
-          ],
-          "columnsTo": [
-            "id",
-            "game_id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"

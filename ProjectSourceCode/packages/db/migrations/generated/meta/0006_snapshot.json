@@ -1,203 +1,9 @@
 {
-  "id": "3144d18d-7a01-449e-a197-f34fa1942249",
+  "id": "9ae02bdc-4520-4e7a-9c49-12f0e3146f68",
   "prevId": "28029c3c-bc24-4843-b933-2bbc3b3af6e7",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
-    "public.ai_memory": {
-      "name": "ai_memory",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "game_id": {
-          "name": "game_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "power": {
-          "name": "power",
-          "type": "power",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "memory": {
-          "name": "memory",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'{}'::jsonb"
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "ai_memory_game_power_idx": {
-          "name": "ai_memory_game_power_idx",
-          "columns": [
-            {
-              "expression": "game_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "power",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "ai_memory_game_id_games_id_fk": {
-          "name": "ai_memory_game_id_games_id_fk",
-          "tableFrom": "ai_memory",
-          "tableTo": "games",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.draw_votes": {
-      "name": "draw_votes",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "game_id": {
-          "name": "game_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "player_id": {
-          "name": "player_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "voted_for_draw": {
-          "name": "voted_for_draw",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "draw_votes_game_player_idx": {
-          "name": "draw_votes_game_player_idx",
-          "columns": [
-            {
-              "expression": "game_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "draw_votes_player_idx": {
-          "name": "draw_votes_player_idx",
-          "columns": [
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "draw_votes_game_id_games_id_fk": {
-          "name": "draw_votes_game_id_games_id_fk",
-          "tableFrom": "draw_votes",
-          "tableTo": "games",
-          "columnsFrom": [
-            "game_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.games": {
       "name": "games",
       "schema": "",
@@ -285,8 +91,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.orders": {
-      "name": "orders",
+    "public.messages": {
+      "name": "messages",
       "schema": "",
       "columns": {
         "id": {
@@ -302,43 +108,24 @@
           "primaryKey": false,
           "notNull": true
         },
-        "phase_id": {
-          "name": "phase_id",
+        "from_player_id": {
+          "name": "from_player_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "player_id": {
-          "name": "player_id",
+        "to_player_id": {
+          "name": "to_player_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "unit": {
-          "name": "unit",
+        "text": {
+          "name": "text",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "action": {
-          "name": "action",
-          "type": "order_action",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "order_data": {
-          "name": "order_data",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "result": {
-          "name": "result",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -348,38 +135,17 @@
         }
       },
       "indexes": {
-        "orders_phase_unit_idx": {
-          "name": "orders_phase_unit_idx",
+        "messages_game_id_created_at_idx": {
+          "name": "messages_game_id_created_at_idx",
           "columns": [
             {
-              "expression": "phase_id",
+              "expression": "game_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "unit",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "orders_phase_player_idx": {
-          "name": "orders_phase_player_idx",
-          "columns": [
-            {
-              "expression": "phase_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "player_id",
+              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -392,9 +158,9 @@
         }
       },
       "foreignKeys": {
-        "orders_game_id_games_id_fk": {
-          "name": "orders_game_id_games_id_fk",
-          "tableFrom": "orders",
+        "messages_game_id_games_id_fk": {
+          "name": "messages_game_id_games_id_fk",
+          "tableFrom": "messages",
           "tableTo": "games",
           "columnsFrom": [
             "game_id"
@@ -404,254 +170,26 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.phase_readiness": {
-      "name": "phase_readiness",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
         },
-        "game_id": {
-          "name": "game_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phase_id": {
-          "name": "phase_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "player_id": {
-          "name": "player_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "is_ready": {
-          "name": "is_ready",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "skip_grace_vote": {
-          "name": "skip_grace_vote",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "phase_readiness_phase_player_idx": {
-          "name": "phase_readiness_phase_player_idx",
-          "columns": [
-            {
-              "expression": "phase_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "phase_readiness_player_idx": {
-          "name": "phase_readiness_player_idx",
-          "columns": [
-            {
-              "expression": "player_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "phase_readiness_game_id_games_id_fk": {
-          "name": "phase_readiness_game_id_games_id_fk",
-          "tableFrom": "phase_readiness",
-          "tableTo": "games",
+        "messages_from_player_id_players_id_fk": {
+          "name": "messages_from_player_id_players_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "players",
           "columnsFrom": [
-            "game_id"
+            "from_player_id"
           ],
           "columnsTo": [
             "id"
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.phases": {
-      "name": "phases",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
         },
-        "game_id": {
-          "name": "game_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "phase_type": {
-          "name": "phase_type",
-          "type": "phase_type",
-          "typeSchema": "public",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "turn": {
-          "name": "turn",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "board_state": {
-          "name": "board_state",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "deadline_at": {
-          "name": "deadline_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "scheduler_gen": {
-          "name": "scheduler_gen",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "resolved_at": {
-          "name": "resolved_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "phases_game_id_idx": {
-          "name": "phases_game_id_idx",
-          "columns": [
-            {
-              "expression": "game_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "phases_deadline_at_idx": {
-          "name": "phases_deadline_at_idx",
-          "columns": [
-            {
-              "expression": "deadline_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "phases_id_game_idx": {
-          "name": "phases_id_game_idx",
-          "columns": [
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "game_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "phases_game_id_games_id_fk": {
-          "name": "phases_game_id_games_id_fk",
-          "tableFrom": "phases",
-          "tableTo": "games",
+        "messages_to_player_id_players_id_fk": {
+          "name": "messages_to_player_id_players_id_fk",
+          "tableFrom": "messages",
+          "tableTo": "players",
           "columnsFrom": [
-            "game_id"
+            "to_player_id"
           ],
           "columnsTo": [
             "id"
@@ -703,20 +241,6 @@
           "notNull": true,
           "default": false
         },
-        "afk_counter": {
-          "name": "afk_counter",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "locked": {
-          "name": "locked",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
         "joined_at": {
           "name": "joined_at",
           "type": "timestamp with time zone",
@@ -758,27 +282,6 @@
             },
             {
               "expression": "power",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "players_id_game_idx": {
-          "name": "players_id_game_idx",
-          "columns": [
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "game_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1083,25 +586,6 @@
         "active",
         "finished",
         "abandoned"
-      ]
-    },
-    "public.order_action": {
-      "name": "order_action",
-      "schema": "public",
-      "values": [
-        "hold",
-        "move",
-        "support",
-        "convoy"
-      ]
-    },
-    "public.phase_type": {
-      "name": "phase_type",
-      "schema": "public",
-      "values": [
-        "movement",
-        "retreat",
-        "build"
       ]
     },
     "public.power": {
