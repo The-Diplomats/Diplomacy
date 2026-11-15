@@ -4,6 +4,7 @@ import { Themed } from '../../components/Themed';
 import { Card, CardContent, CardHeader } from '../../components/ui/card';
 import { HUDSlot } from '../game/HUDSlot';
 import { LoginForm } from './LoginForm';
+import { OAuthCompleteForm } from './OAuthCompleteForm';
 import { PasswordResetForm } from './PasswordResetForm';
 import { PasswordResetVerifyForm } from './PasswordResetVerifyForm';
 import { RegisterForm } from './RegisterForm';
@@ -11,7 +12,12 @@ import { RegisterResendButton } from './RegisterResendButton';
 import { RegisterVerifyForm } from './RegisterVerifyForm';
 
 export type AuthMode =
-  'login' | 'register' | 'register-verify' | 'password-reset' | 'password-reset-verify';
+  | 'login'
+  | 'register'
+  | 'register-verify'
+  | 'password-reset'
+  | 'password-reset-verify'
+  | 'oauth-complete';
 
 export function AuthPanel({ mode }: { mode: AuthMode }) {
   return (
@@ -40,6 +46,7 @@ export function AuthPanel({ mode }: { mode: AuthMode }) {
               {mode === 'register-verify' && <RegisterVerifyForm />}
               {mode === 'password-reset' && <PasswordResetForm />}
               {mode === 'password-reset-verify' && <PasswordResetVerifyForm />}
+              {mode === 'oauth-complete' && <OAuthCompleteForm />}
             </CardContent>
 
             <div className="space-y-2 pb-5 text-center text-xs text-muted-foreground">
@@ -65,6 +72,8 @@ function titleFor(mode: AuthMode): string {
       return 'Reset password';
     case 'password-reset-verify':
       return 'Set a new password';
+    case 'oauth-complete':
+      return 'Choose a username';
   }
 }
 
@@ -80,6 +89,8 @@ function subtitleFor(mode: AuthMode): string {
       return 'Enter your email to get a reset code';
     case 'password-reset-verify':
       return 'Enter the code and your new password';
+    case 'oauth-complete':
+      return 'Pick the name other players will see';
   }
 }
 

@@ -11,6 +11,7 @@ import { createOpenApiValidator } from './middleware/openapi-validator.js';
 import { createSessionMiddleware } from './middleware/session.js';
 import { initDb, shutdownDb } from './services/db.js';
 import { initEmails } from './services/emails.js';
+import { initOAuth, type OAuthConfig } from './services/oauth.js';
 import { createSocketServer } from './socket.js';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -40,6 +41,31 @@ if (!appUrl?.trim()) {
   process.exit(1);
 }
 
+function readOAuthCredentials(prefix: 'GOOGLE' | 'MICROSOFT') {
+  const clientId = process.env[`${prefix}_CLIENT_ID`]?.trim();
+  const clientSecret = process.env[`${prefix}_CLIENT_SECRET`]?.trim();
+  if (!clientId && !clientSecret) {
+    return undefined;
+  }
+  if (!clientId || !clientSecret) {
+    logger.error(`${prefix}_CLIENT_ID and ${prefix}_CLIENT_SECRET must be set together`);
+    process.exit(1);
+  }
+  return { clientId, clientSecret };
+}
+
+const googleCredentials = readOAuthCredentials('GOOGLE');
+const microsoftCredentials = readOAuthCredentials('MICROSOFT');
+const oauthProviders: OAuthConfig['providers'] = {
+  ...(googleCredentials && { google: googleCredentials }),
+  ...(microsoftCredentials && { microsoft: microsoftCredentials }),
+};
+const apiPublicUrl = process.env.API_PUBLIC_URL?.trim() ?? '';
+if (Object.keys(oauthProviders).length > 0 && !apiPublicUrl) {
+  logger.error('API_PUBLIC_URL is required when an OAuth provider is configured');
+  process.exit(1);
+}
+
 const origins = frontendOriginsRaw
   .split(',')
   .map((o) => o.trim())
@@ -64,6 +90,9 @@ initEmails(
   },
   logger,
 );
+
+initOAuth({ providers: oauthProviders, apiPublicUrl, appUrl });
+logger.info({ providers: Object.keys(oauthProviders) }, 'oauth providers configured');
 
 const app = createApp({
   corsMiddleware,

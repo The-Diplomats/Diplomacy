@@ -238,7 +238,158 @@ paths:
         '204':
           description: Signed out
 
+  /auth/oauth/providers:
+    get:
+      operationId: getAuthOAuthProviders
+      tags: [Auth]
+      summary: List the OAuth providers configured on this server
+      responses:
+        '200':
+          description: Enabled providers (empty when none are configured)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthProviderList'
+
+  /auth/oauth/{provider}/login:
+    post:
+      operationId: postAuthOAuthLogin
+      tags: [Auth]
+      summary: Begin an OAuth sign-in and get the provider authorization URL
+      description: >
+        Stores PKCE verifier, state and nonce on the session and returns the
+        provider URL the browser should navigate to. The provider redirects back
+        to `/auth/oauth/{provider}/callback`.
+      parameters:
+        - $ref: '#/components/parameters/OAuthProviderPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthLoginRequest'
+      responses:
+        '200':
+          description: Authorization URL to navigate to
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthLoginResponse'
+        '404':
+          description: Provider not configured on this server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/oauth/{provider}/callback:
+    get:
+      operationId: getAuthOAuthCallback
+      tags: [Auth]
+      summary: OAuth redirect target (browser navigation, not called by the client)
+      description: >
+        Exchanges the authorization code, then redirects the browser to the
+        frontend. Known identity or verified email match: session established,
+        redirect to `next`. New identity: redirect to `/auth/oauth/complete` to
+        choose a username. Failure: redirect to `/auth/login?oauthError=<reason>`
+        where reason is one of `cancelled`, `failed`, `email_unverified`,
+        `linked_elsewhere`.
+      x-eov-allow-unknown-query-parameters: true
+      parameters:
+        - $ref: '#/components/parameters/OAuthProviderPath'
+        - name: code
+          in: query
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+        - name: error
+          in: query
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the frontend
+        '400':
+          description: Unknown provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/oauth/pending:
+    get:
+      operationId: getAuthOAuthPending
+      tags: [Auth]
+      summary: Pending OAuth sign-up awaiting a username
+      responses:
+        '200':
+          description: A provider identity is verified and waiting for a username
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OAuthPendingSignup'
+        '404':
+          description: No pending sign-up on this session (or it expired)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
+  /auth/oauth/complete:
+    post:
+      operationId: postAuthOAuthComplete
+      tags: [Auth]
+      summary: Finish an OAuth sign-up by choosing a username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OAuthCompleteRequest'
+      responses:
+        '200':
+          description: Account created, logged in (session cookie set)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          description: No pending sign-up on this session (or it expired)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '409':
+          description: Username taken, or the email was registered in the meantime
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProblemDetails'
+
 components:
+  parameters:
+    OAuthProviderPath:
+      name: provider
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/OAuthProvider'
+
   schemas:
     HealthStatus:
       type: object
@@ -340,6 +491,60 @@ components:
         newPassword:
           type: string
           minLength: 8
+
+    OAuthProvider:
+      type: string
+      enum: [google, microsoft]
+
+    OAuthProviderList:
+      type: object
+      required: [providers]
+      additionalProperties: false
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/OAuthProvider'
+
+    OAuthLoginRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        next:
+          type: string
+          description: Frontend path to return to after sign-in (path-only; anything else is ignored)
+
+    OAuthLoginResponse:
+      type: object
+      required: [url]
+      additionalProperties: false
+      properties:
+        url:
+          type: string
+          format: uri
+
+    OAuthPendingSignup:
+      type: object
+      required: [provider, email, suggestedUsername]
+      additionalProperties: false
+      properties:
+        provider:
+          $ref: '#/components/schemas/OAuthProvider'
+        email:
+          type: string
+          format: email
+        suggestedUsername:
+          type: string
+
+    OAuthCompleteRequest:
+      type: object
+      required: [username]
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+          pattern: '^[a-zA-Z0-9_]{3,20}$'
+          description: 3-20 chars, alphanumeric or underscore
 
     ProblemDetails:
       type: object

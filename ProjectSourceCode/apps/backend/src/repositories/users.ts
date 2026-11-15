@@ -1,5 +1,6 @@
+import { type OAuthProvider } from '@diplomacy/contracts';
 import { type DbClient, users } from '@diplomacy/db';
-import { sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 
 export interface PublicUser {
   id: string;
@@ -12,6 +13,29 @@ export interface UserWithCredentials extends PublicUser {
   passwordHash: string | null;
   /** `null` until the user has verified their email. */
   emailVerifiedAt: Date | null;
+  /** Provider of the linked OAuth identity, `null` when none is linked. */
+  oauthProvider: string | null;
+  oauthSubject: string | null;
+}
+
+export interface OAuthIdentityRef {
+  provider: OAuthProvider;
+  subject: string;
+}
+
+export interface CreateOAuthUserInput {
+  email: string;
+  username: string;
+  identity: OAuthIdentityRef;
+}
+
+export interface LinkOAuthInput {
+  identity: OAuthIdentityRef;
+  /**
+   * Drop the stored password hash. Used when linking to an account whose email
+   * was never verified: whoever set that password never proved they own it.
+   */
+  clearPassword: boolean;
 }
 
 export interface CreateUserInput {
@@ -33,6 +57,15 @@ export interface UserRepository {
   markEmailVerified(userId: string): Promise<void>;
   /** Updates the password hash (used after a password reset). */
   updatePasswordHash(userId: string, passwordHash: string): Promise<void>;
+  /** Looks up the user linked to a provider identity. */
+  findByOAuth(identity: OAuthIdentityRef): Promise<UserWithCredentials | null>;
+  /** Inserts a verified, password-less user. Returns `null` on any unique conflict. */
+  createOAuthUser(input: CreateOAuthUserInput): Promise<PublicUser | null>;
+  /**
+   * Links an identity to a user with no identity yet and marks the email verified.
+   * Returns `false` if the user already has an identity or the identity is taken.
+   */
+  linkOAuth(userId: string, input: LinkOAuthInput): Promise<boolean>;
 }
 
 export function createUserRepository(db: DbClient): UserRepository {
@@ -42,6 +75,8 @@ export function createUserRepository(db: DbClient): UserRepository {
     username: true as const,
     passwordHash: true as const,
     emailVerifiedAt: true as const,
+    oauthProvider: true as const,
+    oauthSubject: true as const,
   };
 
   return {
@@ -105,5 +140,58 @@ export function createUserRepository(db: DbClient): UserRepository {
         .set({ passwordHash })
         .where(sql`${users.id} = ${userId}`);
     },
+
+    async findByOAuth({ provider, subject }) {
+      const row = await db.query.users.findFirst({
+        columns: selectCredentialColumns,
+        where: (u) => and(eq(u.oauthProvider, provider), eq(u.oauthSubject, subject)),
+      });
+      return row ?? null;
+    },
+
+    async createOAuthUser({ email, username, identity }) {
+      const [row] = await db
+        .insert(users)
+        .values({
+          email,
+          username,
+          passwordHash: null,
+          emailVerifiedAt: new Date(),
+          oauthProvider: identity.provider,
+          oauthSubject: identity.subject,
+        })
+        .onConflictDoNothing()
+        .returning({
+          id: users.id,
+          email: users.email,
+          username: users.username,
+        });
+      return row ?? null;
+    },
+
+    async linkOAuth(userId, { identity, clearPassword }) {
+      const rows = await db
+        .update(users)
+        .set({
+          oauthProvider: identity.provider,
+          oauthSubject: identity.subject,
+          emailVerifiedAt: sql`coalesce(${users.emailVerifiedAt}, now())`,
+          ...(clearPassword && { passwordHash: null }),
+        })
+        .where(and(eq(users.id, userId), isNull(users.oauthProvider)))
+        .returning({ id: users.id })
+        .catch((err: unknown) => {
+          if (isUniqueViolation(err)) {
+            return [];
+          }
+          throw err;
+        });
+      return rows.length > 0;
+    },
   };
+}
+
+function isUniqueViolation(err: unknown): boolean {
+  const cause = err instanceof Error && err.cause !== undefined ? err.cause : err;
+  return typeof cause === 'object' && cause !== null && 'code' in cause && cause.code === '23505';
 }

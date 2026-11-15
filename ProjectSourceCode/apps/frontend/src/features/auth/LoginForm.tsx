@@ -1,15 +1,15 @@
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Separator } from '../../components/ui/separator';
 import { AuthField, PasswordInput } from './AuthFormParts';
+import { OAuthButtons } from './OAuthButtons';
 import { SignedInPanel } from './SignedInPanel';
 import { useNextPath } from './useNextPath';
-import { authErrorMessage, useLogin, useSession } from './useSession';
+import { authErrorMessage, oauthErrorMessage, useLogin, useSession } from './useSession';
 
 type Errors = Partial<Record<'identifier' | 'password', string>>;
 
@@ -18,11 +18,14 @@ export function LoginForm() {
   const session = useSession();
   const login = useLogin();
   const next = useNextPath();
+  const [searchParams] = useSearchParams();
 
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState<Errors>({});
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useState(
+    () => oauthErrorMessage(searchParams.get('oauthError')) ?? '',
+  );
 
   if (session.data) {
     return <SignedInPanel user={session.data} />;
@@ -109,16 +112,7 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="relative py-4">
-        <Separator />
-        <span className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-card px-2 text-xs text-muted-foreground uppercase">or</span>
-        </span>
-      </div>
-
-      <Button type="button" variant="outline" className="w-full">
-        Continue with Microsoft
-      </Button>
+      <OAuthButtons />
     </>
   );
 }

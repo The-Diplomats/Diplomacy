@@ -67,3 +67,15 @@ export const passwordResetVerifyRateLimit = createIpRateLimit({
   limit: 10,
   detail: 'Too many reset attempts. Try again later.',
 });
+
+export const oauthLoginRateLimit = createIpRateLimit({
+  windowMs: 15 * MINUTE,
+  limit: 20,
+  detail: 'Too many sign-in attempts. Try again later.',
+});
+
+export const oauthCompleteRateLimit = createIpRateLimit({
+  windowMs: 15 * MINUTE,
+  limit: 10,
+  detail: 'Too many attempts. Try again later.',
+});
