@@ -16,7 +16,6 @@ ProblemDetails:
       type: string
       format: uri-reference
   required:
-    - type
     - title
 
 Power:

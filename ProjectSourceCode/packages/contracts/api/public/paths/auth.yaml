@@ -44,7 +44,13 @@ paths:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
         '401':
-          description: Authentication failed
+          description: Invalid credentials (unknown identifier or wrong password)
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Credentials are valid but the email is not yet verified
           content:
             application/json:
               schema:
