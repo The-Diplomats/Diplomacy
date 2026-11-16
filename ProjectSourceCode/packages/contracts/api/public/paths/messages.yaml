@@ -79,3 +79,92 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
+
+  /games/{gameId}/messages/dm/{participantId}:
+    get:
+      operationId: getGameDmMessages
+      tags: [Messages]
+      summary: List DM thread with a specific participant, oldest first
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+        - $ref: ../components/parameters/common.yaml#/ParticipantId
+      responses:
+        '200':
+          description: DM messages in thread
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/messages.yaml#/MessageList
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '401':
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Logged-in user is not in this game
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Participant not found in this game
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+    post:
+      operationId: postGameDmMessage
+      tags: [Messages]
+      summary: Send a DM to a specific participant in this game
+      description: Sender is determined by which user is logged in, not sent in the request (to prevent impersonation)
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+        - $ref: ../components/parameters/common.yaml#/ParticipantId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/messages.yaml#/SendMessageRequest
+      responses:
+        '201':
+          description: DM saved
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/messages.yaml#/Message
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '401':
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Logged-in user is not in this game
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Participant not found in this game
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited

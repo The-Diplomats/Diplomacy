@@ -26,8 +26,9 @@ Message:
       type: [string, 'null']
       description: Null for AI players
     fromPower:
-      type: [string, 'null']
-      enum: [austria, england, france, germany, italy, russia, turkey, null]
+      oneOf:
+        - $ref: './common.yaml#/Power'
+        - type: 'null'
       description: Null when the game is still forming
     toPlayerId:
       type: [string, 'null']

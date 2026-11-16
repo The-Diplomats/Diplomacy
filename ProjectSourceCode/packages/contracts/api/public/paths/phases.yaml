@@ -90,6 +90,12 @@ paths:
                 type: array
                 items:
                   $ref: ../components/schemas/phases.yaml#/Order
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
         '401':
           description: Not authenticated
           content:
@@ -114,12 +120,8 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
-        '422':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /games/{gameId}/phases/current/ready:
     post:
@@ -160,6 +162,8 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
     delete:
       operationId: deleteCurrentReady
       tags:
@@ -198,6 +202,8 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /games/{gameId}/phases/current/skip-grace:
     post:
@@ -238,3 +244,5 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited

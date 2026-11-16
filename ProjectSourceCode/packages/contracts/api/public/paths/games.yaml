@@ -39,18 +39,20 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/games.yaml#/Game
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
         '401':
           description: Not authenticated
           content:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
-        '422':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /games/{gameId}:
     get:
@@ -107,6 +109,12 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/games.yaml#/GameDetail
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
         '401':
           description: Not authenticated
           content:
@@ -131,12 +139,8 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
-        '422':
-          description: Invalid request
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /games/{gameId}/start:
     post:
@@ -177,6 +181,8 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /games/{gameId}/draw-vote:
     post:
@@ -217,6 +223,8 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
     delete:
       operationId: deleteGameDrawVote
       tags:
@@ -251,3 +259,5 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited

@@ -2,13 +2,21 @@ ProblemDetails:
   type: object
   additionalProperties: false
   properties:
+    type:
+      type: string
+      format: uri-reference
+      default: about:blank
     title:
       type: string
     detail:
       type: string
     status:
       type: integer
+    instance:
+      type: string
+      format: uri-reference
   required:
+    - type
     - title
 
 Power:

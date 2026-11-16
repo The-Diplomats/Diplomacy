@@ -7,6 +7,15 @@ GameId:
     type: string
     format: uuid
 
+ParticipantId:
+  name: participantId
+  in: path
+  required: true
+  description: Player ID of the other participant in the DM thread
+  schema:
+    type: string
+    format: uuid
+
 Limit:
   name: limit
   in: query

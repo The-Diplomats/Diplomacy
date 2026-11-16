@@ -31,10 +31,6 @@ Game:
       type: integer
       enum:
         - 7
-    movementDeadlineSeconds:
-      type: integer
-      minimum: 60
-      default: 86400
     createdAt:
       type: string
       format: date-time
@@ -49,7 +45,6 @@ Game:
     - createdByUserId
     - playerCount
     - maxPlayers
-    - movementDeadlineSeconds
     - createdAt
     - private
 
@@ -69,7 +64,7 @@ GameList:
     - games
     - nextCursor
 
-GamePlayer:
+Player:
   type: object
   additionalProperties: false
   properties:
@@ -109,7 +104,7 @@ GameDetail:
     players:
       type: array
       items:
-        $ref: '#/GamePlayer'
+        $ref: '#/Player'
   required:
     - game
     - players
@@ -124,10 +119,6 @@ CreateGameRequest:
       maxLength: 120
     private:
       type: boolean
-    movementDeadlineSeconds:
-      type: integer
-      minimum: 60
-      default: 86400
   required:
     - name
 

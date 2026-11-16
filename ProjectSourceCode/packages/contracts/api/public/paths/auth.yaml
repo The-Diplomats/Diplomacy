@@ -37,24 +37,20 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/auth.yaml#/User
-        '401':
-          description: Invalid credentials
+        '400':
+          description: Malformed request body
           content:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
-        '403':
-          description: Email not yet verified
+        '401':
+          description: Authentication failed
           content:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
         '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /auth/register:
     post:
@@ -80,11 +76,7 @@ paths:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
         '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /auth/register/verify:
     post:
@@ -111,11 +103,7 @@ paths:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
         '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /auth/register/resend:
     post:
@@ -132,11 +120,7 @@ paths:
         '202':
           description: Fresh verification email sent (enumeration-safe)
         '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /auth/password-reset:
     post:
@@ -153,11 +137,7 @@ paths:
         '202':
           description: Reset email sent (enumeration-safe)
         '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /auth/password-reset/verify:
     post:
@@ -184,11 +164,7 @@ paths:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
         '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /auth/logout:
     post:
@@ -199,6 +175,8 @@ paths:
       responses:
         '204':
           description: Signed out
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
 
   /auth/oauth/microsoft/login:
     post:
@@ -214,11 +192,7 @@ paths:
               schema:
                 $ref: ../components/schemas/auth.yaml#/OAuthLoginResponse
         '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+          $ref: ../components/responses/common.yaml#/RateLimited
       description:
         Returns a Microsoft authorization URL and persists OIDC state, nonce and PKCE verifier in the
         pre-auth session.
@@ -232,12 +206,12 @@ paths:
       parameters:
         - name: code
           in: query
-          required: false
+          required: true
           schema:
             type: string
         - name: state
           in: query
-          required: false
+          required: true
           schema:
             type: string
         - name: error
@@ -252,7 +226,11 @@ paths:
             type: string
       responses:
         '302':
-          description: Session created; redirect to frontend
+          description:
+            Redirect to the frontend. On success a session cookie is set and the user is sent to the
+            post-login landing page. On provider error (state mismatch, expired code, error query
+            params) the user is redirected to a frontend error page; the response body is empty in
+            both cases.
         '400':
           description: Bad request
           content:

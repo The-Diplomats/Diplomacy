@@ -73,3 +73,5 @@ paths:
 
   /games/{gameId}/messages:
     $ref: './paths/messages.yaml#/paths/~1games~1{gameId}~1messages'
+  /games/{gameId}/messages/dm/{participantId}:
+    $ref: './paths/messages.yaml#/paths/~1games~1{gameId}~1messages~1dm~1{participantId}'

@@ -52,34 +52,47 @@ jobs:
       # representation drift (false-positive "added to oneOf" errors).
       - name: Bundle base + HEAD
         if: steps.filter.outputs.contracts == 'true'
+        env:
+          # Keep in sync with the @redocly/cli catalog version in pnpm-workspace.yaml.
+          REDOCLY_VERSION: 2.72.1
         run: |
           BASE_SPEC=/tmp/base-worktree/ProjectSourceCode/packages/contracts/api/public/openapi.yaml
           HEAD_SPEC=ProjectSourceCode/packages/contracts/api/public/openapi.yaml
-          npx --yes @redocly/cli@latest bundle "$BASE_SPEC" -o /tmp/base.bundled.yaml
-          npx --yes @redocly/cli@latest bundle "$HEAD_SPEC" -o /tmp/head.bundled.yaml
+          npx --yes "@redocly/cli@${REDOCLY_VERSION}" bundle "$BASE_SPEC" -o /tmp/base.bundled.yaml
+          npx --yes "@redocly/cli@${REDOCLY_VERSION}" bundle "$HEAD_SPEC" -o /tmp/head.bundled.yaml
 
-      # Tufin's own action: produces a markdown summary without failing the
-      # step, so we can decide whether to post a comment first.
+      # Writes the report to the file only when breaking changes exist, and
+      # doesn't fail the step (fail-on unset), so the comment can post first.
+      # review and github-token are disabled so the action neither uploads the
+      # specs to oasdiff.com nor posts its own PR comment.
       - name: Detect breaking changes
-        id: breaking
         if: steps.filter.outputs.contracts == 'true'
-        uses: oasdiff/oasdiff-action/breaking@main
+        uses: oasdiff/oasdiff-action/breaking@0546e2ebdc9d3589d594cfcef445c61ca02cabf1 # v0.2.0
         with:
           base: /tmp/base.bundled.yaml
           revision: /tmp/head.bundled.yaml
-          format: markdown
-          output-to-file: /tmp/breaking.md
-          fail-on-diff: false
+          output-to-file: /tmp/breaking.txt
+          review: false
+          github-token: ''
 
-      - name: Check whether any breaking changes were produced
+      - name: Build comment body
         id: check
         if: steps.filter.outputs.contracts == 'true'
         run: |
-          if [ -s /tmp/breaking.md ]; then
-            echo "has_changes=true" >> "$GITHUB_OUTPUT"
-          else
+          if [ ! -s /tmp/breaking.txt ]; then
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
+          {
+            echo "### OpenAPI breaking changes"
+            echo ""
+            echo '```text'
+            cat /tmp/breaking.txt
+            echo '```'
+            echo ""
+            echo "If these are intentional, add the \`breaking-change-approved\` label."
+          } > /tmp/breaking-comment.md
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
 
       # Upserts a single PR comment keyed by header. Only runs when the
       # diff file has content, so clean PRs get no comment noise.
@@ -88,10 +101,10 @@ jobs:
           steps.filter.outputs.contracts == 'true' &&
           steps.check.outputs.has_changes == 'true' &&
           github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: oasdiff-breaking
-          path: /tmp/breaking.md
+          path: /tmp/breaking-comment.md
           recreate: true
 
       # If a prior push had breakings and this one fixes them, remove the
@@ -101,7 +114,7 @@ jobs:
           steps.filter.outputs.contracts == 'true' &&
           steps.check.outputs.has_changes == 'false' &&
           github.event_name == 'pull_request'
-        uses: marocchino/sticky-pull-request-comment@v2
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         with:
           header: oasdiff-breaking
           delete: true

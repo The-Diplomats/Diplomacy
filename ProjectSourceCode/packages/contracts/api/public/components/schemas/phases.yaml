@@ -5,6 +5,47 @@ PhaseType:
     - retreat
     - build
 
+UnitType:
+  type: string
+  enum:
+    - army
+    - fleet
+
+Unit:
+  type: object
+  additionalProperties: false
+  required:
+    - type
+    - owner
+    - location
+  properties:
+    type:
+      $ref: '#/UnitType'
+    owner:
+      $ref: './common.yaml#/Power'
+    location:
+      type: string
+
+BoardState:
+  type: object
+  additionalProperties: false
+  required:
+    - turn
+    - units
+    - supplyCenters
+  properties:
+    turn:
+      type: integer
+      minimum: 0
+    units:
+      type: array
+      items:
+        $ref: '#/Unit'
+    supplyCenters:
+      type: object
+      additionalProperties:
+        $ref: './common.yaml#/Power'
+
 Phase:
   type: object
   additionalProperties: false
@@ -26,9 +67,7 @@ Phase:
           format: date-time
         - type: 'null'
     boardState:
-      type: object
-      additionalProperties: true
-      description: Serialized board snapshot; exact schema must be aligned with game-types
+      $ref: '#/BoardState'
     readiness:
       $ref: '#/ReadinessStatus'
   required:
@@ -52,6 +91,16 @@ OrderAction:
     - disband
     - waive
 
+OrderResult:
+  type: string
+  enum:
+    - pending
+    - success
+    - bounced
+    - cut
+    - dislodged
+    - disbanded
+
 Order:
   type: object
   additionalProperties: false
@@ -70,7 +119,9 @@ Order:
     targetUnit:
       type: string
     result:
-      type: string
+      oneOf:
+        - $ref: '#/OrderResult'
+        - type: 'null'
   required:
     - id
     - action
