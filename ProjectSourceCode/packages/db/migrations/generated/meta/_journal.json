@@ -50,6 +50,20 @@
       "when": 1794506887995,
       "tag": "0006_lean_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794717672473,
+      "tag": "0007_narrow_lily_hollister",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794717761951,
+      "tag": "0008_slippery_pestilence",
+      "breakpoints": true
     }
   ]
 }

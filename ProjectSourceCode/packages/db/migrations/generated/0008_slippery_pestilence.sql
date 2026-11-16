@@ -1,0 +1,5 @@
+ALTER TABLE "draw_votes" ADD CONSTRAINT "draw_votes_player_game_fk" FOREIGN KEY ("player_id","game_id") REFERENCES "public"."players"("id","game_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "orders" ADD CONSTRAINT "orders_phase_game_fk" FOREIGN KEY ("phase_id","game_id") REFERENCES "public"."phases"("id","game_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "orders" ADD CONSTRAINT "orders_player_game_fk" FOREIGN KEY ("player_id","game_id") REFERENCES "public"."players"("id","game_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "phase_readiness" ADD CONSTRAINT "phase_readiness_phase_game_fk" FOREIGN KEY ("phase_id","game_id") REFERENCES "public"."phases"("id","game_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "phase_readiness" ADD CONSTRAINT "phase_readiness_player_game_fk" FOREIGN KEY ("player_id","game_id") REFERENCES "public"."players"("id","game_id") ON DELETE cascade ON UPDATE no action;
