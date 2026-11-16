@@ -41,11 +41,16 @@ export function createLoggingEmailSender(logger: Logger): EmailSender {
 }
 
 export function createEmailSender(
-  env: { resendApiKey?: string; from: string },
+  env: { resendApiKey?: string; from: string; nodeEnv?: string },
   logger: Logger,
 ): EmailSender {
   if (env.resendApiKey) {
     return createResendEmailSender({ apiKey: env.resendApiKey, from: env.from });
+  }
+  if (env.nodeEnv !== 'development') {
+    throw new Error(
+      `RESEND_API_KEY is required outside development (NODE_ENV=${env.nodeEnv ?? 'unset'})`,
+    );
   }
   logger.warn('RESEND_API_KEY not set; using logging email sender (emails will not be delivered)');
   return createLoggingEmailSender(logger);

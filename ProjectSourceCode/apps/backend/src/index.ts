@@ -61,6 +61,7 @@ initEmails(
     from: emailFrom,
     appUrl,
     codeExpiresInMinutes: VERIFICATION_CODE_TTL_MINUTES,
+    nodeEnv: process.env.NODE_ENV,
   },
   logger,
 );

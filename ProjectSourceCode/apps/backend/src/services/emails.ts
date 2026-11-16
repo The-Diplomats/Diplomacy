@@ -19,11 +19,12 @@ export interface EmailsConfig {
   from: string;
   appUrl: string;
   codeExpiresInMinutes: number;
+  nodeEnv?: string;
 }
 
 export function initEmails(config: EmailsConfig, logger: Logger): void {
   const sender: EmailSender = createEmailSender(
-    { resendApiKey: config.resendApiKey, from: config.from },
+    { resendApiKey: config.resendApiKey, from: config.from, nodeEnv: config.nodeEnv },
     logger,
   );
   emails = {
