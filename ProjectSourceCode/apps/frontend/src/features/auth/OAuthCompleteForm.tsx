@@ -23,6 +23,20 @@ export function OAuthCompleteForm() {
   if (pending.isPending) {
     return null;
   }
+  if (pending.isError) {
+    return (
+      <div className="flex flex-col gap-4">
+        <Alert variant="destructive">
+          <AlertDescription className="text-destructive">
+            {authErrorMessage(pending.error)}
+          </AlertDescription>
+        </Alert>
+        <Button type="button" onClick={() => void pending.refetch()}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
   if (!pending.data) {
     return (
       <div className="flex flex-col gap-4 text-center">

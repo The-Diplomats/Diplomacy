@@ -57,6 +57,11 @@ export interface UserRepository {
   markEmailVerified(userId: string): Promise<void>;
   /** Updates the password hash (used after a password reset). */
   updatePasswordHash(userId: string, passwordHash: string): Promise<void>;
+  /**
+   * Replaces the hash of a still-unverified, unlinked account (re-registration).
+   * Returns `false` if the account was verified or OAuth-linked in the meantime.
+   */
+  replaceUnverifiedPasswordHash(userId: string, passwordHash: string): Promise<boolean>;
   /** Looks up the user linked to a provider identity. */
   findByOAuth(identity: OAuthIdentityRef): Promise<UserWithCredentials | null>;
   /** Inserts a verified, password-less user. Returns `null` on any unique conflict. */
@@ -139,6 +144,17 @@ export function createUserRepository(db: DbClient): UserRepository {
         .update(users)
         .set({ passwordHash })
         .where(sql`${users.id} = ${userId}`);
+    },
+
+    async replaceUnverifiedPasswordHash(userId, passwordHash) {
+      const rows = await db
+        .update(users)
+        .set({ passwordHash })
+        .where(
+          and(eq(users.id, userId), isNull(users.emailVerifiedAt), isNull(users.oauthProvider)),
+        )
+        .returning({ id: users.id });
+      return rows.length > 0;
     },
 
     async findByOAuth({ provider, subject }) {

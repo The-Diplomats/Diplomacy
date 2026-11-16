@@ -115,7 +115,7 @@ oauthRouter.post(
 oauthRouter.post(
   '/:provider/login',
   oauthLoginRateLimit,
-  async (req: Request<ProviderParams, unknown, OAuthLoginRequest>, res: Response) => {
+  async (req: Request<ProviderParams, unknown, OAuthLoginRequest | undefined>, res: Response) => {
     const { provider } = req.params;
     const client = oauth.providers[provider];
     if (!client) {
@@ -137,7 +137,7 @@ oauthRouter.post(
       state,
       nonce,
       codeVerifier,
-      next: safeNextPath(req.body.next),
+      next: safeNextPath(req.body?.next),
     };
     const body: OAuthLoginResponse = { url: url.href };
     return res.json(body);
@@ -237,7 +237,13 @@ function safeNextPath(next: string | undefined): string {
   if (resolved.origin !== appOrigin) {
     return DEFAULT_NEXT_PATH;
   }
-  return resolved.pathname + resolved.search + resolved.hash;
+  // Dot segments can normalize to a protocol-relative `//host` path, so the
+  // returned string must pass the same check when redirectToApp reparses it.
+  const path = resolved.pathname + resolved.search + resolved.hash;
+  if (new URL(path, appOrigin).origin !== appOrigin) {
+    return DEFAULT_NEXT_PATH;
+  }
+  return path;
 }
 
 function redirectToApp(res: Response, path: string, params?: Record<string, string>): void {

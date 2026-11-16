@@ -99,6 +99,12 @@ describe('OAuth sign-in', () => {
     expect(res.status).toBe(404);
   });
 
+  test('login accepts a request with no body', async () => {
+    const res = await httpsClient(createTestApp()).post('/auth/oauth/google/login');
+    expect(res.status).toBe(200);
+    expect(res.body.url).toBeTruthy();
+  });
+
   test('authorization URL carries PKCE, state, nonce and the callback redirect URI', async () => {
     const res = await httpsClient(createTestApp()).post('/auth/oauth/google/login', {});
     const url = new URL(res.body.url);
@@ -250,16 +256,20 @@ describe('OAuth sign-in', () => {
     );
   });
 
-  test.each(['//evil.test/x', '/\\evil.test', 'https://evil.test', '/\t/evil.test'])(
-    'ignores unsafe next %j',
-    async (next) => {
-      const creds = makeTestCredentials();
-      const instance = createTestApp();
-      await registerAndVerify(instance, creds);
-      nextIdentity = makeIdentity({ email: creds.email.toLowerCase() });
+  test.each([
+    '//evil.test/x',
+    '/\\evil.test',
+    'https://evil.test',
+    '/\t/evil.test',
+    '/.//evil.test',
+    '/x/..//evil.test',
+  ])('ignores unsafe next %j', async (next) => {
+    const creds = makeTestCredentials();
+    const instance = createTestApp();
+    await registerAndVerify(instance, creds);
+    nextIdentity = makeIdentity({ email: creds.email.toLowerCase() });
 
-      const redirect = await signInWithProvider(httpsClient(instance), { next });
-      expect(redirect.href).toBe(`${APP_URL}/lobby`);
-    },
-  );
+    const redirect = await signInWithProvider(httpsClient(instance), { next });
+    expect(redirect.href).toBe(`${APP_URL}/lobby`);
+  });
 });

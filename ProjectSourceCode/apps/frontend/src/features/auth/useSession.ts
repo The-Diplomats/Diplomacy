@@ -136,7 +136,9 @@ export function oauthErrorMessage(reason: string | null): string | null {
   if (!reason) {
     return null;
   }
-  return OAUTH_ERROR_MESSAGES[reason] ?? OAUTH_ERROR_MESSAGES.failed ?? null;
+  return Object.hasOwn(OAUTH_ERROR_MESSAGES, reason)
+    ? (OAUTH_ERROR_MESSAGES[reason] ?? null)
+    : (OAUTH_ERROR_MESSAGES.failed ?? null);
 }
 
 export function authErrorMessage(err: unknown): string {
