@@ -12,13 +12,16 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   compat:
     name: Breaking change check
-    if: ${{ !contains(github.event.pull_request.labels.*.name, 'breaking-change-approved') }}
     runs-on: ubuntu-latest
+    # The label only waives the final fail step; detection and the comment
+    # still run, so pushes after approval keep the breaking-change list current.
+    env:
+      APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'breaking-change-approved') }}
     steps:
       - name: Checkout PR head
         uses: actions/checkout@v4
@@ -37,33 +40,118 @@ jobs:
       - if: steps.filter.outputs.contracts != 'true'
         run: echo "No contract changes; skipping breaking-change check."
 
-      - name: Install oasdiff
-        if: steps.filter.outputs.contracts == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          VERSION=$(gh api repos/oasdiff/oasdiff/releases/latest --jq .tag_name | sed 's/^v//')
-          echo "Installing oasdiff $VERSION"
-          curl -fsSL -o oasdiff.tar.gz \
-            "https://github.com/oasdiff/oasdiff/releases/download/v${VERSION}/oasdiff_${VERSION}_linux_amd64.tar.gz"
-          sudo tar -xzf oasdiff.tar.gz -C /usr/local/bin oasdiff
-          rm oasdiff.tar.gz
-          oasdiff --version
-
-      - name: Extract base spec
+      # Check out the base ref as a worktree so redocly can resolve the
+      # spec's relative $refs (paths/, components/) at bundle time.
+      - name: Check out base ref as worktree
         if: steps.filter.outputs.contracts == 'true'
         env:
           BASE_REF: ${{ github.base_ref || github.event.merge_group.base_ref }}
         run: |
-          git show "origin/${BASE_REF#refs/heads/}:ProjectSourceCode/packages/contracts/api/public/openapi.yaml" \
-            > /tmp/base.yaml
+          git worktree add /tmp/base-worktree "origin/${BASE_REF#refs/heads/}"
 
-      - name: Check for breaking changes
+      # Bundle both sides into a flat file so oasdiff compares apples to
+      # apples. Without this, oasdiff inlines external $refs on HEAD but
+      # keeps same-document $refs as refs on base, which it flags as
+      # representation drift (false-positive "added to oneOf" errors).
+      # Outputs go under the workspace, not /tmp: the oasdiff action runs in a
+      # Docker container that only mounts the workspace, so relative paths are
+      # the only ones both the host steps and the container can see.
+      - name: Bundle base + HEAD
         if: steps.filter.outputs.contracts == 'true'
+        env:
+          # Keep in sync with the @redocly/cli catalog version in pnpm-workspace.yaml.
+          REDOCLY_VERSION: 2.72.1
         run: |
-          oasdiff breaking \
-            /tmp/base.yaml \
-            ProjectSourceCode/packages/contracts/api/public/openapi.yaml \
-            --allow-external-refs=false \
-            --fail-on ERR
+          BASE_SPEC=/tmp/base-worktree/ProjectSourceCode/packages/contracts/api/public/openapi.yaml
+          HEAD_SPEC=ProjectSourceCode/packages/contracts/api/public/openapi.yaml
+          mkdir -p .oasdiff
+          npx --yes "@redocly/cli@${REDOCLY_VERSION}" bundle "$BASE_SPEC" -o .oasdiff/base.bundled.yaml
+          npx --yes "@redocly/cli@${REDOCLY_VERSION}" bundle "$HEAD_SPEC" -o .oasdiff/head.bundled.yaml
+
+      # The exit code is the result, not the report file: the action writes
+      # "No breaking changes" to the file on a clean run too. fail-on: ERR exits
+      # 1 on error-level changes (warnings alone pass); a load failure exits >= 2
+      # before writing the file. continue-on-error lets the comment post first.
+      # review and github-token are disabled so the action neither uploads the
+      # specs to oasdiff.com nor posts its own PR comment.
+      - name: Detect breaking changes
+        id: oasdiff
+        if: steps.filter.outputs.contracts == 'true'
+        continue-on-error: true
+        uses: oasdiff/oasdiff-action/breaking@0546e2ebdc9d3589d594cfcef445c61ca02cabf1 # v0.2.0
+        with:
+          base: .oasdiff/base.bundled.yaml
+          revision: .oasdiff/head.bundled.yaml
+          output-to-file: .oasdiff/breaking.txt
+          fail-on: ERR
+          review: false
+          github-token: ''
+
+      - name: Build comment body
+        id: check
+        if: steps.filter.outputs.contracts == 'true'
+        env:
+          OASDIFF_OUTCOME: ${{ steps.oasdiff.outcome }}
+        run: |
+          if [ "$OASDIFF_OUTCOME" = "success" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ ! -s .oasdiff/breaking.txt ]; then
+            echo "::error::oasdiff failed before comparing the specs. See the 'Detect breaking changes' step log."
+            exit 1
+          fi
+          {
+            echo "### OpenAPI breaking changes"
+            echo ""
+            echo '```text'
+            cat .oasdiff/breaking.txt
+            echo '```'
+            echo ""
+            if [ "$APPROVED" = "true" ]; then
+              echo "Approved via the \`breaking-change-approved\` label. This list updates on every push."
+            else
+              echo "If these are intentional, add the \`breaking-change-approved\` label."
+            fi
+          } > .oasdiff/breaking-comment.md
+          echo "has_changes=true" >> "$GITHUB_OUTPUT"
+
+      # Upserts a single PR comment keyed by header. Only runs when oasdiff
+      # found error-level changes, so clean PRs get no comment noise.
+      - name: Comment on PR with breaking-change summary
+        if: >-
+          steps.filter.outputs.contracts == 'true' &&
+          steps.check.outputs.has_changes == 'true' &&
+          github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: oasdiff-breaking
+          path: .oasdiff/breaking-comment.md
+          recreate: true
+
+      # If a prior push had breakings and this one fixes them, remove the
+      # stale comment instead of leaving it misleadingly in place.
+      - name: Clear stale comment when now clean
+        if: >-
+          steps.filter.outputs.contracts == 'true' &&
+          steps.check.outputs.has_changes == 'false' &&
+          github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        with:
+          header: oasdiff-breaking
+          delete: true
+
+      # Enforced on the PR only: merge_group events carry no PR labels, so an
+      # approved PR would fail in the queue. The PR run already gated it.
+      - name: Fail when breaking changes are not approved
+        if: >-
+          steps.filter.outputs.contracts == 'true' &&
+          steps.check.outputs.has_changes == 'true' &&
+          github.event_name == 'pull_request'
+        run: |
+          if [ "$APPROVED" = "true" ]; then
+            echo "::notice::Breaking API changes approved via the breaking-change-approved label."
+            exit 0
+          fi
+          echo "::error::Breaking API changes detected. See the PR comment for details."
+          exit 1

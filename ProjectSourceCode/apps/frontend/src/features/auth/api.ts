@@ -11,12 +11,13 @@ import {
   postAuthLogin as postAuthLoginRequest,
   postAuthLogout as postAuthLogoutRequest,
   postAuthOAuthComplete as postAuthOAuthCompleteRequest,
-  postAuthOAuthLogin as postAuthOAuthLoginRequest,
   postAuthPasswordReset as postAuthPasswordResetRequest,
   postAuthPasswordResetVerify as postAuthPasswordResetVerifyRequest,
   postAuthRegister as postAuthRegisterRequest,
   postAuthRegisterResend as postAuthRegisterResendRequest,
   postAuthRegisterVerify as postAuthRegisterVerifyRequest,
+  postGoogleOAuthLogin,
+  postMicrosoftOAuthLogin,
   type RegisterRequest,
   type RegisterResendRequest,
   type RegisterVerifyRequest,
@@ -70,9 +71,14 @@ export async function getAuthOAuthProviders(signal?: AbortSignal): Promise<OAuth
   return providers;
 }
 
+const oauthLoginRequests = {
+  google: postGoogleOAuthLogin,
+  microsoft: postMicrosoftOAuthLogin,
+} satisfies Record<OAuthProvider, unknown>;
+
 /** Returns the provider authorization URL; the caller navigates the browser there. */
 export async function postAuthOAuthLogin(provider: OAuthProvider, next: string): Promise<string> {
-  const { url } = await postAuthOAuthLoginRequest(provider, { next }, { client: apiClient });
+  const { url } = await oauthLoginRequests[provider]({ next }, { client: apiClient });
   return url;
 }
 

@@ -38,7 +38,7 @@ describe('POST /auth/register', () => {
     const email = capturedEmails.at(-1);
     expect(email).toBeDefined();
     expect(email!.to.toLowerCase()).toBe(creds.email.toLowerCase());
-    expect(email!.subject.toLowerCase()).toContain('verify');
+    expect(email!.subject.toLowerCase()).toContain('confirm your email');
     expect(email!.text).toMatch(/\b\d{6}\b/);
   });
 
@@ -86,7 +86,7 @@ describe('POST /auth/register', () => {
 
     const email = capturedEmails.at(-1);
     expect(email).toBeDefined();
-    expect(email!.subject.toLowerCase()).toContain('verify');
+    expect(email!.subject.toLowerCase()).toContain('confirm your email');
   });
 });
 

@@ -1,0 +1,48 @@
+ProblemDetails:
+  type: object
+  additionalProperties: false
+  properties:
+    type:
+      type: string
+      format: uri-reference
+      default: about:blank
+    title:
+      type: string
+    detail:
+      type: string
+    status:
+      type: integer
+    instance:
+      type: string
+      format: uri-reference
+  required:
+    - title
+
+Power:
+  type: string
+  enum:
+    - austria
+    - england
+    - france
+    - germany
+    - italy
+    - russia
+    - turkey
+
+HealthStatus:
+  type: object
+  additionalProperties: false
+  properties:
+    status:
+      type: string
+      enum:
+        - ok
+        - degraded
+        - down
+    uptime:
+      type: integer
+      minimum: 0
+      description: Server uptime in seconds
+  required:
+    - status
+    - uptime

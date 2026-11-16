@@ -1,559 +1,87 @@
 openapi: 3.1.0
-
 info:
   title: Diplomacy API
   version: 0.0.0
-  description: Internal API contract for the Diplomacy monorepo.
+  description:
+    Internal API contract for the Diplomacy monorepo. New game-related payloads are proposed for team
+    review.
   license:
     name: GPL-3.0-or-later
     identifier: GPL-3.0-or-later
-
 servers:
   - url: /
     description: Mount-relative base path
-
 tags:
   - name: Health
     description: Service health
   - name: Auth
     description: Authentication
-
+  - name: Games
+    description: Game creation and management
+  - name: Phases
+    description: Phase status and resolution
+  - name: Orders
+    description: Order submission and retrieval
+  - name: Ready
+    description: Player readiness and grace handling
+  - name: Messages
+    description: Game chat
 paths:
   /health:
-    head:
-      operationId: headHealth
-      tags: [Health]
-      summary: Health check (headers only, for uptime monitors)
-      responses:
-        '200':
-          description: Service is healthy
-    get:
-      operationId: getHealth
-      tags: [Health]
-      summary: Health check
-      responses:
-        '200':
-          description: Service is healthy
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HealthStatus'
+    $ref: './paths/health.yaml#/paths/~1health'
 
   /auth/me:
-    get:
-      operationId: getAuthMe
-      tags: [Auth]
-      summary: Current authenticated user
-      responses:
-        '200':
-          description: Authenticated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1me'
   /auth/login:
-    post:
-      operationId: postAuthLogin
-      tags: [Auth]
-      summary: Log in with email-or-username and password
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LoginRequest'
-      responses:
-        '200':
-          description: Logged in (session cookie set)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '401':
-          description: Invalid credentials
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '403':
-          description: Email not yet verified
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1login'
   /auth/register:
-    post:
-      operationId: postAuthRegister
-      tags: [Auth]
-      summary: Begin account registration (verification email sent)
-      description: >
-        Creates the user in an unverified state and emails a verification code.
-        Response is intentionally generic to prevent email enumeration.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterRequest'
-      responses:
-        '202':
-          description: Verification email sent (or would have been; response is enumeration-safe)
-        '400':
-          description: Validation failed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1register'
   /auth/register/verify:
-    post:
-      operationId: postAuthRegisterVerify
-      tags: [Auth]
-      summary: Complete registration with the emailed verification code
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterVerifyRequest'
-      responses:
-        '200':
-          description: Verified and logged in (session cookie set)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          description: Invalid or expired code
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1register~1verify'
   /auth/register/resend:
-    post:
-      operationId: postAuthRegisterResend
-      tags: [Auth]
-      summary: Resend the email verification code
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RegisterResendRequest'
-      responses:
-        '202':
-          description: Fresh verification email sent (enumeration-safe)
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1register~1resend'
   /auth/password-reset:
-    post:
-      operationId: postAuthPasswordReset
-      tags: [Auth]
-      summary: Request a password reset code via email
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordResetRequest'
-      responses:
-        '202':
-          description: Reset email sent (enumeration-safe)
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1password-reset'
   /auth/password-reset/verify:
-    post:
-      operationId: postAuthPasswordResetVerify
-      tags: [Auth]
-      summary: Complete password reset with the emailed code
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PasswordResetVerifyRequest'
-      responses:
-        '200':
-          description: Password updated, logged in (session cookie set)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          description: Invalid or expired code
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1password-reset~1verify'
   /auth/logout:
-    post:
-      operationId: postAuthLogout
-      tags: [Auth]
-      summary: End the current session
-      responses:
-        '204':
-          description: Signed out
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1logout'
+  /auth/oauth/microsoft/login:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1microsoft~1login'
+  /auth/oauth/microsoft/callback:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1microsoft~1callback'
+  /auth/oauth/google/login:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1google~1login'
+  /auth/oauth/google/callback:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1google~1callback'
   /auth/oauth/providers:
-    get:
-      operationId: getAuthOAuthProviders
-      tags: [Auth]
-      summary: List the OAuth providers configured on this server
-      responses:
-        '200':
-          description: Enabled providers (empty when none are configured)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OAuthProviderList'
-
-  /auth/oauth/{provider}/login:
-    post:
-      operationId: postAuthOAuthLogin
-      tags: [Auth]
-      summary: Begin an OAuth sign-in and get the provider authorization URL
-      description: >
-        Stores PKCE verifier, state and nonce on the session and returns the
-        provider URL the browser should navigate to. The provider redirects back
-        to `/auth/oauth/{provider}/callback`.
-      parameters:
-        - $ref: '#/components/parameters/OAuthProviderPath'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OAuthLoginRequest'
-      responses:
-        '200':
-          description: Authorization URL to navigate to
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OAuthLoginResponse'
-        '404':
-          description: Provider not configured on this server
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
-  /auth/oauth/{provider}/callback:
-    get:
-      operationId: getAuthOAuthCallback
-      tags: [Auth]
-      summary: OAuth redirect target (browser navigation, not called by the client)
-      description: >
-        Exchanges the authorization code, then redirects the browser to the
-        frontend. Known identity or verified email match: session established,
-        redirect to `next`. New identity: redirect to `/auth/oauth/complete` to
-        choose a username. Failure: redirect to `/auth/login?oauthError=<reason>`
-        where reason is one of `cancelled`, `failed`, `email_unverified`,
-        `linked_elsewhere`.
-      x-eov-allow-unknown-query-parameters: true
-      parameters:
-        - $ref: '#/components/parameters/OAuthProviderPath'
-        - name: code
-          in: query
-          schema:
-            type: string
-        - name: state
-          in: query
-          schema:
-            type: string
-        - name: error
-          in: query
-          schema:
-            type: string
-      responses:
-        '302':
-          description: Redirect to the frontend
-        '400':
-          description: Unknown provider
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1providers'
   /auth/oauth/pending:
-    get:
-      operationId: getAuthOAuthPending
-      tags: [Auth]
-      summary: Pending OAuth sign-up awaiting a username
-      responses:
-        '200':
-          description: A provider identity is verified and waiting for a username
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/OAuthPendingSignup'
-        '404':
-          description: No pending sign-up on this session (or it expired)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1pending'
   /auth/oauth/complete:
-    post:
-      operationId: postAuthOAuthComplete
-      tags: [Auth]
-      summary: Finish an OAuth sign-up by choosing a username
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/OAuthCompleteRequest'
-      responses:
-        '200':
-          description: Account created, logged in (session cookie set)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/User'
-        '404':
-          description: No pending sign-up on this session (or it expired)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '409':
-          description: Username taken, or the email was registered in the meantime
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
-        '429':
-          description: Rate limit exceeded
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ProblemDetails'
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1complete'
 
-components:
-  parameters:
-    OAuthProviderPath:
-      name: provider
-      in: path
-      required: true
-      schema:
-        $ref: '#/components/schemas/OAuthProvider'
+  /games:
+    $ref: './paths/games.yaml#/paths/~1games'
+  /games/{gameId}:
+    $ref: './paths/games.yaml#/paths/~1games~1{gameId}'
+  /games/{gameId}/join:
+    $ref: './paths/games.yaml#/paths/~1games~1{gameId}~1join'
+  /games/{gameId}/start:
+    $ref: './paths/games.yaml#/paths/~1games~1{gameId}~1start'
+  /games/{gameId}/draw-vote:
+    $ref: './paths/games.yaml#/paths/~1games~1{gameId}~1draw-vote'
 
-  schemas:
-    HealthStatus:
-      type: object
-      required: [status, uptime]
-      additionalProperties: false
-      properties:
-        status:
-          type: string
-          enum: [ok, degraded, down]
-        uptime:
-          type: integer
-          minimum: 0
-          description: Server uptime in seconds
+  /games/{gameId}/phases/current:
+    $ref: './paths/phases.yaml#/paths/~1games~1{gameId}~1phases~1current'
+  /games/{gameId}/phases/current/orders:
+    $ref: './paths/phases.yaml#/paths/~1games~1{gameId}~1phases~1current~1orders'
+  /games/{gameId}/phases/current/ready:
+    $ref: './paths/phases.yaml#/paths/~1games~1{gameId}~1phases~1current~1ready'
+  /games/{gameId}/phases/current/skip-grace:
+    $ref: './paths/phases.yaml#/paths/~1games~1{gameId}~1phases~1current~1skip-grace'
 
-    User:
-      type: object
-      required: [id, email, username]
-      additionalProperties: false
-      properties:
-        id:
-          type: string
-          format: uuid
-        email:
-          type: string
-          format: email
-        username:
-          type: string
-
-    LoginRequest:
-      type: object
-      required: [identifier, password]
-      additionalProperties: false
-      properties:
-        identifier:
-          type: string
-          description: Email address or username
-          minLength: 1
-        password:
-          type: string
-          minLength: 1
-
-    RegisterRequest:
-      type: object
-      required: [email, username, password]
-      additionalProperties: false
-      properties:
-        email:
-          type: string
-          format: email
-        username:
-          type: string
-          pattern: '^[a-zA-Z0-9_]{3,20}$'
-          description: 3-20 chars, alphanumeric or underscore
-        password:
-          type: string
-          minLength: 8
-
-    RegisterVerifyRequest:
-      type: object
-      required: [identifier, code]
-      additionalProperties: false
-      properties:
-        identifier:
-          type: string
-          description: Email address or username
-        code:
-          type: string
-          pattern: '^[0-9]{6}$'
-
-    RegisterResendRequest:
-      type: object
-      required: [identifier]
-      additionalProperties: false
-      properties:
-        identifier:
-          type: string
-          description: Email address or username
-
-    PasswordResetRequest:
-      type: object
-      required: [email]
-      additionalProperties: false
-      properties:
-        email:
-          type: string
-          format: email
-
-    PasswordResetVerifyRequest:
-      type: object
-      required: [email, code, newPassword]
-      additionalProperties: false
-      properties:
-        email:
-          type: string
-          format: email
-        code:
-          type: string
-          pattern: '^[0-9]{6}$'
-        newPassword:
-          type: string
-          minLength: 8
-
-    OAuthProvider:
-      type: string
-      enum: [google, microsoft]
-
-    OAuthProviderList:
-      type: object
-      required: [providers]
-      additionalProperties: false
-      properties:
-        providers:
-          type: array
-          items:
-            $ref: '#/components/schemas/OAuthProvider'
-
-    OAuthLoginRequest:
-      type: object
-      additionalProperties: false
-      properties:
-        next:
-          type: string
-          description: Frontend path to return to after sign-in (path-only; anything else is ignored)
-
-    OAuthLoginResponse:
-      type: object
-      required: [url]
-      additionalProperties: false
-      properties:
-        url:
-          type: string
-          format: uri
-
-    OAuthPendingSignup:
-      type: object
-      required: [provider, email, suggestedUsername]
-      additionalProperties: false
-      properties:
-        provider:
-          $ref: '#/components/schemas/OAuthProvider'
-        email:
-          type: string
-          format: email
-        suggestedUsername:
-          type: string
-
-    OAuthCompleteRequest:
-      type: object
-      required: [username]
-      additionalProperties: false
-      properties:
-        username:
-          type: string
-          pattern: '^[a-zA-Z0-9_]{3,20}$'
-          description: 3-20 chars, alphanumeric or underscore
-
-    ProblemDetails:
-      type: object
-      required: [title]
-      additionalProperties: false
-      properties:
-        title:
-          type: string
-        detail:
-          type: string
-        status:
-          type: integer
+  /games/{gameId}/messages:
+    $ref: './paths/messages.yaml#/paths/~1games~1{gameId}~1messages'
+  /games/{gameId}/messages/dm/{participantId}:
+    $ref: './paths/messages.yaml#/paths/~1games~1{gameId}~1messages~1dm~1{participantId}'

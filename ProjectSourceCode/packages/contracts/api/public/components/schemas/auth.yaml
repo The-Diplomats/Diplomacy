@@ -1,0 +1,143 @@
+User:
+  type: object
+  required: [id, email, username]
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+    email:
+      type: string
+      format: email
+    username:
+      type: string
+
+LoginRequest:
+  type: object
+  required: [identifier, password]
+  additionalProperties: false
+  properties:
+    identifier:
+      type: string
+      description: Email address or username
+      minLength: 1
+    password:
+      type: string
+      minLength: 1
+
+RegisterRequest:
+  type: object
+  required: [email, username, password]
+  additionalProperties: false
+  properties:
+    email:
+      type: string
+      format: email
+    username:
+      type: string
+      pattern: '^[a-zA-Z0-9_]{3,20}$'
+      description: 3-20 chars, alphanumeric or underscore
+    password:
+      type: string
+      minLength: 8
+
+RegisterVerifyRequest:
+  type: object
+  required: [identifier, code]
+  additionalProperties: false
+  properties:
+    identifier:
+      type: string
+      description: Email address or username
+    code:
+      type: string
+      pattern: '^[0-9]{6}$'
+
+RegisterResendRequest:
+  type: object
+  required: [identifier]
+  additionalProperties: false
+  properties:
+    identifier:
+      type: string
+      description: Email address or username
+
+PasswordResetRequest:
+  type: object
+  required: [email]
+  additionalProperties: false
+  properties:
+    email:
+      type: string
+      format: email
+
+PasswordResetVerifyRequest:
+  type: object
+  required: [email, code, newPassword]
+  additionalProperties: false
+  properties:
+    email:
+      type: string
+      format: email
+    code:
+      type: string
+      pattern: '^[0-9]{6}$'
+    newPassword:
+      type: string
+      minLength: 8
+
+OAuthLoginResponse:
+  type: object
+  additionalProperties: false
+  properties:
+    url:
+      type: string
+      format: uri
+      description: Provider OIDC authorization URL
+  required:
+    - url
+
+OAuthProvider:
+  type: string
+  enum: [google, microsoft]
+
+OAuthProviderList:
+  type: object
+  required: [providers]
+  additionalProperties: false
+  properties:
+    providers:
+      type: array
+      items:
+        $ref: '#/OAuthProvider'
+
+OAuthLoginRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    next:
+      type: string
+      description: Frontend path to return to after sign-in (path-only; anything else is ignored)
+
+OAuthPendingSignup:
+  type: object
+  required: [provider, email, suggestedUsername]
+  additionalProperties: false
+  properties:
+    provider:
+      $ref: '#/OAuthProvider'
+    email:
+      type: string
+      format: email
+    suggestedUsername:
+      type: string
+
+OAuthCompleteRequest:
+  type: object
+  required: [username]
+  additionalProperties: false
+  properties:
+    username:
+      type: string
+      pattern: '^[a-zA-Z0-9_]{3,20}$'
+      description: 3-20 chars, alphanumeric or underscore

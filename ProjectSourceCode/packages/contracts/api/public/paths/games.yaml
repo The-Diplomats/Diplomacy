@@ -1,0 +1,263 @@
+paths:
+  /games:
+    get:
+      operationId: getGames
+      tags:
+        - Games
+      summary: List games in the lobby
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/Limit
+        - $ref: ../components/parameters/common.yaml#/Cursor
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/games.yaml#/GameList
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+    post:
+      operationId: postGames
+      tags:
+        - Games
+      summary: Create a new game
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/games.yaml#/CreateGameRequest
+      responses:
+        '201':
+          description: Game created
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/games.yaml#/Game
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
+
+  /games/{gameId}:
+    get:
+      operationId: getGameById
+      tags:
+        - Games
+      summary: Get game details
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/games.yaml#/GameDetail
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+
+  /games/{gameId}/join:
+    post:
+      operationId: postGameJoin
+      tags:
+        - Games
+      summary: Join forming game by invite code or open slot
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/games.yaml#/JoinGameRequest
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/games.yaml#/GameDetail
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
+
+  /games/{gameId}/start:
+    post:
+      operationId: postGameStart
+      tags:
+        - Games
+      summary: Creator starts game; fill remaining seats with AI
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/games.yaml#/GameDetail
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
+
+  /games/{gameId}/draw-vote:
+    post:
+      operationId: postGameDrawVote
+      tags:
+        - Games
+      summary: Cast or toggle DIAS draw vote
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/games.yaml#/DrawVoteStatus
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
+    delete:
+      operationId: deleteGameDrawVote
+      tags:
+        - Games
+      summary: Remove own draw vote
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '204':
+          description: Draw vote removed
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited

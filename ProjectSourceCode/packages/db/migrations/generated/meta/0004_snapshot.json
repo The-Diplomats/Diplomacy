@@ -1,5 +1,5 @@
 {
-  "id": "8e105a76-9370-4b42-baf5-b66690f25bef",
+  "id": "8005ecd2-2c54-48ec-9093-af91a05f39d5",
   "prevId": "e3516f13-b3ef-40e5-ad6a-794d52ff8a6b",
   "version": "7",
   "dialect": "postgresql",
@@ -57,28 +57,98 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "user_id": {
-          "name": "user_id",
+        "game_id": {
+          "name": "game_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-        "username": {
-          "name": "username",
-          "type": "text",
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "created_at": {
-          "name": "created_at",
+        "power": {
+          "name": "power",
+          "type": "power",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_ai": {
+          "name": "is_ai",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "joined_at": {
+          "name": "joined_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "players_game_user_idx": {
+          "name": "players_game_user_idx",
+          "columns": [
+            {
+              "expression": "game_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "players_game_power_idx": {
+          "name": "players_game_power_idx",
+          "columns": [
+            {
+              "expression": "game_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "power",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
+        "players_game_id_games_id_fk": {
+          "name": "players_game_id_games_id_fk",
+          "tableFrom": "players",
+          "tableTo": "games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
         "players_user_id_users_id_fk": {
           "name": "players_user_id_users_id_fk",
           "tableFrom": "players",
@@ -94,22 +164,7 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "players_user_id_unique": {
-          "name": "players_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
-        },
-        "players_username_unique": {
-          "name": "players_username_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "username"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -246,27 +301,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "users_oauth_identity_idx": {
-          "name": "users_oauth_identity_idx",
-          "columns": [
-            {
-              "expression": "oauth_provider",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "oauth_subject",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {},
@@ -394,6 +428,19 @@
         "active",
         "finished",
         "abandoned"
+      ]
+    },
+    "public.power": {
+      "name": "power",
+      "schema": "public",
+      "values": [
+        "austria",
+        "england",
+        "france",
+        "germany",
+        "italy",
+        "russia",
+        "turkey"
       ]
     }
   },

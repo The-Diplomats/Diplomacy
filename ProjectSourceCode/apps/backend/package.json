@@ -19,6 +19,7 @@
   "dependencies": {
     "@diplomacy/contracts": "workspace:^",
     "@diplomacy/db": "workspace:^",
+    "@diplomacy/game-types": "workspace:^",
     "@socket.io/redis-adapter": "catalog:",
     "connect-pg-simple": "catalog:",
     "cors": "catalog:",

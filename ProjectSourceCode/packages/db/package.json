@@ -26,6 +26,7 @@
     "prepare": "pnpm run build"
   },
   "dependencies": {
+    "@diplomacy/game-types": "workspace:*",
     "drizzle-orm": "catalog:",
     "pg": "catalog:"
   },

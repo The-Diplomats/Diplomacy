@@ -1,5 +1,6 @@
-import { ArrowUp, Plus, RefreshCcw, X } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { ArrowUp, RefreshCcw, X } from 'lucide-react';
+import { useState } from 'react';
+import { useParams } from 'react-router';
 
 import { Button } from '../../../components/ui/button';
 import { Card } from '../../../components/ui/card';
@@ -18,102 +19,36 @@ import {
   MessageScrollerViewport,
 } from '../../../components/ui/message-scroller';
 import { Separator } from '../../../components/ui/separator';
-import { type Power, POWER_COLORS } from '../../map/powers';
+import { useSession } from '../../auth/useSession';
+import { POWER_COLORS } from '../../map/powers';
+import { useGameMessages, useSendMessage } from '../useChat';
 
-type PlayablePower = Exclude<Power, 'neutral' | 'water'>;
-
-type ChatMessage = {
-  id: string;
-  power: PlayablePower;
-  sender: string;
-  text: string;
-  time: string;
-};
-
-const SELF_POWER: PlayablePower = 'england';
-
-const MESSAGES: ChatMessage[] = [
-  {
-    id: 'm1',
-    power: 'france',
-    sender: 'France',
-    text: 'I propose a DMZ in Burgundy.',
-    time: '12:01',
-  },
-  {
-    id: 'm2',
-    power: 'germany',
-    sender: 'Germany',
-    text: 'Agreed. Belgium together Fall?',
-    time: '12:03',
-  },
-  {
-    id: 'm3',
-    power: 'england',
-    sender: 'You',
-    text: 'Bounce in Burgundy is fine. Belgium is yours if you support me into Munich.',
-    time: '12:04',
-  },
-  {
-    id: 'm4',
-    power: 'germany',
-    sender: 'Germany',
-    text: 'Hard sell. Tyrolia instead?',
-    time: '12:06',
-  },
-  {
-    id: 'm5',
-    power: 'england',
-    sender: 'You',
-    text: 'Spring push to Norway is on. Any support?',
-    time: '12:08',
-  },
-  {
-    id: 'm6',
-    power: 'russia',
-    sender: 'Russia',
-    text: 'Not from me. Taking StP myself this season.',
-    time: '12:10',
-  },
-  { id: 'm7', power: 'italy', sender: 'Italy', text: 'Austria, want to Lepanto?', time: '12:12' },
-  {
-    id: 'm8',
-    power: 'austria',
-    sender: 'Austria',
-    text: 'Only if you keep Venice stationed.',
-    time: '12:13',
-  },
-];
+function formatTime(isoString: string): string {
+  return new Date(isoString).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  });
+}
 
 type Props = {
   onClose: () => void;
 };
 
 export function ChatDrawer({ onClose }: Props) {
-  const [messages, setMessages] = useState<ChatMessage[]>(MESSAGES);
+  const { id: gameId = '' } = useParams();
+  const { data: session } = useSession();
+  const { data: messages = [], isPending, isError } = useGameMessages(gameId);
+  const sendMessage = useSendMessage(gameId);
   const [draft, setDraft] = useState('');
 
-  function handleSend(event: FormEvent<HTMLFormElement>) {
+  function handleSend(event: { preventDefault(): void }) {
     event.preventDefault();
     const text = draft.trim();
-    if (text === '') {
+    if (text === '' || sendMessage.isPending) {
       return;
     }
-
-    const newMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      power: SELF_POWER,
-      sender: 'You',
-      text: text,
-      time: new Date().toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        hourCycle: 'h23',
-      }),
-    };
-
-    setMessages([...messages, newMessage]);
-    setDraft('');
+    sendMessage.mutate(text, { onSuccess: () => setDraft('') });
   }
 
   return (
@@ -138,9 +73,17 @@ export function ChatDrawer({ onClose }: Props) {
         <MessageScroller>
           <MessageScrollerViewport aria-label="Chat messages">
             <MessageScrollerContent className="gap-4 px-4 py-4">
+              {isPending && (
+                <p className="text-center text-sm text-muted-foreground">Loading messages...</p>
+              )}
+              {isError && (
+                <p className="text-center text-sm text-muted-foreground">Couldn't load messages.</p>
+              )}
               {messages.map((message) => {
-                const self = message.power === SELF_POWER;
-                const color = POWER_COLORS[message.power].fill;
+                const self = message.fromUsername === session?.username;
+                const color = POWER_COLORS[message.fromPower ?? 'neutral'].fill;
+                const sender = message.fromUsername ?? 'AI';
+                const time = formatTime(message.createdAt);
                 return (
                   <MessageScrollerItem key={message.id} messageId={message.id}>
                     <Message align={self ? 'end' : 'start'}>
@@ -150,15 +93,15 @@ export function ChatDrawer({ onClose }: Props) {
                             className="flex h-full w-full items-center justify-center text-[10px] font-semibold text-white"
                             style={{ backgroundColor: color }}
                           >
-                            {message.sender.slice(0, 2).toUpperCase()}
+                            {sender.slice(0, 2).toUpperCase()}
                           </div>
                         </MessageAvatar>
                       )}
                       <MessageContent className="max-w-[80%]">
                         {!self && (
                           <MessageHeader className="px-0">
-                            <span className="text-foreground">{message.sender}</span>
-                            <span className="ml-2 text-muted-foreground/70">{message.time}</span>
+                            <span className="text-foreground">{sender}</span>
+                            <span className="ml-2 text-muted-foreground/70">{time}</span>
                           </MessageHeader>
                         )}
                         <div
@@ -172,7 +115,7 @@ export function ChatDrawer({ onClose }: Props) {
                         </div>
                         {self && (
                           <div className="self-end px-1 text-[10px] text-muted-foreground">
-                            {message.time}
+                            {time}
                           </div>
                         )}
                       </MessageContent>
@@ -191,9 +134,6 @@ export function ChatDrawer({ onClose }: Props) {
           className="flex items-end gap-2 rounded-2xl border border-border bg-muted/40 px-2 py-2"
           onSubmit={handleSend}
         >
-          <Button variant="ghost" size="icon-sm" type="button" aria-label="Attach">
-            <Plus />
-          </Button>
           <textarea
             aria-label="Message"
             rows={1}
@@ -208,7 +148,13 @@ export function ChatDrawer({ onClose }: Props) {
               }
             }}
           />
-          <Button type="submit" size="icon-sm" className="rounded-full" aria-label="Send">
+          <Button
+            type="submit"
+            size="icon-sm"
+            className="rounded-full"
+            aria-label="Send"
+            disabled={sendMessage.isPending}
+          >
             <ArrowUp />
           </Button>
         </form>

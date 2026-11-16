@@ -7,7 +7,7 @@ import { pluginTs } from '@kubb/plugin-ts';
 export default defineConfig({
   root: '.',
   input: {
-    path: './api/public/openapi.yaml',
+    path: './api/public/openapi.bundled.yaml',
   },
   output: {
     path: './src/generated',

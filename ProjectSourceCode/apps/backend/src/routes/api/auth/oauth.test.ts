@@ -240,9 +240,10 @@ describe('OAuth sign-in', () => {
 
   test('user cancelling at the provider maps to cancelled', async () => {
     const client = httpsClient(createTestApp());
-    await client.post('/auth/oauth/google/login', {});
+    const login = await client.post('/auth/oauth/google/login', {});
+    const state = new URL(login.body.url).searchParams.get('state');
     const res = await client.get(
-      '/auth/oauth/google/callback?error=access_denied&error_description=nope',
+      `/auth/oauth/google/callback?error=access_denied&error_description=nope&state=${state}`,
     );
     expect(new URL(res.headers.location as string).searchParams.get('oauthError')).toBe(
       'cancelled',

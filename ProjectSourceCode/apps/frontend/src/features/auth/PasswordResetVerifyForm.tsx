@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '../../components/ui/input-otp';
 import { AuthField, PasswordInput, PasswordStrengthMeter } from './AuthFormParts';
 import { useNextPath } from './useNextPath';
 import { authErrorMessage, usePasswordResetVerify } from './useSession';
@@ -96,20 +97,28 @@ export function PasswordResetVerifyForm() {
           />
         </AuthField>
         <AuthField id="code" label="Reset code" error={errors.code}>
-          <Input
+          <InputOTP
             id="code"
-            type="text"
-            inputMode="numeric"
-            placeholder="123456"
-            autoComplete="one-time-code"
             maxLength={6}
-            {...bind('code')}
-            onChange={(e) => {
-              const value = e.target.value.replace(/\D/g, '');
+            pattern="^\d*$"
+            autoComplete="one-time-code"
+            value={form.code}
+            onChange={(value) => {
               setForm((f) => ({ ...f, code: value }));
               setErrors((er) => ({ ...er, code: undefined }));
             }}
-          />
+            aria-invalid={!!errors.code}
+            aria-describedby={errors.code ? 'code-msg' : undefined}
+          >
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
         </AuthField>
         <AuthField
           id="newPassword"

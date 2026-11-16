@@ -30,7 +30,11 @@ export default [
     languageOptions: {
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['apps/backend/vitest.config.ts', 'apps/worker/vitest.config.ts'],
+          allowDefaultProject: [
+            'apps/backend/vitest.config.ts',
+            'apps/worker/vitest.config.ts',
+            'packages/game-types/tsup.config.ts',
+          ],
         },
         tsconfigRootDir: import.meta.dirname,
       },

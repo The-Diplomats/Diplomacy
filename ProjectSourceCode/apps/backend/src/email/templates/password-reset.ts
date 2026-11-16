@@ -5,42 +5,41 @@ export interface PasswordResetData {
   code: string;
   resetUrl: string;
   expiresInMinutes: number;
+  appUrl: string;
 }
 
 export function passwordResetTemplate(data: PasswordResetData) {
-  const { username, code, resetUrl, expiresInMinutes } = data;
+  const { username, code, resetUrl, expiresInMinutes, appUrl } = data;
 
-  const subject = 'Reset your Diplomacy password';
-  const preheader = `Your password reset code is ${code}`;
+  const subject = 'Reset your password';
+  const preheader = 'Reset your password';
   const headline = 'Reset your password';
 
-  const body = `
-    <p style="margin: 0 0 12px 0;">Hi ${username}, we got a request to reset your Diplomacy password.</p>
-    <p style="margin: 0;">Click the button below, or use the code if the button doesn't work.</p>
-  `;
+  const body = `Hi ${username}, someone has requested a link to change your password, and you can do this through the link below.`;
 
-  const footerNote = `This code expires in ${expiresInMinutes} minutes. If you didn't request a password reset, you can ignore this email.`;
+  const footerNote = `This code expires in ${expiresInMinutes} minutes. If you didn't request this, please ignore this email. Your password won't change until you access the link above and create a new one.`;
 
   const html = renderEmail({
     preheader,
     headline,
     body,
-    cta: { label: 'Reset password', url: resetUrl },
+    cta: { label: 'Change password', url: resetUrl },
     code,
     footerNote,
+    appUrl,
   });
 
   const text = [
-    `Hi ${username},`,
+    'Reset your password',
     '',
-    'We got a request to reset your Diplomacy password.',
+    `Hi ${username}, someone has requested a link to change your password, and you can do this through the link below.`,
     '',
-    `Reset: ${resetUrl}`,
+    `Change password: ${resetUrl}`,
     '',
     `Or enter this code: ${code}`,
     '',
     `This code expires in ${expiresInMinutes} minutes.`,
-    "If you didn't request a password reset, you can ignore this email.",
+    "If you didn't request this, please ignore this email. Your password won't change until you access the link above and create a new one.",
   ].join('\n');
 
   return { subject, html, text };

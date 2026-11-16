@@ -1,0 +1,151 @@
+GameStatus:
+  type: string
+  enum:
+    - forming
+    - active
+    - finished
+    - abandoned
+
+Game:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    status:
+      $ref: '#/GameStatus'
+    createdByUserId:
+      oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+      description: Null if the creator has deleted their account
+    playerCount:
+      type: integer
+      minimum: 0
+      maximum: 7
+    maxPlayers:
+      type: integer
+      enum:
+        - 7
+    createdAt:
+      type: string
+      format: date-time
+    inviteCode:
+      type: string
+    private:
+      type: boolean
+  required:
+    - id
+    - name
+    - status
+    - createdByUserId
+    - playerCount
+    - maxPlayers
+    - createdAt
+    - private
+
+GameList:
+  type: object
+  additionalProperties: false
+  properties:
+    games:
+      type: array
+      items:
+        $ref: '#/Game'
+    nextCursor:
+      oneOf:
+        - type: string
+        - type: 'null'
+  required:
+    - games
+    - nextCursor
+
+Player:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+    userId:
+      oneOf:
+        - type: string
+          format: uuid
+        - type: 'null'
+    power:
+      oneOf:
+        - $ref: ./common.yaml#/Power
+        - type: 'null'
+    isAi:
+      type: boolean
+    afkCounter:
+      type: integer
+      minimum: 0
+    locked:
+      type: boolean
+  required:
+    - id
+    - userId
+    - power
+    - isAi
+    - afkCounter
+    - locked
+
+GameDetail:
+  type: object
+  additionalProperties: false
+  properties:
+    game:
+      $ref: '#/Game'
+    players:
+      type: array
+      items:
+        $ref: '#/Player'
+  required:
+    - game
+    - players
+
+CreateGameRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    name:
+      type: string
+      minLength: 1
+      maxLength: 120
+    private:
+      type: boolean
+  required:
+    - name
+
+JoinGameRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    inviteCode:
+      type: string
+      description: Optional for open games; required for invite-only games
+
+DrawVoteStatus:
+  type: object
+  additionalProperties: false
+  properties:
+    voted:
+      type: boolean
+    votes:
+      type: integer
+      minimum: 0
+    eligibleVoters:
+      type: integer
+      minimum: 0
+    unanimous:
+      type: boolean
+  required:
+    - voted
+    - votes
+    - eligibleVoters
+    - unanimous
