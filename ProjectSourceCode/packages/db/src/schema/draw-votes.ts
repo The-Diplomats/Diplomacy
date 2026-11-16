@@ -1,12 +1,4 @@
-import {
-  boolean,
-  foreignKey,
-  index,
-  pgTable,
-  timestamp,
-  uniqueIndex,
-  uuid,
-} from 'drizzle-orm/pg-core';
+import { foreignKey, index, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { games } from './games.js';
 import { players } from './players.js';
@@ -21,19 +13,10 @@ export const drawVotes = pgTable(
       .notNull()
       .references(() => games.id, { onDelete: 'cascade' }),
 
-    // Player submitting the draw vote.
+    // Player casting the draw vote. The row's presence is the vote; withdrawing deletes it.
     playerId: uuid('player_id').notNull(),
 
-    // Whether the player supports ending the game in a draw.
-    votedForDraw: boolean('voted_for_draw').notNull().default(false),
-
     createdAt: timestamp('created_at', {
-      withTimezone: true,
-    })
-      .notNull()
-      .defaultNow(),
-
-    updatedAt: timestamp('updated_at', {
       withTimezone: true,
     })
       .notNull()

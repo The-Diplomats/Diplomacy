@@ -9,11 +9,10 @@ for consumers. Read `ProjectSourceCode/AGENTS.md` for monorepo rules first.
 packages/db/
 ├── src/
 │   ├── schema/
-│   │   ├── index.ts            # re-exports every table + relation
-│   │   ├── users.ts
-│   │   ├── players.ts
-│   │   ├── session.ts          # managed by connect-pg-simple
-│   │   └── verification-tokens.ts
+│   │   ├── index.ts            # re-exports every table + enum
+│   │   ├── <table>.ts          # one file per table (users, games, players, phases, orders, ...)
+│   │   ├── power.ts            # power enum, shared by games/players/ai_memory
+│   │   └── session.ts          # managed by connect-pg-simple
 │   ├── client.ts               # createDbClient(url) factory
 │   └── index.ts                # re-exports schema + client
 ├── migrations/
@@ -32,6 +31,9 @@ packages/db/
 4. **Commit both** the schema file and the generated SQL in the same PR. Reviewer sees the intent (schema) and the
    applied change (SQL) together.
 5. **Never hand-edit `migrations/generated/`.** If the generated output is wrong, fix the schema and regenerate.
+6. **Changing a column to a type Postgres can't cast to** (e.g. `jsonb` to an enum): generate twice. First drop the
+   column, then add it back with the new type. drizzle-kit's `USING col::type` fails otherwise. Keep any other new
+   column on that table out of the first step, or drizzle-kit prompts interactively about a rename.
 
 ## Schema conventions
 

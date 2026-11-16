@@ -1,5 +1,6 @@
 import type { BoardState } from '@diplomacy/game-types';
 import { PHASE_TYPES } from '@diplomacy/game-types';
+import { sql } from 'drizzle-orm';
 import {
   index,
   integer,
@@ -55,8 +56,13 @@ export const phases = pgTable(
       .defaultNow(),
   },
   (table) => [
-    // Find all phases for a game.
-    index('phases_game_id_idx').on(table.gameId),
+    // At most one unresolved phase per game; also serves the current-phase lookup.
+    uniqueIndex('phases_game_open_idx')
+      .on(table.gameId)
+      .where(sql`${table.resolvedAt} IS NULL`),
+
+    // Phase history for a game, oldest first.
+    index('phases_game_created_at_idx').on(table.gameId, table.createdAt),
 
     // Efficiently find phases approaching their deadline.
     index('phases_deadline_at_idx').on(table.deadlineAt),

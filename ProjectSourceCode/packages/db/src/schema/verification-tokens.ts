@@ -1,6 +1,11 @@
-import { index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, pgEnum, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { users } from './users.js';
+
+export const verificationPurpose = pgEnum('verification_purpose', [
+  'email_verify',
+  'password_reset',
+]);
 
 /**
  * Unified short-lived token store for email verification and password reset.
@@ -14,7 +19,7 @@ export const verificationTokens = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    purpose: text('purpose').notNull(), // 'email_verify' | 'password_reset'
+    purpose: verificationPurpose('purpose').notNull(),
     tokenHash: text('token_hash').notNull(),
     expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
     usedAt: timestamp('used_at', { withTimezone: true }),

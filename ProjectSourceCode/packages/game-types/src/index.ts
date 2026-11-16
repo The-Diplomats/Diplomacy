@@ -1,5 +1,6 @@
 export type * from './game.js';
 export * from './map.js';
+export * from './orders.js';
 export * from './phases.js';
 export * from './powers.js';
 export * from './provinces.js';

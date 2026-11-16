@@ -6,6 +6,7 @@ export * from './orders.js';
 export * from './phase-readiness.js';
 export * from './phases.js';
 export * from './players.js';
+export * from './power.js';
 export * from './session.js';
 export * from './users.js';
 export * from './verification-tokens.js';

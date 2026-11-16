@@ -1,3 +1,4 @@
+import type { OrderAction } from './orders.js';
 import type { Power } from './powers.js';
 import type { ProvinceCode } from './provinces.js';
 import type { UnitType } from './units.js';
@@ -16,5 +17,5 @@ export interface BoardState {
 
 export interface Order {
   readonly unit: ProvinceCode;
-  readonly action: 'hold' | 'move' | 'support' | 'convoy';
+  readonly action: OrderAction;
 }

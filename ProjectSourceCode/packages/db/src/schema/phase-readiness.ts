@@ -1,5 +1,7 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   foreignKey,
   index,
   pgTable,
@@ -51,6 +53,12 @@ export const phaseReadiness = pgTable(
     uniqueIndex('phase_readiness_phase_player_idx').on(table.phaseId, table.playerId),
 
     index('phase_readiness_player_idx').on(table.playerId),
+
+    // Skip-grace is only meaningful during the grace window, which requires ready.
+    check(
+      'phase_readiness_skip_grace_requires_ready_check',
+      sql`NOT ${table.skipGraceVote} OR ${table.isReady}`,
+    ),
 
     // Verify that the phase belongs to this game.
     foreignKey({
