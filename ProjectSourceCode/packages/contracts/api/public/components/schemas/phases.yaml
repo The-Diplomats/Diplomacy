@@ -1,0 +1,134 @@
+PhaseType:
+  type: string
+  enum:
+    - movement
+    - retreat
+    - build
+
+Phase:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+    gameId:
+      type: string
+      format: uuid
+    phaseType:
+      $ref: '#/PhaseType'
+    deadlineAt:
+      type: string
+      format: date-time
+    resolvedAt:
+      oneOf:
+        - type: string
+          format: date-time
+        - type: 'null'
+    boardState:
+      type: object
+      additionalProperties: true
+      description: Serialized board snapshot; exact schema must be aligned with game-types
+    readiness:
+      $ref: '#/ReadinessStatus'
+  required:
+    - id
+    - gameId
+    - phaseType
+    - deadlineAt
+    - resolvedAt
+    - boardState
+    - readiness
+
+OrderAction:
+  type: string
+  enum:
+    - hold
+    - move
+    - support
+    - convoy
+    - retreat
+    - build
+    - disband
+    - waive
+
+Order:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+    unit:
+      type: string
+    action:
+      $ref: '#/OrderAction'
+    from:
+      type: string
+    to:
+      type: string
+    targetUnit:
+      type: string
+    result:
+      type: string
+  required:
+    - id
+    - action
+
+OrderInput:
+  type: object
+  additionalProperties: false
+  properties:
+    unit:
+      type: string
+    action:
+      $ref: '#/OrderAction'
+    from:
+      type: string
+    to:
+      type: string
+    targetUnit:
+      type: string
+  required:
+    - action
+
+SubmitOrdersRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    orders:
+      type: array
+      items:
+        $ref: '#/OrderInput'
+  required:
+    - orders
+
+ReadinessStatus:
+  type: object
+  additionalProperties: false
+  properties:
+    affected:
+      type: boolean
+      description:
+        Whether the requesting player must act this phase (has units in movement, a dislodged unit in
+        retreat, or a build/disband in build). Always false for eliminated players.
+    ready:
+      type: boolean
+    readyCount:
+      type: integer
+      minimum: 0
+    affectedCount:
+      type: integer
+      minimum: 0
+    graceActive:
+      type: boolean
+    skipGraceVotes:
+      type: integer
+      minimum: 0
+  required:
+    - affected
+    - ready
+    - readyCount
+    - affectedCount
+    - graceActive
+    - skipGraceVotes

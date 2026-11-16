@@ -10,25 +10,53 @@ contract that both backend (via `express-openapi-validator`) and frontend (via K
 packages/contracts/
 ├── api/
 │   └── public/
-│       └── openapi.yaml        # the source of truth
+│       ├── openapi.yaml                # entry: info, servers, tags, paths as $refs
+│       ├── openapi.bundled.yaml        # gitignored; `pnpm bundle` flattens the split into this
+│       ├── paths/
+│       │   ├── health.yaml             # Health-tagged paths
+│       │   ├── auth.yaml               # Auth-tagged paths (session, register, password-reset, OAuth)
+│       │   ├── games.yaml              # Games-tagged paths
+│       │   ├── phases.yaml             # Phases + Orders + Ready paths (all under /games/{gameId}/phases/*)
+│       │   └── messages.yaml           # Messages-tagged paths
+│       └── components/
+│           ├── schemas/
+│           │   ├── common.yaml         # ProblemDetails, Power, HealthStatus (shared / cross-tag)
+│           │   ├── auth.yaml           # User + auth request bodies + OAuthLoginResponse
+│           │   ├── games.yaml          # Game, GameList, GamePlayer, GameDetail, GameStatus, Create/Join/DrawVote
+│           │   ├── phases.yaml         # Phase, PhaseType, Order, OrderInput, OrderAction, SubmitOrdersRequest, ReadinessStatus
+│           │   └── messages.yaml       # Message, MessageList, SendMessageRequest
+│           └── parameters/
+│               └── common.yaml         # GameId, Limit, Cursor
 ├── src/
 │   ├── generated/              # Kubb output; gitignored, regenerated at build time; never hand-edit
 │   ├── sockets/
 │   │   └── events.ts           # hand-written Socket.IO event types
 │   ├── spec.ts                 # loads the bundled spec for express-openapi-validator
 │   └── index.ts                # re-exports generated types + socket events
-├── kubb.config.ts              # codegen config
-└── redocly.yaml                # spec lint config
+├── kubb.config.ts              # codegen config (consumes openapi.bundled.yaml)
+└── redocly.yaml                # spec lint config (targets the source entry openapi.yaml)
 ```
+
+`pnpm bundle` runs `redocly bundle api/public/openapi.yaml -o api/public/openapi.bundled.yaml`, producing the flat
+single-file spec that Kubb and `express-openapi-validator` consume. It runs automatically as part of `pnpm generate` /
+`pnpm build`.
 
 ## Adding an endpoint
 
 The authoring workflow is strictly spec-first.
 
-1. **Edit `api/public/openapi.yaml`** — append to existing sections, don't replace.
-   - Add the tag under `tags:` (one tag per resource group: `Auth`, `Games`, `Phases`, ...)
-   - Add the path under `paths:` using the OpenAPI path-template syntax (`/games/{id}`)
-   - Add any new schemas under `components.schemas:` with `additionalProperties: false` and explicit `required:` lists
+1. **Edit the appropriate `paths/<tag>.yaml`** for the path, and add schemas to the appropriate grouped file under
+   `components/schemas/`. The entry `openapi.yaml` only changes when you add a brand-new path (append a `$ref` entry) or
+   a new tag.
+   - Add the path to the matching tag's file under `paths/` using OpenAPI path-template syntax (`/games/{id}`). Internal
+     `$ref`s point at grouped schema files, e.g. `$ref: ../components/schemas/games.yaml#/Game` or
+     `$ref: ../components/schemas/common.yaml#/ProblemDetails`.
+   - Add new schemas inside the matching group file under `components/schemas/`. Each group file's top-level content is
+     a map of `SchemaName -> schema object`; same-file sibling refs use `$ref: '#/SchemaName'`, cross-file refs use
+     `$ref: ./common.yaml#/SchemaName`. Keep `additionalProperties: false` and explicit `required:` lists.
+   - A schema used by only one tag's endpoints belongs in that tag's file. A schema shared across multiple tags (or a
+     generic concept like `ProblemDetails` or a domain-wide enum) belongs in `common.yaml`.
+   - If you add a tag, also list it under `tags:` in the entry `openapi.yaml`.
 2. **Pick a stable `operationId`** — becomes the function + hook name in the Kubb output (`listGames` → `listGames()` +
    `useListGames()`). Prefer verbs: `listGames`, `createGame`, `getGame`, `updateOrders`.
 3. **Regenerate the client**: `pnpm --filter @diplomacy/contracts build`. Writes TS types + fns + hooks to
@@ -106,7 +134,9 @@ The authoring workflow is strictly spec-first.
 - Don't skip `additionalProperties: false`. Open schemas leak fields the backend didn't intend to expose.
 - Don't use inline schemas for anything referenced more than once. Pull into `components.schemas:` so a future rename
   doesn't require editing every operation.
-- Don't break the contract silently — if the change is breaking, apply the `breaking-change-approved` label;
+- Don't break the contract silently: if the change is breaking, apply the `breaking-change-approved` label;
   `compat-check.yml` will flag it anyway.
 - Don't add a `GET /__debug` or `/admin/*` to the public spec. Admin routes live on the `admin` surface; see
   `apps/backend/AGENTS.md`.
+- Don't hand-edit `api/public/openapi.bundled.yaml`. It's gitignored and rewritten on every `pnpm bundle` (which runs
+  automatically inside `pnpm generate` and `pnpm build`). Edit the split source files instead.

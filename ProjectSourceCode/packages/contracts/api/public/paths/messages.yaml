@@ -1,0 +1,81 @@
+paths:
+  /games/{gameId}/messages:
+    get:
+      operationId: getGameMessages
+      tags: [Messages]
+      summary: List game public chat messages, oldest first
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Messages in game
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/messages.yaml#/MessageList
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '401':
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: User is not in this game
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+    post:
+      operationId: postGameMessage
+      tags: [Messages]
+      summary: Send a chat message in a game
+      description: Sender is determined by which user is logged in, not sent in the request (to prevent impersonation)
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/messages.yaml#/SendMessageRequest
+      responses:
+        '201':
+          description: Message saved
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/messages.yaml#/Message
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '401':
+          description: Not logged in
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Logged-in user is not in this game
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails

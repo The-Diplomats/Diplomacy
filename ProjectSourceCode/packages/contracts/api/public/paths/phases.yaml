@@ -1,0 +1,240 @@
+paths:
+  /games/{gameId}/phases/current:
+    get:
+      operationId: getCurrentPhase
+      tags:
+        - Phases
+      summary: Get current phase and board state
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/phases.yaml#/Phase
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+
+  /games/{gameId}/phases/current/orders:
+    get:
+      operationId: getCurrentOrders
+      tags:
+        - Orders
+      summary: List authenticated player orders for current phase
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ../components/schemas/phases.yaml#/Order
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+    put:
+      operationId: putCurrentOrders
+      tags:
+        - Orders
+      summary: Replace or update own current-phase orders
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/phases.yaml#/SubmitOrdersRequest
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: ../components/schemas/phases.yaml#/Order
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '422':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+
+  /games/{gameId}/phases/current/ready:
+    post:
+      operationId: postCurrentReady
+      tags:
+        - Ready
+      summary: Mark player ready
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/phases.yaml#/ReadinessStatus
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+    delete:
+      operationId: deleteCurrentReady
+      tags:
+        - Ready
+      summary: Un-ready player; cancel grace if necessary
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/phases.yaml#/ReadinessStatus
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+
+  /games/{gameId}/phases/current/skip-grace:
+    post:
+      operationId: postCurrentSkipGrace
+      tags:
+        - Ready
+      summary: Vote to skip 30-second grace period
+      parameters:
+        - $ref: ../components/parameters/common.yaml#/GameId
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/phases.yaml#/ReadinessStatus
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Conflict
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails

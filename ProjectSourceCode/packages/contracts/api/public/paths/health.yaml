@@ -1,0 +1,22 @@
+paths:
+  /health:
+    head:
+      operationId: headHealth
+      tags:
+        - Health
+      summary: Health check (headers only, for uptime monitors)
+      responses:
+        '200':
+          description: Service is healthy
+    get:
+      operationId: getHealth
+      tags:
+        - Health
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/HealthStatus

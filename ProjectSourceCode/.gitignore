@@ -39,3 +39,4 @@ Thumbs.db
 .history/
 
 packages/*/src/generated/
+packages/contracts/api/public/openapi.bundled.yaml
