@@ -1,4 +1,5 @@
 import type { Order } from '@diplomacy/game-types';
+import { ORDER_ACTIONS, ORDER_RESULTS } from '@diplomacy/game-types';
 import {
   foreignKey,
   index,
@@ -15,7 +16,9 @@ import { games } from './games.js';
 import { phases } from './phases.js';
 import { players } from './players.js';
 
-export const orderAction = pgEnum('order_action', ['hold', 'move', 'support', 'convoy']);
+export const orderAction = pgEnum('order_action', ORDER_ACTIONS);
+
+export const orderResult = pgEnum('order_result', ORDER_RESULTS);
 
 export const orders = pgTable(
   'orders',
@@ -37,13 +40,20 @@ export const orders = pgTable(
     // Type of order being submitted.
     action: orderAction('action').notNull(),
 
-    // Full order information.
-    orderData: jsonb('order_data').$type<Order>().notNull(),
+    // Order details beyond unit and action, which live in their own columns.
+    orderData: jsonb('order_data').$type<Omit<Order, 'unit' | 'action'>>().notNull(),
 
-    // Populated after adjudication.
-    result: jsonb('result'),
+    // Null until adjudication.
+    result: orderResult('result'),
 
     createdAt: timestamp('created_at', {
+      withTimezone: true,
+    })
+      .notNull()
+      .defaultNow(),
+
+    // Orders are upserted as players revise them during the phase.
+    updatedAt: timestamp('updated_at', {
       withTimezone: true,
     })
       .notNull()

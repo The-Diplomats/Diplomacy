@@ -7,6 +7,8 @@ export interface GameRepository {
   create(input: {
     name: string;
     createdByUserId: string;
+    isPrivate?: boolean;
+    inviteCode?: string | null;
     movementDeadlineSeconds?: number;
     maxAiPowers?: number;
   }): Promise<Game>;
@@ -16,10 +18,24 @@ export interface GameRepository {
 
 export function createGameRepository(db: DbClient): GameRepository {
   return {
-    async create({ name, createdByUserId, movementDeadlineSeconds, maxAiPowers }) {
+    async create({
+      name,
+      createdByUserId,
+      isPrivate,
+      inviteCode,
+      movementDeadlineSeconds,
+      maxAiPowers,
+    }) {
       const [row] = await db
         .insert(games)
-        .values({ name, createdByUserId, movementDeadlineSeconds, maxAiPowers })
+        .values({
+          name,
+          createdByUserId,
+          isPrivate,
+          inviteCode,
+          movementDeadlineSeconds,
+          maxAiPowers,
+        })
         .returning();
 
       if (!row) {

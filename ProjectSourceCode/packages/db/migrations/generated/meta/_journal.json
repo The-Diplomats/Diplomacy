@@ -71,6 +71,20 @@
       "when": 1794853918160,
       "tag": "0009_stale_the_executioner",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1794859058938,
+      "tag": "0010_cuddly_shiver_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1794859063502,
+      "tag": "0011_zippy_shooting_star",
+      "breakpoints": true
     }
   ]
 }

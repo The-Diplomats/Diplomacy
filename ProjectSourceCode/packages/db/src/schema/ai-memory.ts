@@ -1,7 +1,7 @@
 import { jsonb, pgTable, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core';
 
 import { games } from './games.js';
-import { power } from './players.js';
+import { power } from './power.js';
 
 export const aiMemory = pgTable(
   'ai_memory',

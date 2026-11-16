@@ -1,8 +1,8 @@
-import { POWERS } from '@diplomacy/game-types';
+import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   integer,
-  pgEnum,
   pgTable,
   timestamp,
   uniqueIndex,
@@ -10,9 +10,8 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { games } from './games.js';
+import { power } from './power.js';
 import { users } from './users.js';
-
-export const power = pgEnum('power', POWERS);
 
 export const players = pgTable(
   'players',
@@ -45,6 +44,8 @@ export const players = pgTable(
 
     // Allows other tables to enforce that a player belongs to the correct game.
     uniqueIndex('players_id_game_idx').on(table.id, table.gameId),
+
+    check('players_ai_has_no_user_check', sql`${table.isAi} = (${table.userId} IS NULL)`),
   ],
 );
 

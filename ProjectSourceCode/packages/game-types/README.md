@@ -10,6 +10,7 @@ import { POWERS, type Power, type BoardState, CLASSIC_MAP_META } from '@diplomac
 
 ## Exports
 
-- `POWERS`, `SEASONS`, `PHASE_TYPES`, `UNIT_TYPES`, `PROVINCE_CODES`: const arrays + union types
+- `POWERS`, `SEASONS`, `PHASE_TYPES`, `UNIT_TYPES`, `PROVINCE_CODES`, `ORDER_ACTIONS`, `ORDER_RESULTS`: const arrays +
+  union types
 - `Unit`, `BoardState`, `Order`: domain interfaces
 - `CLASSIC_MAP_META`: stub map metadata (full 76-province data lands with adjudicator work)
