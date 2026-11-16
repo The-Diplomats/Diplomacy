@@ -212,7 +212,10 @@ paths:
       parameters:
         - name: code
           in: query
-          required: true
+          required: false
+          description:
+            Present on success. Absent when the provider redirects with `error` (RFC 6749 §4.1.2.1); the
+            handler must reject a missing code when no error is present.
           schema:
             type: string
         - name: state
