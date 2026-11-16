@@ -229,6 +229,9 @@ paths:
           description:
             Present on success. Absent when the provider redirects with `error` (RFC 6749 §4.1.2.1); the
             handler must reject a missing code when no error is present.
+          # Providers send codes with unencoded reserved characters (Google `4/0A...`,
+          # Microsoft `M.C5..._BAY...!...`); RFC 3986 allows them in a query string.
+          allowReserved: true
           schema:
             type: string
         - name: state
@@ -314,6 +317,9 @@ paths:
           description:
             Present on success. Absent when the provider redirects with `error` (RFC 6749 §4.1.2.1); the
             handler must reject a missing code when no error is present.
+          # Providers send codes with unencoded reserved characters (Google `4/0A...`,
+          # Microsoft `M.C5..._BAY...!...`); RFC 3986 allows them in a query string.
+          allowReserved: true
           schema:
             type: string
         - name: state

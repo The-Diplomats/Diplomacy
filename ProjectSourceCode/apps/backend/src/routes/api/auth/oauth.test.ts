@@ -62,8 +62,11 @@ async function signInWithProvider(
   const login = await client.post(`/auth/oauth/${provider}/login`, { next: options.next });
   expect(login.status).toBe(200);
   const state = options.state ?? new URL(login.body.url).searchParams.get('state');
+  // Real providers send the code with unencoded reserved characters, plus extra
+  // params like Google's `scope`; the spec must accept both.
   const callback = await client.get(
-    `/auth/oauth/${provider}/callback?code=test-code&state=${state}`,
+    `/auth/oauth/${provider}/callback?code=4/0AeanS0R!x$y&state=${state}` +
+      '&scope=email+openid+https://www.googleapis.com/auth/userinfo.email&authuser=0',
   );
   expect(callback.status).toBe(302);
   return new URL(callback.headers.location as string);
