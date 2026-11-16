@@ -80,7 +80,7 @@ const providerDefinitions: Record<OAuthProvider, ProviderDefinition> = {
         provider: 'microsoft',
         subject: `${tenantId}:${objectId}`,
         email: claims.email.toLowerCase(),
-        emailVerified: claims.xms_edov === true || claims.xms_edov === 1,
+        emailVerified: isTrueClaim(claims.xms_edov),
         displayName: stringClaim(claims.name),
       };
     },
@@ -89,6 +89,11 @@ const providerDefinitions: Record<OAuthProvider, ProviderDefinition> = {
 
 function stringClaim(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+/** Microsoft sends boolean optional claims like `xms_edov` as `'1'` in practice, not `true`. */
+export function isTrueClaim(value: unknown): boolean {
+  return value === true || value === 1 || value === '1' || value === 'true';
 }
 
 export class OAuthClaimsError extends Error {
