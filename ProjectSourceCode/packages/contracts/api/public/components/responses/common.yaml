@@ -1,0 +1,6 @@
+RateLimited:
+  description: Rate limited
+  content:
+    application/json:
+      schema:
+        $ref: '../schemas/common.yaml#/ProblemDetails'

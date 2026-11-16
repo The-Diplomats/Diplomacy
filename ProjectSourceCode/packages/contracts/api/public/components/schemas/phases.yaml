@@ -1,0 +1,185 @@
+PhaseType:
+  type: string
+  enum:
+    - movement
+    - retreat
+    - build
+
+UnitType:
+  type: string
+  enum:
+    - army
+    - fleet
+
+Unit:
+  type: object
+  additionalProperties: false
+  required:
+    - type
+    - owner
+    - location
+  properties:
+    type:
+      $ref: '#/UnitType'
+    owner:
+      $ref: './common.yaml#/Power'
+    location:
+      type: string
+
+BoardState:
+  type: object
+  additionalProperties: false
+  required:
+    - turn
+    - units
+    - supplyCenters
+  properties:
+    turn:
+      type: integer
+      minimum: 0
+    units:
+      type: array
+      items:
+        $ref: '#/Unit'
+    supplyCenters:
+      type: object
+      additionalProperties:
+        $ref: './common.yaml#/Power'
+
+Phase:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+    gameId:
+      type: string
+      format: uuid
+    phaseType:
+      $ref: '#/PhaseType'
+    deadlineAt:
+      type: string
+      format: date-time
+    resolvedAt:
+      oneOf:
+        - type: string
+          format: date-time
+        - type: 'null'
+    boardState:
+      $ref: '#/BoardState'
+    readiness:
+      $ref: '#/ReadinessStatus'
+  required:
+    - id
+    - gameId
+    - phaseType
+    - deadlineAt
+    - resolvedAt
+    - boardState
+    - readiness
+
+OrderAction:
+  type: string
+  enum:
+    - hold
+    - move
+    - support
+    - convoy
+    - retreat
+    - build
+    - disband
+    - waive
+
+OrderResult:
+  type: string
+  enum:
+    - pending
+    - success
+    - bounced
+    - cut
+    - dislodged
+    - disbanded
+
+Order:
+  type: object
+  additionalProperties: false
+  properties:
+    id:
+      type: string
+      format: uuid
+    unit:
+      type: string
+    action:
+      $ref: '#/OrderAction'
+    from:
+      type: string
+    to:
+      type: string
+    targetUnit:
+      type: string
+    result:
+      oneOf:
+        - $ref: '#/OrderResult'
+        - type: 'null'
+  required:
+    - id
+    - action
+
+OrderInput:
+  type: object
+  additionalProperties: false
+  properties:
+    unit:
+      type: string
+    action:
+      $ref: '#/OrderAction'
+    from:
+      type: string
+    to:
+      type: string
+    targetUnit:
+      type: string
+  required:
+    - action
+
+SubmitOrdersRequest:
+  type: object
+  additionalProperties: false
+  properties:
+    orders:
+      type: array
+      items:
+        $ref: '#/OrderInput'
+  required:
+    - orders
+
+ReadinessStatus:
+  type: object
+  additionalProperties: false
+  properties:
+    affected:
+      type: boolean
+      description:
+        Whether the requesting player must act this phase (has units in movement, a dislodged unit in
+        retreat, or a build/disband in build). Always false for eliminated players.
+    ready:
+      type: boolean
+    readyCount:
+      type: integer
+      minimum: 0
+    affectedCount:
+      type: integer
+      minimum: 0
+    graceActive:
+      type: boolean
+    skipGraceVotes:
+      type: integer
+      minimum: 0
+  required:
+    - affected
+    - ready
+    - readyCount
+    - affectedCount
+    - graceActive
+    - skipGraceVotes

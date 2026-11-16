@@ -34,7 +34,12 @@ messagesRouter.post(
   ) => {
     const user = req.session.user;
     if (!user) {
-      return res.status(401).json({ title: 'Unauthorized', status: 401, detail: 'Not logged in.' });
+      return res.status(401).json({
+        type: 'about:blank',
+        title: 'Unauthorized',
+        status: 401,
+        detail: 'Not logged in.',
+      });
     }
 
     const player = await db.players.findByUserInGame({
@@ -42,16 +47,22 @@ messagesRouter.post(
       userId: user.id,
     });
     if (!player) {
-      return res
-        .status(403)
-        .json({ title: 'Forbidden', status: 403, detail: 'User is not a part of this game.' });
+      return res.status(403).json({
+        type: 'about:blank',
+        title: 'Forbidden',
+        status: 403,
+        detail: 'User is not a part of this game.',
+      });
     }
 
     const text = req.body.text.trim();
     if (text.length === 0) {
-      return res
-        .status(400)
-        .json({ title: 'Bad Request', status: 400, detail: 'Message cannot be empty.' });
+      return res.status(400).json({
+        type: 'about:blank',
+        title: 'Bad Request',
+        status: 400,
+        detail: 'Message cannot be empty.',
+      });
     }
 
     const message = await db.messages.create({
@@ -74,7 +85,12 @@ messagesRouter.get(
   ) => {
     const user = req.session.user;
     if (!user) {
-      return res.status(401).json({ title: 'Unauthorized', status: 401, detail: 'Not logged in' });
+      return res.status(401).json({
+        type: 'about:blank',
+        title: 'Unauthorized',
+        status: 401,
+        detail: 'Not logged in',
+      });
     }
 
     const player = await db.players.findByUserInGame({
@@ -82,9 +98,12 @@ messagesRouter.get(
       userId: user.id,
     });
     if (!player) {
-      return res
-        .status(403)
-        .json({ title: 'Forbidden', status: 403, detail: 'User is not a part of this game' });
+      return res.status(403).json({
+        type: 'about:blank',
+        title: 'Forbidden',
+        status: 403,
+        detail: 'User is not a part of this game',
+      });
     }
 
     const rows = await db.messages.listPublicByGame(req.params.gameId);
