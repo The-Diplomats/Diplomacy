@@ -73,12 +73,15 @@ services:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
+    env_file:
+      - path: ./apps/backend/.env
+        required: false
     environment:
       DATABASE_URL: postgres://diplomacy:diplomacy@postgres:5432/diplomacy
       REDIS_URL: redis://redis:6379
       SESSION_SECRET: dev-only-change-me-minimum-32-chars-long-string
       FRONTEND_ORIGINS: http://localhost:5173
-      EMAIL_FROM: no-reply@email.diplomacy.gg
+      EMAIL_FROM: no-reply@diplomacy.gg
       APP_URL: http://localhost:5173
       PORT: '3001'
       LOG_LEVEL: info

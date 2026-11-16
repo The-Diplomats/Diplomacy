@@ -30,6 +30,7 @@ export function createAuthEmails(sender: EmailSender, config: AuthEmailsConfig):
           code,
           verifyUrl,
           expiresInMinutes: codeExpiresInMinutes,
+          appUrl,
         }),
       });
     },
@@ -44,6 +45,7 @@ export function createAuthEmails(sender: EmailSender, config: AuthEmailsConfig):
           code,
           resetUrl,
           expiresInMinutes: codeExpiresInMinutes,
+          appUrl,
         }),
       });
     },
@@ -52,7 +54,7 @@ export function createAuthEmails(sender: EmailSender, config: AuthEmailsConfig):
       const loginUrl = `${appUrl}/auth/login`;
       await sender.send({
         to,
-        ...securityNoticeTemplate({ username, loginUrl }),
+        ...securityNoticeTemplate({ username, loginUrl, appUrl }),
       });
     },
   };

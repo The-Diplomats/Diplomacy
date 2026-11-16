@@ -5,42 +5,41 @@ export interface VerifyRegisterData {
   code: string;
   verifyUrl: string;
   expiresInMinutes: number;
+  appUrl: string;
 }
 
 export function verifyRegisterTemplate(data: VerifyRegisterData) {
-  const { username, code, verifyUrl, expiresInMinutes } = data;
+  const { username, code, verifyUrl, expiresInMinutes, appUrl } = data;
 
-  const subject = 'Verify your Diplomacy account';
-  const preheader = `Your verification code is ${code}`;
-  const headline = `Welcome to Diplomacy, ${username}.`;
+  const subject = 'Confirm your email address';
+  const preheader = 'Confirm your email address';
+  const headline = "We're almost there!";
 
-  const body = `
-    <p style="margin: 0 0 12px 0;">Finish setting up your account by confirming this email address.</p>
-    <p style="margin: 0;">Click the button below, or use the code if the button doesn't work.</p>
-  `;
+  const body = `Thanks for signing up for Diplomacy, ${username}. To verify your account, we just need to confirm your email address.`;
 
-  const footerNote = `This code expires in ${expiresInMinutes} minutes. If you didn't try to register, you can ignore this email.`;
+  const footerNote = `This code expires in ${expiresInMinutes} minutes. If you didn't request this, please ignore this email.`;
 
   const html = renderEmail({
     preheader,
     headline,
     body,
-    cta: { label: 'Verify email', url: verifyUrl },
+    cta: { label: 'Confirm email', url: verifyUrl },
     code,
     footerNote,
+    appUrl,
   });
 
   const text = [
-    `Welcome to Diplomacy, ${username}.`,
+    "We're almost there!",
     '',
-    'Finish setting up your account by confirming this email address.',
+    `Thanks for signing up for Diplomacy, ${username}. To verify your account, we just need to confirm your email address.`,
     '',
-    `Verify: ${verifyUrl}`,
+    `Confirm email: ${verifyUrl}`,
     '',
     `Or enter this code: ${code}`,
     '',
     `This code expires in ${expiresInMinutes} minutes.`,
-    "If you didn't try to register, you can ignore this email.",
+    "If you didn't request this, please ignore this email.",
   ].join('\n');
 
   return { subject, html, text };
