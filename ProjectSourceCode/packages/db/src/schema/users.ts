@@ -20,6 +20,9 @@ export const users = pgTable(
     uniqueIndex('users_email_lower_idx').on(sql`lower(${table.email})`),
     // Case-insensitive uniqueness for login-by-username; preserves display case.
     uniqueIndex('users_username_lower_idx').on(sql`lower(${table.username})`),
+    // One account per provider identity. Postgres treats NULLs as distinct, so
+    // password-only accounts don't collide.
+    uniqueIndex('users_oauth_identity_idx').on(table.oauthProvider, table.oauthSubject),
   ],
 );
 

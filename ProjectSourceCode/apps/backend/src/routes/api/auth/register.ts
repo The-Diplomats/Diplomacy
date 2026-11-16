@@ -68,9 +68,12 @@ registerRouter.post(
       }
       // Replace the stored hash so the password the user just typed is the one
       // that works once they verify. Without this, re-registering with a new
-      // password silently keeps the old hash.
+      // password silently keeps the old hash. Guarded so an OAuth link that
+      // lands between the read above and this write keeps its cleared hash.
       const passwordHash = await hashPassword(password);
-      await db.users.updatePasswordHash(existingByEmail.id, passwordHash);
+      if (!(await db.users.replaceUnverifiedPasswordHash(existingByEmail.id, passwordHash))) {
+        return res.status(202).end();
+      }
       await issueVerificationEmail(
         existingByEmail.id,
         existingByEmail.email,

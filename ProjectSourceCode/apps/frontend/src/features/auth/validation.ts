@@ -1,3 +1,5 @@
+export const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,20}$/;
+
 export const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 
 /** 0–4: length ≥ 8, mixed case, digit, symbol. */

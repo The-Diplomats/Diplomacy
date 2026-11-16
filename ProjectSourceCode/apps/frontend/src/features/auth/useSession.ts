@@ -1,5 +1,7 @@
 import type {
   LoginRequest,
+  OAuthCompleteRequest,
+  OAuthProvider,
   PasswordResetRequest,
   PasswordResetVerifyRequest,
   RegisterRequest,
@@ -11,9 +13,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '../../api/client';
 import {
+  getAuthOAuthPending,
+  getAuthOAuthProviders,
   getAuthUser,
   postAuthLogin,
   postAuthLogout,
+  postAuthOAuthComplete,
+  postAuthOAuthLogin,
   postAuthPasswordReset,
   postAuthPasswordResetVerify,
   postAuthRegister,
@@ -81,6 +87,58 @@ export function useLogout() {
     mutationFn: postAuthLogout,
     onSettled: () => queryClient.setQueryData<User | null>(sessionQueryKey, null),
   });
+}
+
+export function useOAuthProviders() {
+  return useQuery({
+    queryKey: ['auth', 'oauth', 'providers'],
+    queryFn: ({ signal }) => getAuthOAuthProviders(signal),
+    staleTime: Infinity,
+  });
+}
+
+/** Navigates the whole page to the provider on success; it comes back via the backend callback. */
+export function useOAuthLogin() {
+  return useMutation({
+    mutationFn: ({ provider, next }: { provider: OAuthProvider; next: string }) =>
+      postAuthOAuthLogin(provider, next),
+    onSuccess: (url) => window.location.assign(url),
+  });
+}
+
+export function useOAuthPending() {
+  return useQuery({
+    queryKey: ['auth', 'oauth', 'pending'],
+    queryFn: ({ signal }) => getAuthOAuthPending(signal),
+    retry: false,
+  });
+}
+
+export function useOAuthComplete() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: OAuthCompleteRequest) => postAuthOAuthComplete(body),
+    onSuccess: (user) => queryClient.setQueryData<User | null>(sessionQueryKey, user),
+  });
+}
+
+const OAUTH_ERROR_MESSAGES: Record<string, string> = {
+  cancelled: 'Sign-in was cancelled.',
+  failed: "Couldn't complete sign-in with that provider. Please try again.",
+  email_unverified:
+    "That account's email address isn't verified by the provider, so we can't use it to sign in.",
+  linked_elsewhere:
+    'An account with this email is already linked to a different sign-in. Use that method instead.',
+};
+
+/** Message for the `?oauthError=` the backend callback redirects with, or null. */
+export function oauthErrorMessage(reason: string | null): string | null {
+  if (!reason) {
+    return null;
+  }
+  return Object.hasOwn(OAUTH_ERROR_MESSAGES, reason)
+    ? (OAUTH_ERROR_MESSAGES[reason] ?? null)
+    : (OAUTH_ERROR_MESSAGES.failed ?? null);
 }
 
 export function authErrorMessage(err: unknown): string {

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "users_oauth_identity_idx" ON "users" USING btree ("oauth_provider","oauth_subject");

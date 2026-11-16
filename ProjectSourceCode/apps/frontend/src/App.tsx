@@ -31,6 +31,7 @@ export function App() {
             <Route path="/auth/register" element={<AuthPanel mode="register" />} />
             <Route path="/auth/register/verify" element={<AuthPanel mode="register-verify" />} />
             <Route path="/auth/password-reset" element={<AuthPanel mode="password-reset" />} />
+            <Route path="/auth/oauth/complete" element={<AuthPanel mode="oauth-complete" />} />
             <Route
               path="/auth/password-reset/verify"
               element={<AuthPanel mode="password-reset-verify" />}

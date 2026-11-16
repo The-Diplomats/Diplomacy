@@ -1,5 +1,9 @@
 import type {
   LoginRequest,
+  OAuthCompleteRequest,
+  OAuthLoginRequest,
+  OAuthPendingSignup,
+  OAuthProvider,
   PasswordResetRequest,
   PasswordResetVerifyRequest,
   RegisterRequest,
@@ -26,6 +30,23 @@ const accounts = new Map<string, MockAccount>([
   ],
 ]);
 let sessionUser: User | null = null;
+
+// The OAuth login navigates the whole page, which reloads this module, so the
+// pending signup lives in sessionStorage to survive the redirect.
+const PENDING_OAUTH_KEY = 'mock:oauthPending';
+
+function loadPendingOAuthSignup(): OAuthPendingSignup | null {
+  const raw = sessionStorage.getItem(PENDING_OAUTH_KEY);
+  return raw ? (JSON.parse(raw) as OAuthPendingSignup) : null;
+}
+
+function savePendingOAuthSignup(pending: OAuthPendingSignup | null): void {
+  if (pending) {
+    sessionStorage.setItem(PENDING_OAUTH_KEY, JSON.stringify(pending));
+  } else {
+    sessionStorage.removeItem(PENDING_OAUTH_KEY);
+  }
+}
 
 /** Mock accepts any 6-digit code; type anything like 123456 to verify in dev. */
 const ACCEPTED_CODE_PATTERN = /^\d{6}$/;
@@ -110,6 +131,50 @@ export const authHandlers = [
     account.password = newPassword;
     sessionUser = account.user;
     return HttpResponse.json(account.user);
+  }),
+
+  http.get('/api/auth/oauth/providers', () =>
+    HttpResponse.json({ providers: ['google', 'microsoft'] satisfies OAuthProvider[] }),
+  ),
+
+  // No real provider in mock mode: every OAuth sign-in is a brand-new identity
+  // that lands straight on the username picker.
+  http.post('/api/auth/oauth/:provider/login', async ({ params, request }) => {
+    const { next } = (await request.json()) as OAuthLoginRequest;
+    const provider = params.provider as OAuthProvider;
+    savePendingOAuthSignup({
+      provider,
+      email: `${provider}-user@example.com`,
+      suggestedUsername: `${provider}_user`,
+    });
+    const url = new URL('/auth/oauth/complete', window.location.origin);
+    if (next) {
+      url.searchParams.set('next', next);
+    }
+    return HttpResponse.json({ url: url.href });
+  }),
+
+  http.get('/api/auth/oauth/pending', () => {
+    const pendingOAuthSignup = loadPendingOAuthSignup();
+    return pendingOAuthSignup
+      ? HttpResponse.json(pendingOAuthSignup)
+      : problem(404, 'Not Found', 'Your sign-in expired. Please start again.');
+  }),
+
+  http.post('/api/auth/oauth/complete', async ({ request }) => {
+    const { username } = (await request.json()) as OAuthCompleteRequest;
+    const pendingOAuthSignup = loadPendingOAuthSignup();
+    if (!pendingOAuthSignup) {
+      return problem(404, 'Not Found', 'Your sign-in expired. Please start again.');
+    }
+    if (findByIdentifier(username)) {
+      return problem(409, 'Conflict', 'That username is taken.');
+    }
+    const user: User = { id: crypto.randomUUID(), email: pendingOAuthSignup.email, username };
+    accounts.set(user.email, { user, password: crypto.randomUUID(), verified: true });
+    savePendingOAuthSignup(null);
+    sessionUser = user;
+    return HttpResponse.json(user);
   }),
 
   http.post('/api/auth/logout', () => {

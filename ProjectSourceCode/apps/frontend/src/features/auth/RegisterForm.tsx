@@ -5,17 +5,16 @@ import { useNavigate, useSearchParams } from 'react-router';
 import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Separator } from '../../components/ui/separator';
 import { AuthField, PasswordInput, PasswordStrengthMeter } from './AuthFormParts';
+import { OAuthButtons } from './OAuthButtons';
 import { SignedInPanel } from './SignedInPanel';
 import { authErrorMessage, useRegister, useSession } from './useSession';
-import { isValidEmail } from './validation';
+import { isValidEmail, USERNAME_PATTERN } from './validation';
 
 type Field = 'email' | 'username' | 'password' | 'confirm';
 type Errors = Partial<Record<Field, string>>;
 
 const MIN_PASSWORD_LENGTH = 8;
-const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,20}$/;
 
 export function RegisterForm() {
   const navigate = useNavigate();
@@ -152,16 +151,7 @@ export function RegisterForm() {
         </Button>
       </form>
 
-      <div className="relative py-4">
-        <Separator />
-        <span className="absolute inset-0 flex items-center justify-center">
-          <span className="bg-card px-2 text-xs text-muted-foreground uppercase">or</span>
-        </span>
-      </div>
-
-      <Button type="button" variant="outline" className="w-full">
-        Continue with Microsoft
-      </Button>
+      <OAuthButtons />
     </>
   );
 }

@@ -50,6 +50,16 @@ paths:
     $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1microsoft~1login'
   /auth/oauth/microsoft/callback:
     $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1microsoft~1callback'
+  /auth/oauth/google/login:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1google~1login'
+  /auth/oauth/google/callback:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1google~1callback'
+  /auth/oauth/providers:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1providers'
+  /auth/oauth/pending:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1pending'
+  /auth/oauth/complete:
+    $ref: './paths/auth.yaml#/paths/~1auth~1oauth~1complete'
 
   /games:
     $ref: './paths/games.yaml#/paths/~1games'

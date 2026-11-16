@@ -190,6 +190,12 @@ paths:
       tags:
         - Auth
       summary: Initiate Microsoft OpenID Connect login
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/OAuthLoginRequest
       responses:
         '200':
           description: Authorization URL created
@@ -197,6 +203,12 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/auth.yaml#/OAuthLoginResponse
+        '404':
+          description: Provider not configured on this server
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
         '429':
           $ref: ../components/responses/common.yaml#/RateLimited
       description:
@@ -209,6 +221,7 @@ paths:
       tags:
         - Auth
       summary: Complete Microsoft OIDC login
+      x-eov-allow-unknown-query-parameters: true
       parameters:
         - name: code
           in: query
@@ -255,3 +268,153 @@ paths:
       description:
         Exchanges authorization code and establishes session. On success redirects to the frontend. An
         OAuth error may be returned as query parameters.
+
+  /auth/oauth/google/login:
+    post:
+      operationId: postGoogleOAuthLogin
+      tags:
+        - Auth
+      summary: Initiate Google OpenID Connect login
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/OAuthLoginRequest
+      responses:
+        '200':
+          description: Authorization URL created
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/auth.yaml#/OAuthLoginResponse
+        '404':
+          description: Provider not configured on this server
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
+      description:
+        Returns a Google authorization URL and persists OIDC state, nonce and PKCE verifier in the
+        pre-auth session.
+
+  /auth/oauth/google/callback:
+    get:
+      operationId: getGoogleOAuthCallback
+      tags:
+        - Auth
+      summary: Complete Google OIDC login
+      x-eov-allow-unknown-query-parameters: true
+      parameters:
+        - name: code
+          in: query
+          required: false
+          description:
+            Present on success. Absent when the provider redirects with `error` (RFC 6749 §4.1.2.1); the
+            handler must reject a missing code when no error is present.
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: error_description
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '302':
+          description:
+            Redirect to the frontend. On success a session cookie is set and the user is sent to the
+            post-login landing page. On provider error (state mismatch, expired code, error query
+            params) the user is redirected to a frontend error page; the response body is empty in
+            both cases.
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+      description:
+        Exchanges authorization code and establishes session. On success redirects to the frontend. An
+        OAuth error may be returned as query parameters.
+
+  /auth/oauth/providers:
+    get:
+      operationId: getAuthOAuthProviders
+      tags: [Auth]
+      summary: List the OAuth providers configured on this server
+      responses:
+        '200':
+          description: Enabled providers (empty when none are configured)
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/auth.yaml#/OAuthProviderList
+
+  /auth/oauth/pending:
+    get:
+      operationId: getAuthOAuthPending
+      tags: [Auth]
+      summary: Pending OAuth sign-up awaiting a username
+      responses:
+        '200':
+          description: A provider identity is verified and waiting for a username
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/auth.yaml#/OAuthPendingSignup
+        '404':
+          description: No pending sign-up on this session (or it expired)
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+
+  /auth/oauth/complete:
+    post:
+      operationId: postAuthOAuthComplete
+      tags: [Auth]
+      summary: Finish an OAuth sign-up by choosing a username
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../components/schemas/auth.yaml#/OAuthCompleteRequest
+      responses:
+        '200':
+          description: Account created, logged in (session cookie set)
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/auth.yaml#/User
+        '404':
+          description: No pending sign-up on this session (or it expired)
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '409':
+          description: Username taken, or the email was registered in the meantime
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '429':
+          $ref: ../components/responses/common.yaml#/RateLimited
