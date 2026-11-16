@@ -12,7 +12,7 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
 
 jobs:
   compat:
@@ -37,22 +37,8 @@ jobs:
       - if: steps.filter.outputs.contracts != 'true'
         run: echo "No contract changes; skipping breaking-change check."
 
-      - name: Install oasdiff
-        if: steps.filter.outputs.contracts == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          VERSION=$(gh api repos/oasdiff/oasdiff/releases/latest --jq .tag_name | sed 's/^v//')
-          echo "Installing oasdiff $VERSION"
-          curl -fsSL -o oasdiff.tar.gz \
-            "https://github.com/oasdiff/oasdiff/releases/download/v${VERSION}/oasdiff_${VERSION}_linux_amd64.tar.gz"
-          sudo tar -xzf oasdiff.tar.gz -C /usr/local/bin oasdiff
-          rm oasdiff.tar.gz
-          oasdiff --version
-
-      # Check out the base ref as a sibling worktree so oasdiff can resolve
-      # the spec's relative $refs (paths/, components/) on disk.
+      # Check out the base ref as a worktree so redocly can resolve the
+      # spec's relative $refs (paths/, components/) at bundle time.
       - name: Check out base ref as worktree
         if: steps.filter.outputs.contracts == 'true'
         env:
@@ -60,11 +46,70 @@ jobs:
         run: |
           git worktree add /tmp/base-worktree "origin/${BASE_REF#refs/heads/}"
 
-      - name: Check for breaking changes
+      # Bundle both sides into a flat file so oasdiff compares apples to
+      # apples. Without this, oasdiff inlines external $refs on HEAD but
+      # keeps same-document $refs as refs on base, which it flags as
+      # representation drift (false-positive "added to oneOf" errors).
+      - name: Bundle base + HEAD
         if: steps.filter.outputs.contracts == 'true'
         run: |
-          oasdiff breaking \
-            /tmp/base-worktree/ProjectSourceCode/packages/contracts/api/public/openapi.yaml \
-            ProjectSourceCode/packages/contracts/api/public/openapi.yaml \
-            --allow-external-refs=true \
-            --fail-on ERR
+          BASE_SPEC=/tmp/base-worktree/ProjectSourceCode/packages/contracts/api/public/openapi.yaml
+          HEAD_SPEC=ProjectSourceCode/packages/contracts/api/public/openapi.yaml
+          npx --yes @redocly/cli@latest bundle "$BASE_SPEC" -o /tmp/base.bundled.yaml
+          npx --yes @redocly/cli@latest bundle "$HEAD_SPEC" -o /tmp/head.bundled.yaml
+
+      # Tufin's own action: produces a markdown summary without failing the
+      # step, so we can decide whether to post a comment first.
+      - name: Detect breaking changes
+        id: breaking
+        if: steps.filter.outputs.contracts == 'true'
+        uses: oasdiff/oasdiff-action/breaking@main
+        with:
+          base: /tmp/base.bundled.yaml
+          revision: /tmp/head.bundled.yaml
+          format: markdown
+          output-to-file: /tmp/breaking.md
+          fail-on-diff: false
+
+      - name: Check whether any breaking changes were produced
+        id: check
+        if: steps.filter.outputs.contracts == 'true'
+        run: |
+          if [ -s /tmp/breaking.md ]; then
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Upserts a single PR comment keyed by header. Only runs when the
+      # diff file has content, so clean PRs get no comment noise.
+      - name: Comment on PR with breaking-change summary
+        if: >-
+          steps.filter.outputs.contracts == 'true' &&
+          steps.check.outputs.has_changes == 'true' &&
+          github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: oasdiff-breaking
+          path: /tmp/breaking.md
+          recreate: true
+
+      # If a prior push had breakings and this one fixes them, remove the
+      # stale comment instead of leaving it misleadingly in place.
+      - name: Clear stale comment when now clean
+        if: >-
+          steps.filter.outputs.contracts == 'true' &&
+          steps.check.outputs.has_changes == 'false' &&
+          github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: oasdiff-breaking
+          delete: true
+
+      - name: Fail when breaking changes detected
+        if: >-
+          steps.filter.outputs.contracts == 'true' &&
+          steps.check.outputs.has_changes == 'true'
+        run: |
+          echo "::error::Breaking API changes detected. See the PR comment for details."
+          exit 1
