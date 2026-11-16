@@ -51,19 +51,20 @@ jobs:
           rm oasdiff.tar.gz
           oasdiff --version
 
-      - name: Extract base spec
+      # Check out the base ref as a sibling worktree so oasdiff can resolve
+      # the spec's relative $refs (paths/, components/) on disk.
+      - name: Check out base ref as worktree
         if: steps.filter.outputs.contracts == 'true'
         env:
           BASE_REF: ${{ github.base_ref || github.event.merge_group.base_ref }}
         run: |
-          git show "origin/${BASE_REF#refs/heads/}:ProjectSourceCode/packages/contracts/api/public/openapi.yaml" \
-            > /tmp/base.yaml
+          git worktree add /tmp/base-worktree "origin/${BASE_REF#refs/heads/}"
 
       - name: Check for breaking changes
         if: steps.filter.outputs.contracts == 'true'
         run: |
           oasdiff breaking \
-            /tmp/base.yaml \
+            /tmp/base-worktree/ProjectSourceCode/packages/contracts/api/public/openapi.yaml \
             ProjectSourceCode/packages/contracts/api/public/openapi.yaml \
-            --allow-external-refs=false \
+            --allow-external-refs=true \
             --fail-on ERR
