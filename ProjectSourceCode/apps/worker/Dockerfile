@@ -4,7 +4,7 @@
 # Build context MUST be the monorepo root (ProjectSourceCode/), not apps/worker/.
 # Example: docker build -f apps/worker/Dockerfile -t diplomacy-worker .
 
-FROM node:24-alpine AS base
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS base
 RUN corepack enable
 WORKDIR /app
 
@@ -29,7 +29,7 @@ COPY apps/worker ./apps/worker
 RUN pnpm --filter worker... run build
 
 # Runtime stage: minimal image with just what's needed to run.
-FROM node:24-alpine AS runtime
+FROM node:24-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS runtime
 RUN apk add --no-cache tini
 WORKDIR /app
 RUN addgroup -S app && adduser -S -G app app

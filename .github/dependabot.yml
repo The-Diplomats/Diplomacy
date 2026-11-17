@@ -1,0 +1,33 @@
+version: 2
+
+updates:
+  # Base images are pinned by digest, so security rebuilds of node:24-alpine arrive as
+  # PRs that go through the normal build and review instead of changing images silently.
+  - package-ecosystem: docker
+    directories:
+      - /ProjectSourceCode/apps/backend
+      - /ProjectSourceCode/apps/worker
+    schedule:
+      interval: monthly
+    groups:
+      node-base-image:
+        patterns: ["node"]
+    ignore:
+      # A Node major is a deliberate upgrade alongside `engines` and `.nvmrc`.
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: chore
+      include: scope
+
+  # Third-party actions are pinned to commit SHAs, which never update on their own.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: chore
+      include: scope
