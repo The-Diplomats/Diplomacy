@@ -22,9 +22,6 @@ settings: `MilestoneSubmissions/DESIGN_DOC.md` §14 and the decision log.
 | Owner (Neon's default) | migrations in CI | direct     | everything                        |
 | `diplomacy_app`        | backend, worker  | pooled     | read and write rows, nothing else |
 
-`diplomacy_app` is created in SQL, not in the console: console-created roles join `neon_superuser`. Run this in the SQL
-Editor with the `diplomacy` database selected, using a separate password per environment:
-
 ## Connection strings
 
 From the project's **Connect** dialog (branch `main`, database `diplomacy`, owner role):
