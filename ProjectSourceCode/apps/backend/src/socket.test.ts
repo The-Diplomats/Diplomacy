@@ -5,6 +5,7 @@ import { type RequestHandler } from 'express';
 import { io as ioClient, type Socket as ClientSocket } from 'socket.io-client';
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 
+import { initAccess, OPEN_ACCESS } from './services/access.js';
 import { createSocketServer } from './socket.js';
 
 describe('Socket.IO health handler', () => {
@@ -72,6 +73,60 @@ describe('Socket.IO health handler', () => {
       });
 
       expect(error).toBeInstanceOf(Error);
+    } finally {
+      client.disconnect();
+    }
+  });
+});
+
+describe('Socket.IO in maintenance mode', () => {
+  let sessionLookups = 0;
+  const countingSession: RequestHandler = (_req, _res, next) => {
+    sessionLookups += 1;
+    next();
+  };
+
+  let httpServer: ReturnType<typeof createServer>;
+  let socketServer: ReturnType<typeof createSocketServer>;
+  let url: string;
+
+  beforeAll(async () => {
+    initAccess({ ...OPEN_ACCESS, maintenanceMode: true });
+    httpServer = createServer();
+    socketServer = createSocketServer(httpServer, {
+      sessionMiddleware: countingSession,
+      origins: ['*'],
+    });
+    await new Promise<void>((resolve) => httpServer.listen(0, resolve));
+    const address = httpServer.address() as AddressInfo;
+    url = `http://localhost:${address.port}`;
+  });
+
+  afterAll(async () => {
+    initAccess(OPEN_ACCESS);
+    await socketServer.close();
+  });
+
+  test('refuses the handshake without loading the session', async () => {
+    const client: ClientSocket = ioClient(url, { transports: ['websocket'], reconnection: false });
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(
+          () => reject(new Error('expected connect_error, got nothing')),
+          2000,
+        );
+        client.on('connect_error', () => {
+          clearTimeout(timeout);
+          resolve();
+        });
+        client.on('connect', () => {
+          clearTimeout(timeout);
+          reject(new Error('expected connect to fail, but it succeeded'));
+        });
+      });
+
+      expect(sessionLookups).toBe(0);
     } finally {
       client.disconnect();
     }

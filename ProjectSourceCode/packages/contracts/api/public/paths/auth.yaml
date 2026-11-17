@@ -400,6 +400,14 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/auth.yaml#/User
+        '403':
+          description:
+            Sign-up became invite-only, or the email left the allowlist, after the callback. The
+            pending sign-up is discarded.
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
         '404':
           description: No pending sign-up on this session (or it expired)
           content:

@@ -51,6 +51,12 @@ const EMAIL_TAKEN = {
   detail: 'An account with this email already exists. Sign in instead.',
 } as const;
 
+const INVITE_ONLY = {
+  title: 'Forbidden',
+  status: 403,
+  detail: 'Sign-up is invite-only right now.',
+} as const;
+
 // Type alias, not interface: Express's ParamsDictionary needs an implicit index signature.
 type ProviderParams = { provider: OAuthProvider };
 
@@ -92,6 +98,11 @@ oauthRouter.post(
     const pending = activePendingSignup(req);
     if (!pending) {
       return res.status(404).json(NO_PENDING_SIGNUP);
+    }
+    // Rechecked here: the pending sign-up outlives a restart, so the allowlist may have changed since the callback.
+    if (!canSignUp(pending.email)) {
+      delete req.session.oauthPending;
+      return res.status(403).json(INVITE_ONLY);
     }
 
     const identity = { provider: pending.provider, subject: pending.subject };

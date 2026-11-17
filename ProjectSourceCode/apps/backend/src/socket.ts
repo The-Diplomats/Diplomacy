@@ -1,4 +1,4 @@
-import { type Server as HttpServer } from 'node:http';
+import { type IncomingMessage, type Server as HttpServer, type ServerResponse } from 'node:http';
 
 import { type ClientToServerEvents, type ServerToClientEvents } from '@diplomacy/contracts';
 import { createAdapter } from '@socket.io/redis-adapter';
@@ -35,10 +35,6 @@ export function createSocketServer(
         callback('wrong surface', false);
         return;
       }
-      if (access.maintenanceMode) {
-        callback('maintenance', false);
-        return;
-      }
       const origin = req.headers.origin;
       if (!origin || options.origins.includes(origin)) {
         callback(null, true);
@@ -48,6 +44,11 @@ export function createSocketServer(
     },
   });
 
+  // Engine middlewares run before allowRequest, so maintenance is refused here, ahead of the
+  // session lookup, to keep reconnecting clients off the database.
+  io.engine.use((_req: IncomingMessage, _res: ServerResponse, next: (err?: Error) => void) => {
+    next(access.maintenanceMode ? new Error('maintenance') : undefined);
+  });
   // Share the express-session into the WS handshake so socket.request.session mirrors req.session.
   io.engine.use(options.sessionMiddleware);
 

@@ -321,6 +321,22 @@ describe('OAuth sign-in', () => {
       expect((await client.get('/auth/oauth/pending')).status).toBe(200);
     });
 
+    test('complete rechecks the allowlist and discards the pending sign-up', async () => {
+      const identity = makeIdentity();
+      nextIdentity = identity;
+      inviteOnly(identity.email);
+      const client = httpsClient(createTestApp());
+      await signInWithProvider(client);
+
+      inviteOnly('someone-else@test.local');
+      const complete = await client.post('/auth/oauth/complete', {
+        username: `I_${randomUUID().slice(0, 8)}`,
+      });
+      expect(complete.status).toBe(403);
+      expect((await client.get('/auth/oauth/pending')).status).toBe(404);
+      expect((await client.get('/auth/me')).status).toBe(401);
+    });
+
     test('an existing account off the allowlist still signs in', async () => {
       const instance = createTestApp();
       const creds = makeTestCredentials();
