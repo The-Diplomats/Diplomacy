@@ -162,4 +162,5 @@ Bypass intentional with `--no-verify` on `commit` or `push`.
 ## Where to look next
 
 - Per-package READMEs for specifics (`packages/*/README.md`, `apps/*/README.md`)
+- `platform/runbooks/` for how each cloud service is provisioned
 - `../MilestoneSubmissions/DESIGN_DOC.md` for architecture and decisions
