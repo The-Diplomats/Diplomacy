@@ -29,6 +29,10 @@ environments set env vars via the container runtime config, not from `.env`.
   locally.
 - `RESEND_API_KEY`: Resend API key for sending transactional email. Without it, emails are logged to the console instead
   of delivered.
+- `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID` + `MICROSOFT_CLIENT_SECRET`: enable OAuth sign-in
+  per provider. Each pair must be set together. Provider registration steps are in `.env.example`.
+- `API_PUBLIC_URL`: public base URL of the API surface, used to build the OAuth redirect URI. Required when any OAuth
+  provider is configured (`http://localhost:5173/api` locally, `https://api.<env>.diplomacy.gg` in cloud).
 - `PORT` (default 3001), `LOG_LEVEL` (default info), `NODE_ENV` (default development)
 
 ## Scripts

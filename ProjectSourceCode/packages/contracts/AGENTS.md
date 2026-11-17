@@ -27,6 +27,8 @@ packages/contracts/
 │           │   └── messages.yaml       # Message, MessageList, SendMessageRequest
 │           └── parameters/
 │               └── common.yaml         # GameId, Limit, Cursor
+├── scripts/
+│   └── compat.ts               # `pnpm compat`: local run of the CI breaking-change check
 ├── src/
 │   ├── generated/              # Kubb output; gitignored, regenerated at build time; never hand-edit
 │   ├── sockets/
@@ -87,6 +89,9 @@ The authoring workflow is strictly spec-first.
 
 - **The `compat-check.yml` workflow runs `oasdiff`** on every PR that touches `api/**`. Breaking changes fail the check
   without the `breaking-change-approved` PR label.
+- **Run it locally before pushing:** `pnpm --filter @diplomacy/contracts compat [base-ref]` (default `origin/main`;
+  fetch first). Same bundling and oasdiff version as CI; needs Docker. Exit 1 means error-level breaking changes.
+  `OASDIFF_IMAGE` in `scripts/compat.ts` and the `oasdiff-action` pin in the workflow must move together.
 - **What counts as breaking:** removing paths / operations / required fields, adding required request fields, changing
   response shapes, tightening validation (e.g., adding `minLength` where none existed), removing enum values.
 - **If the change is intentionally breaking**, apply the `breaking-change-approved` label. PR description should name

@@ -30,7 +30,7 @@
     "express-session": "catalog:",
     "helmet": "catalog:",
     "ioredis": "catalog:",
-    "openid-client": "^6.8.9",
+    "openid-client": "catalog:",
     "pg": "catalog:",
     "pino": "catalog:",
     "pino-http": "catalog:",

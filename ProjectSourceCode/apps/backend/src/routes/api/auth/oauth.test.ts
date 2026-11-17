@@ -174,10 +174,15 @@ describe('OAuth sign-in', () => {
     await registerAndVerify(instance, creds);
     nextIdentity = makeIdentity({ email: creds.email.toLowerCase() });
 
+    capturedEmails.length = 0;
     const client = httpsClient(instance);
     const redirect = await signInWithProvider(client);
     expect(redirect.href).toBe(`${APP_URL}/lobby`);
     expect((await client.get('/auth/me')).body.username).toBe(creds.username);
+
+    expect(capturedEmails).toHaveLength(1);
+    expect(capturedEmails[0]?.to).toBe(creds.email.toLowerCase());
+    expect(capturedEmails[0]?.subject).toBe('Google sign-in was added to your account');
 
     const passwordLogin = await httpsClient(instance).post('/auth/login', {
       identifier: creds.email,
@@ -192,9 +197,12 @@ describe('OAuth sign-in', () => {
     await httpsClient(instance).post('/auth/register', creds);
     nextIdentity = makeIdentity({ email: creds.email.toLowerCase() });
 
+    capturedEmails.length = 0;
     const client = httpsClient(instance);
     await signInWithProvider(client);
     expect((await client.get('/auth/me')).body.username).toBe(creds.username);
+    // No proven owner to warn: the person signing in is the email's owner.
+    expect(capturedEmails).toHaveLength(0);
 
     const passwordLogin = await httpsClient(instance).post('/auth/login', {
       identifier: creds.email,
@@ -245,6 +253,36 @@ describe('OAuth sign-in', () => {
     );
     expect(res.status).toBe(302);
     expect(new URL(res.headers.location as string).searchParams.get('oauthError')).toBe('failed');
+  });
+
+  test('a callback without state redirects instead of failing validation', async () => {
+    const res = await httpsClient(createTestApp()).get('/auth/oauth/google/callback?code=x');
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.location as string).searchParams.get('oauthError')).toBe('failed');
+  });
+
+  test('a callback without state fails even with a flow in progress', async () => {
+    nextIdentity = makeIdentity();
+    const client = httpsClient(createTestApp());
+    expect((await client.post('/auth/oauth/google/login', {})).status).toBe(200);
+
+    const res = await client.get('/auth/oauth/google/callback?code=x');
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.location as string).searchParams.get('oauthError')).toBe('failed');
+    expect((await client.get('/auth/me')).status).toBe(401);
+    expect((await client.get('/auth/oauth/pending')).status).toBe(404);
+  });
+
+  test('a rate-limited callback redirects to the login page', async () => {
+    const client = httpsClient(createTestApp());
+    let res = await client.get('/auth/oauth/google/callback?code=x&state=y');
+    for (let attempt = 1; attempt <= 60; attempt++) {
+      res = await client.get('/auth/oauth/google/callback?code=x&state=y');
+    }
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.location as string).searchParams.get('oauthError')).toBe(
+      'rate_limited',
+    );
   });
 
   test('user cancelling at the provider maps to cancelled', async () => {

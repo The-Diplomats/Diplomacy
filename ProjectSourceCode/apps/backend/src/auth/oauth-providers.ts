@@ -96,6 +96,14 @@ export function isTrueClaim(value: unknown): boolean {
   return value === true || value === 1 || value === '1' || value === 'true';
 }
 
+/** Maps verified ID token claims to an identity, or null when required claims are missing. */
+export function identityFromClaims(
+  provider: OAuthProvider,
+  claims: IdTokenClaims,
+): OAuthIdentity | null {
+  return providerDefinitions[provider].toIdentity(claims);
+}
+
 export class OAuthClaimsError extends Error {
   constructor(provider: OAuthProvider) {
     super(`${provider} ID token is missing required claims`);
@@ -143,7 +151,7 @@ export function createOpenIdProviderClient(
         idTokenExpected: true,
       });
       const claims = tokens.claims();
-      const identity = claims ? definition.toIdentity(claims) : null;
+      const identity = claims ? identityFromClaims(provider, claims) : null;
       if (!identity) {
         throw new OAuthClaimsError(provider);
       }

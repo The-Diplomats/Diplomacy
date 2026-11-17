@@ -129,6 +129,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
     "That account's email address isn't verified by the provider, so we can't use it to sign in.",
   linked_elsewhere:
     'An account with this email is already linked to a different sign-in. Use that method instead.',
+  rate_limited: 'Too many sign-in attempts. Please wait a few minutes and try again.',
 };
 
 /** Message for the `?oauthError=` the backend callback redirects with, or null. */

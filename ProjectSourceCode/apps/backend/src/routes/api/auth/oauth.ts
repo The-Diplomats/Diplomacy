@@ -12,16 +12,19 @@ import * as openid from 'openid-client';
 import { type OAuthIdentity, suggestUsername } from '../../../auth/oauth-providers.js';
 import { establishSession } from '../../../auth/session.js';
 import {
+  createOAuthCallbackRateLimit,
   oauthCompleteRateLimit,
   oauthLoginRateLimit,
 } from '../../../middleware/auth-rate-limits.js';
 import { db } from '../../../services/db.js';
+import { emails } from '../../../services/emails.js';
 import { oauth, oauthRedirectUri } from '../../../services/oauth.js';
 
 const PENDING_SIGNUP_TTL_MS = 15 * 60 * 1000;
 const DEFAULT_NEXT_PATH = '/lobby';
 
-type OAuthErrorReason = 'cancelled' | 'failed' | 'email_unverified' | 'linked_elsewhere';
+type OAuthErrorReason =
+  'cancelled' | 'failed' | 'email_unverified' | 'linked_elsewhere' | 'rate_limited';
 
 const PROVIDER_NOT_CONFIGURED = {
   title: 'Not Found',
@@ -57,6 +60,12 @@ interface CallbackQuery {
 }
 
 export const oauthRouter = Router();
+
+// The callback is a browser navigation, so a JSON 429 would strand the user on
+// a raw error page; send them back to the login form instead.
+const oauthCallbackRateLimit = createOAuthCallbackRateLimit((_req, res) =>
+  redirectWithError(res, 'rate_limited'),
+);
 
 oauthRouter.get('/providers', (_req: Request, res: Response<OAuthProviderList>) => {
   res.json({ providers: Object.keys(oauth.providers) as OAuthProvider[] });
@@ -146,7 +155,7 @@ oauthRouter.post(
 
 oauthRouter.get(
   '/:provider/callback',
-  oauthLoginRateLimit,
+  oauthCallbackRateLimit,
   async (req: Request<ProviderParams, unknown, unknown, CallbackQuery>, res: Response) => {
     const { provider } = req.params;
     const flow = req.session.oauthFlow;
@@ -194,6 +203,12 @@ oauthRouter.get(
         return redirectWithError(res, 'linked_elsewhere');
       }
       req.log.info({ user_id: existing.id, provider }, 'linked oauth identity by verified email');
+      // An unverified account had no proven owner to notify; the person signing in is its owner now.
+      if (existing.emailVerifiedAt) {
+        void emails.auth
+          .signInLinked(existing.email, { username: existing.username, provider })
+          .catch((err: unknown) => req.log.error({ err }, 'failed to send sign-in linked notice'));
+      }
       await establishSession(req, toPublicUser(existing));
       return redirectToApp(res, flow.next);
     }

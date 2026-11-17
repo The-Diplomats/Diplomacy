@@ -2,7 +2,7 @@ import express, { type ErrorRequestHandler, type Express, type RequestHandler } 
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 
-import { logger } from './log.js';
+import { logger, redactRequestSecrets } from './log.js';
 import { surfaceRouter } from './middleware/surface-router.js';
 import { createAdminSurface } from './routes/admin/index.js';
 import { createApiSurface } from './routes/api/index.js';
@@ -20,7 +20,7 @@ export function createApp(config: AppConfig): Express {
   app.set('trust proxy', 1);
 
   app.use(helmet());
-  app.use(pinoHttp({ logger }));
+  app.use(pinoHttp({ logger, serializers: { req: redactRequestSecrets } }));
   app.use(express.json());
 
   app.use(surfaceRouter);

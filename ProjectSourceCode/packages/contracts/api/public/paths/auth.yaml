@@ -236,7 +236,10 @@ paths:
             type: string
         - name: state
           in: query
-          required: true
+          required: false
+          description:
+            Optional here so a missing or forged state still reaches the handler, which rejects it
+            with the frontend error redirect instead of a JSON 400.
           schema:
             type: string
         - name: error
@@ -253,21 +256,9 @@ paths:
         '302':
           description:
             Redirect to the frontend. On success a session cookie is set and the user is sent to the
-            post-login landing page. On provider error (state mismatch, expired code, error query
-            params) the user is redirected to a frontend error page; the response body is empty in
-            both cases.
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
-        '401':
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+            post-login landing page. On any failure (state mismatch, expired code, error query
+            params, rate limit) the user is redirected to the login page with an `oauthError`
+            reason; the response body is empty in both cases.
       description:
         Exchanges authorization code and establishes session. On success redirects to the frontend. An
         OAuth error may be returned as query parameters.
@@ -324,7 +315,10 @@ paths:
             type: string
         - name: state
           in: query
-          required: true
+          required: false
+          description:
+            Optional here so a missing or forged state still reaches the handler, which rejects it
+            with the frontend error redirect instead of a JSON 400.
           schema:
             type: string
         - name: error
@@ -341,21 +335,9 @@ paths:
         '302':
           description:
             Redirect to the frontend. On success a session cookie is set and the user is sent to the
-            post-login landing page. On provider error (state mismatch, expired code, error query
-            params) the user is redirected to a frontend error page; the response body is empty in
-            both cases.
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
-        '401':
-          description: Not authenticated
-          content:
-            application/json:
-              schema:
-                $ref: ../components/schemas/common.yaml#/ProblemDetails
+            post-login landing page. On any failure (state mismatch, expired code, error query
+            params, rate limit) the user is redirected to the login page with an `oauthError`
+            reason; the response body is empty in both cases.
       description:
         Exchanges authorization code and establishes session. On success redirects to the frontend. An
         OAuth error may be returned as query parameters.

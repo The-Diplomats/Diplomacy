@@ -51,4 +51,4 @@ jobs:
         if: steps.filter.outputs.contracts == 'true'
       - name: Lint OpenAPI spec
         if: steps.filter.outputs.contracts == 'true'
-        run: pnpm --filter @diplomacy/contracts exec redocly lint api/public/openapi.yaml
+        run: pnpm --filter @diplomacy/contracts lint
