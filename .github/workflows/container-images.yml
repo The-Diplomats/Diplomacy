@@ -10,6 +10,7 @@ on:
       - "ProjectSourceCode/package.json"
       - "ProjectSourceCode/pnpm-lock.yaml"
       - "ProjectSourceCode/pnpm-workspace.yaml"
+      - "ProjectSourceCode/tsconfig*.json"
       - "ProjectSourceCode/.dockerignore"
       - ".github/workflows/container-images.yml"
   push:
@@ -21,6 +22,7 @@ on:
       - "ProjectSourceCode/package.json"
       - "ProjectSourceCode/pnpm-lock.yaml"
       - "ProjectSourceCode/pnpm-workspace.yaml"
+      - "ProjectSourceCode/tsconfig*.json"
       - "ProjectSourceCode/.dockerignore"
       - ".github/workflows/container-images.yml"
   workflow_dispatch:
