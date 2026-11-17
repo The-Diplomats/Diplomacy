@@ -1,0 +1,83 @@
+name: Container Images
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "ProjectSourceCode/apps/backend/**"
+      - "ProjectSourceCode/apps/worker/**"
+      - "ProjectSourceCode/packages/**"
+      - "ProjectSourceCode/package.json"
+      - "ProjectSourceCode/pnpm-lock.yaml"
+      - "ProjectSourceCode/pnpm-workspace.yaml"
+      - "ProjectSourceCode/.dockerignore"
+      - ".github/workflows/container-images.yml"
+  push:
+    branches: [main]
+    paths:
+      - "ProjectSourceCode/apps/backend/**"
+      - "ProjectSourceCode/apps/worker/**"
+      - "ProjectSourceCode/packages/**"
+      - "ProjectSourceCode/package.json"
+      - "ProjectSourceCode/pnpm-lock.yaml"
+      - "ProjectSourceCode/pnpm-workspace.yaml"
+      - "ProjectSourceCode/.dockerignore"
+      - ".github/workflows/container-images.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    name: Build ${{ matrix.app }} image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [backend, worker]
+    env:
+      # PRs only build, to catch Dockerfile breakage before merge. Only main publishes,
+      # so a manual run on another branch can't overwrite a deployable tag.
+      PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        if: env.PUBLISH == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # metadata-action lowercases the image name (GHCR rejects the org's capitals)
+      # and adds the source label that links the package to this repo.
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/diplomacy-${{ matrix.app }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ProjectSourceCode
+          file: ProjectSourceCode/apps/${{ matrix.app }}/Dockerfile
+          target: runtime
+          platforms: linux/amd64
+          push: ${{ env.PUBLISH == 'true' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
