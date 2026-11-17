@@ -2,6 +2,22 @@ Diplomacy Group Project – Meeting Notes
 Course: CSCI 3308 – Software Development Methods
 Meeting Type: Weekly TA Review
 
+Date: November 16, 2026
+Completed this week
+Rez - Built off of other member's stuff to ensure cohesion for everyone else's commits and to make it work with Microsoft
+Justin - Reworked contracts and added in routes for the API to complete game board functionality
+Brynne - Created third party authentication end to end so that it shows up for sign in and register
+Deven - "Chat works like a chat" and are persistent and can be tested now
+Nathan - Added database tables for phases, player order, readiness tracking, and AI memory. Added test cases for those features
+
+Moving forward:
+Rez - finish adjudicator and set up azure deployment pipeline
+Justin - Finish connections for board game to backend
+Brynne - Add feature to report bad actors
+Deven - Finish individual to individual chat
+Nathan - Connect everything to the data bases and ensure full functionality of backend. 
+
+
 Date: November 9, 2026
 Note: Automation made two releases
 
