@@ -48,11 +48,11 @@ jobs:
       SESSION_SECRET: ci-dummy-secret-must-be-at-least-32-chars-long
       FRONTEND_ORIGINS: http://localhost:5173
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: ProjectSourceCode/package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: "24"
           cache: "pnpm"
