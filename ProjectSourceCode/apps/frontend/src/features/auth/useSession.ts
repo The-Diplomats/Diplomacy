@@ -130,6 +130,7 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   linked_elsewhere:
     'An account with this email is already linked to a different sign-in. Use that method instead.',
   rate_limited: 'Too many sign-in attempts. Please wait a few minutes and try again.',
+  invite_only: "Sign-up is invite-only right now, and that account isn't on the list.",
 };
 
 /** Message for the `?oauthError=` the backend callback redirects with, or null. */
@@ -148,9 +149,6 @@ export function authErrorMessage(err: unknown): string {
   }
   if (err.status === 401) {
     return 'Invalid credentials.';
-  }
-  if (err.status === 403) {
-    return 'Please verify your email before signing in.';
   }
   if (err.status === 429) {
     return 'Too many attempts. Please wait a moment and try again.';

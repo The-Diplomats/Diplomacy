@@ -81,6 +81,14 @@ paths:
             application/json:
               schema:
                 $ref: ../components/schemas/common.yaml#/ProblemDetails
+        '403':
+          description:
+            Sign-up is invite-only and the email isn't on the allowlist. Decided before any account
+            lookup, so it never reveals whether an account exists.
+          content:
+            application/json:
+              schema:
+                $ref: ../components/schemas/common.yaml#/ProblemDetails
         '429':
           $ref: ../components/responses/common.yaml#/RateLimited
 
@@ -257,7 +265,7 @@ paths:
           description:
             Redirect to the frontend. On success a session cookie is set and the user is sent to the
             post-login landing page. On any failure (state mismatch, expired code, error query
-            params, rate limit) the user is redirected to the login page with an `oauthError`
+            params, rate limit, invite-only sign-up) the user is redirected to the login page with an `oauthError`
             reason; the response body is empty in both cases.
       description:
         Exchanges authorization code and establishes session. On success redirects to the frontend. An
@@ -336,7 +344,7 @@ paths:
           description:
             Redirect to the frontend. On success a session cookie is set and the user is sent to the
             post-login landing page. On any failure (state mismatch, expired code, error query
-            params, rate limit) the user is redirected to the login page with an `oauthError`
+            params, rate limit, invite-only sign-up) the user is redirected to the login page with an `oauthError`
             reason; the response body is empty in both cases.
       description:
         Exchanges authorization code and establishes session. On success redirects to the frontend. An

@@ -13,6 +13,7 @@ import {
   registerResendRateLimit,
   registerVerifyRateLimit,
 } from '../../../middleware/auth-rate-limits.js';
+import { canSignUp } from '../../../services/access.js';
 import { db } from '../../../services/db.js';
 import { emails } from '../../../services/emails.js';
 
@@ -20,6 +21,12 @@ const INVALID_OR_EXPIRED = {
   title: 'Bad Request',
   status: 400,
   detail: 'Invalid or expired code.',
+} as const;
+
+const INVITE_ONLY = {
+  title: 'Forbidden',
+  status: 403,
+  detail: 'Sign-up is invite-only right now.',
 } as const;
 
 interface BeginBody {
@@ -46,6 +53,12 @@ registerRouter.post(
     const email = req.body.email.trim().toLowerCase();
     const username = req.body.username.trim();
     const password = req.body.password;
+
+    // Checked before any account lookup so the 403 depends only on the
+    // allowlist, never on whether an account exists.
+    if (!canSignUp(email)) {
+      return res.status(403).json(INVITE_ONLY);
+    }
 
     const existingByUsername = await db.users.findByUsername(username);
     const existingByEmail = await db.users.findByEmail(email);

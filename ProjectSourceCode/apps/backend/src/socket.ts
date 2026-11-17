@@ -7,6 +7,7 @@ import Redis from 'ioredis';
 import { Server } from 'socket.io';
 
 import { logger } from './log.js';
+import { access } from './services/access.js';
 import { registerHealthSocketHandlers } from './sockets/health.js';
 import { classifySurface, extractForwardedHost } from './surface.js';
 
@@ -32,6 +33,10 @@ export function createSocketServer(
       const surface = classifySurface(extractForwardedHost(req.headers));
       if (surface !== 'api' && surface !== 'dev') {
         callback('wrong surface', false);
+        return;
+      }
+      if (access.maintenanceMode) {
+        callback('maintenance', false);
         return;
       }
       const origin = req.headers.origin;

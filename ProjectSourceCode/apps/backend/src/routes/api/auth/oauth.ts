@@ -16,6 +16,7 @@ import {
   oauthCompleteRateLimit,
   oauthLoginRateLimit,
 } from '../../../middleware/auth-rate-limits.js';
+import { canSignUp } from '../../../services/access.js';
 import { db } from '../../../services/db.js';
 import { emails } from '../../../services/emails.js';
 import { oauth, oauthRedirectUri } from '../../../services/oauth.js';
@@ -24,7 +25,7 @@ const PENDING_SIGNUP_TTL_MS = 15 * 60 * 1000;
 const DEFAULT_NEXT_PATH = '/lobby';
 
 type OAuthErrorReason =
-  'cancelled' | 'failed' | 'email_unverified' | 'linked_elsewhere' | 'rate_limited';
+  'cancelled' | 'failed' | 'email_unverified' | 'linked_elsewhere' | 'rate_limited' | 'invite_only';
 
 const PROVIDER_NOT_CONFIGURED = {
   title: 'Not Found',
@@ -211,6 +212,10 @@ oauthRouter.get(
       }
       await establishSession(req, toPublicUser(existing));
       return redirectToApp(res, flow.next);
+    }
+
+    if (!canSignUp(identity.email)) {
+      return redirectWithError(res, 'invite_only');
     }
 
     await regenerateSession(req);

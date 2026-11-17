@@ -21,6 +21,8 @@ export function createSessionMiddleware(connectionString: string, secret: string
   const store = new PgStore({
     pool,
     createTableIfMissing: false,
+    // Each prune wakes a scale-to-zero database; the 15-minute default keeps it from ever sleeping.
+    pruneSessionInterval: 6 * 60 * 60,
   });
 
   const options: SessionOptions = {
