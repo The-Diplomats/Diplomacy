@@ -261,6 +261,18 @@ describe('OAuth sign-in', () => {
     expect(new URL(res.headers.location as string).searchParams.get('oauthError')).toBe('failed');
   });
 
+  test('a callback without state fails even with a flow in progress', async () => {
+    nextIdentity = makeIdentity();
+    const client = httpsClient(createTestApp());
+    expect((await client.post('/auth/oauth/google/login', {})).status).toBe(200);
+
+    const res = await client.get('/auth/oauth/google/callback?code=x');
+    expect(res.status).toBe(302);
+    expect(new URL(res.headers.location as string).searchParams.get('oauthError')).toBe('failed');
+    expect((await client.get('/auth/me')).status).toBe(401);
+    expect((await client.get('/auth/oauth/pending')).status).toBe(404);
+  });
+
   test('a rate-limited callback redirects to the login page', async () => {
     const client = httpsClient(createTestApp());
     let res = await client.get('/auth/oauth/google/callback?code=x&state=y');

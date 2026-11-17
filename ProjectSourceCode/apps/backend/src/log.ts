@@ -21,21 +21,31 @@ interface SerializedRequest {
  * string, which needs rewriting.
  */
 export function redactRequestSecrets<T extends SerializedRequest>(req: T): T {
-  const secrets = SECRET_QUERY_PARAMS.filter((name) => req.query?.[name] !== undefined);
+  // Express's query parser stops after 1,000 params, so `req.query` can miss a `code` the URL has.
+  const parsedUrl = req.url?.includes('?') ? new URL(req.url, 'http://redact.invalid') : null;
+  const secrets = SECRET_QUERY_PARAMS.filter(
+    (name) => req.query?.[name] !== undefined || parsedUrl?.searchParams.has(name),
+  );
   if (secrets.length === 0) {
     return req;
   }
-  const query = { ...req.query };
-  for (const name of secrets) {
-    query[name] = REDACTED;
+  let query = req.query;
+  if (query) {
+    query = { ...query };
+    for (const name of secrets) {
+      if (query[name] !== undefined) {
+        query[name] = REDACTED;
+      }
+    }
   }
   let url = req.url;
-  if (url) {
-    const parsed = new URL(url, 'http://redact.invalid');
+  if (parsedUrl) {
     for (const name of secrets) {
-      parsed.searchParams.set(name, REDACTED);
+      if (parsedUrl.searchParams.has(name)) {
+        parsedUrl.searchParams.set(name, REDACTED);
+      }
     }
-    url = parsed.pathname + parsed.search;
+    url = parsedUrl.pathname + parsedUrl.search;
   }
   return { ...req, url, query };
 }

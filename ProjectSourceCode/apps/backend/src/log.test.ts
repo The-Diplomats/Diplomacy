@@ -15,6 +15,17 @@ describe('redactRequestSecrets', () => {
     expect(redacted.method).toBe('GET');
   });
 
+  test('masks a code in the url that the parsed query dropped', () => {
+    const padding = Array.from({ length: 1000 }, (_, index) => `p${index}=1`).join('&');
+    const redacted = redactRequestSecrets({
+      url: `/auth/oauth/google/callback?${padding}&code=secret-code`,
+      query: { p0: '1' },
+    });
+    expect(redacted.url).not.toContain('secret-code');
+    expect(new URL(redacted.url, 'http://x').searchParams.get('code')).toBe('[Redacted]');
+    expect(redacted.query).toEqual({ p0: '1' });
+  });
+
   test('leaves requests without secret params untouched', () => {
     const req = { url: '/games?limit=10', query: { limit: '10' } };
     expect(redactRequestSecrets(req)).toBe(req);
