@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
 import type { OAuthProvider } from '@diplomacy/contracts';
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import type { OAuthIdentity, OAuthProviderClient } from '../../../auth/oauth-providers.js';
 import { resetAuthRateLimits } from '../../../middleware/auth-rate-limits.js';
+import { initAccess, OPEN_ACCESS } from '../../../services/access.js';
 import { setOAuth } from '../../../services/oauth.js';
 import { createTestApp, httpsClient, registerAndVerify } from '../../../test/auth-client.js';
 import {
@@ -283,6 +284,71 @@ describe('OAuth sign-in', () => {
     expect(new URL(res.headers.location as string).searchParams.get('oauthError')).toBe(
       'rate_limited',
     );
+  });
+
+  describe('in invite mode', () => {
+    function inviteOnly(...emails: string[]) {
+      initAccess({
+        signupMode: 'invite',
+        signupAllowlist: new Set(emails.map((email) => email.toLowerCase())),
+        maintenanceMode: false,
+      });
+    }
+
+    afterEach(() => {
+      initAccess(OPEN_ACCESS);
+    });
+
+    test('a new identity off the allowlist is turned away with invite_only', async () => {
+      nextIdentity = makeIdentity();
+      inviteOnly('someone-else@test.local');
+      const client = httpsClient(createTestApp());
+
+      const redirect = await signInWithProvider(client);
+      expect(redirect.searchParams.get('oauthError')).toBe('invite_only');
+      expect((await client.get('/auth/oauth/pending')).status).toBe(404);
+      expect((await client.get('/auth/me')).status).toBe(401);
+    });
+
+    test('a new identity on the allowlist goes on to pick a username', async () => {
+      const identity = makeIdentity();
+      nextIdentity = identity;
+      inviteOnly(identity.email);
+      const client = httpsClient(createTestApp());
+
+      const redirect = await signInWithProvider(client);
+      expect(redirect.pathname).toBe('/auth/oauth/complete');
+      expect((await client.get('/auth/oauth/pending')).status).toBe(200);
+    });
+
+    test('complete rechecks the allowlist and discards the pending sign-up', async () => {
+      const identity = makeIdentity();
+      nextIdentity = identity;
+      inviteOnly(identity.email);
+      const client = httpsClient(createTestApp());
+      await signInWithProvider(client);
+
+      inviteOnly('someone-else@test.local');
+      const complete = await client.post('/auth/oauth/complete', {
+        username: `I_${randomUUID().slice(0, 8)}`,
+      });
+      expect(complete.status).toBe(403);
+      expect((await client.get('/auth/oauth/pending')).status).toBe(404);
+      expect((await client.get('/auth/me')).status).toBe(401);
+    });
+
+    test('an existing account off the allowlist still signs in', async () => {
+      const instance = createTestApp();
+      const creds = makeTestCredentials();
+      await registerAndVerify(instance, creds);
+      nextIdentity = makeIdentity({ email: creds.email.toLowerCase() });
+      inviteOnly('someone-else@test.local');
+
+      const client = httpsClient(instance);
+      const redirect = await signInWithProvider(client);
+      expect(redirect.href).toBe(`${APP_URL}/lobby`);
+      expect((await client.get('/auth/me')).body.username).toBe(creds.username);
+    });
   });
 
   test('user cancelling at the provider maps to cancelled', async () => {

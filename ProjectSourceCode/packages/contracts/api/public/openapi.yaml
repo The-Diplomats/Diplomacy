@@ -2,9 +2,12 @@ openapi: 3.1.0
 info:
   title: Diplomacy API
   version: 0.0.0
-  description:
+  description: |
     Internal API contract for the Diplomacy monorepo. New game-related payloads are proposed for team
     review.
+
+    During a maintenance window every operation except `/health` returns `503` with a `Retry-After`
+    header and a `ProblemDetails` body, so individual operations don't list it.
   license:
     name: GPL-3.0-or-later
     identifier: GPL-3.0-or-later

@@ -16,6 +16,7 @@ import {
   oauthCompleteRateLimit,
   oauthLoginRateLimit,
 } from '../../../middleware/auth-rate-limits.js';
+import { canSignUp } from '../../../services/access.js';
 import { db } from '../../../services/db.js';
 import { emails } from '../../../services/emails.js';
 import { oauth, oauthRedirectUri } from '../../../services/oauth.js';
@@ -24,7 +25,7 @@ const PENDING_SIGNUP_TTL_MS = 15 * 60 * 1000;
 const DEFAULT_NEXT_PATH = '/lobby';
 
 type OAuthErrorReason =
-  'cancelled' | 'failed' | 'email_unverified' | 'linked_elsewhere' | 'rate_limited';
+  'cancelled' | 'failed' | 'email_unverified' | 'linked_elsewhere' | 'rate_limited' | 'invite_only';
 
 const PROVIDER_NOT_CONFIGURED = {
   title: 'Not Found',
@@ -48,6 +49,12 @@ const EMAIL_TAKEN = {
   title: 'Conflict',
   status: 409,
   detail: 'An account with this email already exists. Sign in instead.',
+} as const;
+
+const INVITE_ONLY = {
+  title: 'Forbidden',
+  status: 403,
+  detail: 'Sign-up is invite-only right now.',
 } as const;
 
 // Type alias, not interface: Express's ParamsDictionary needs an implicit index signature.
@@ -91,6 +98,11 @@ oauthRouter.post(
     const pending = activePendingSignup(req);
     if (!pending) {
       return res.status(404).json(NO_PENDING_SIGNUP);
+    }
+    // Rechecked here: the pending sign-up outlives a restart, so the allowlist may have changed since the callback.
+    if (!canSignUp(pending.email)) {
+      delete req.session.oauthPending;
+      return res.status(403).json(INVITE_ONLY);
     }
 
     const identity = { provider: pending.provider, subject: pending.subject };
@@ -211,6 +223,10 @@ oauthRouter.get(
       }
       await establishSession(req, toPublicUser(existing));
       return redirectToApp(res, flow.next);
+    }
+
+    if (!canSignUp(identity.email)) {
+      return redirectWithError(res, 'invite_only');
     }
 
     await regenerateSession(req);

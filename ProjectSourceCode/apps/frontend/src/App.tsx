@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router';
 
@@ -7,10 +7,15 @@ import { AuthGate } from './features/auth/AuthGate.tsx';
 import { AuthPanel } from './features/auth/AuthPanel.tsx';
 import { GamePage } from './features/game/GamePage.tsx';
 import { LobbyPage } from './features/lobby/LobbyPage.tsx';
+import { reportIfUnavailable } from './features/maintenance/maintenance.ts';
+import { MaintenanceOverlay } from './features/maintenance/MaintenanceOverlay.tsx';
 import { MapBackdrop } from './features/map/MapBackdrop.tsx';
 import GameRules from './features/rules/GameRules.tsx';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  queryCache: new QueryCache({ onError: reportIfUnavailable }),
+  mutationCache: new MutationCache({ onError: reportIfUnavailable }),
+});
 
 export function App() {
   return (
@@ -23,6 +28,7 @@ export function App() {
     >
       <QueryClientProvider client={queryClient}>
         <LoadingOverlay />
+        <MaintenanceOverlay />
         <BrowserRouter>
           <MapBackdrop />
           <Routes>

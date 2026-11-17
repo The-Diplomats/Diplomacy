@@ -3,6 +3,7 @@ import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 
 import { logger, redactRequestSecrets } from './log.js';
+import { maintenanceGate } from './middleware/maintenance.js';
 import { surfaceRouter } from './middleware/surface-router.js';
 import { createAdminSurface } from './routes/admin/index.js';
 import { createApiSurface } from './routes/api/index.js';
@@ -25,6 +26,7 @@ export function createApp(config: AppConfig): Express {
 
   app.use(surfaceRouter);
   app.use(config.corsMiddleware);
+  app.use(maintenanceGate);
   app.use(config.sessionMiddleware);
 
   app.use(createAdminSurface());

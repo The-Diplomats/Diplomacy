@@ -9,6 +9,7 @@ import { logger } from './log.js';
 import { openApiErrorHandler } from './middleware/openapi-error-handler.js';
 import { createOpenApiValidator } from './middleware/openapi-validator.js';
 import { createSessionMiddleware } from './middleware/session.js';
+import { initAccess } from './services/access.js';
 import { initDb, shutdownDb } from './services/db.js';
 import { initEmails } from './services/emails.js';
 import { initOAuth, type OAuthConfig } from './services/oauth.js';
@@ -66,6 +67,23 @@ if (Object.keys(oauthProviders).length > 0 && !apiPublicUrl) {
   process.exit(1);
 }
 
+const signupMode = process.env.SIGNUP_MODE?.trim() || 'open';
+if (signupMode !== 'open' && signupMode !== 'invite') {
+  logger.error('SIGNUP_MODE must be "open" or "invite"');
+  process.exit(1);
+}
+const signupAllowlist = new Set(
+  (process.env.SIGNUP_ALLOWLIST ?? '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter((email) => email.length > 0),
+);
+const maintenanceModeRaw = process.env.MAINTENANCE_MODE?.trim() || 'false';
+if (maintenanceModeRaw !== 'true' && maintenanceModeRaw !== 'false') {
+  logger.error('MAINTENANCE_MODE must be "true" or "false"');
+  process.exit(1);
+}
+
 const origins = frontendOriginsRaw
   .split(',')
   .map((o) => o.trim())
@@ -94,6 +112,16 @@ initEmails(
 
 initOAuth({ providers: oauthProviders, apiPublicUrl, appUrl });
 logger.info({ providers: Object.keys(oauthProviders) }, 'oauth providers configured');
+
+const maintenanceMode = maintenanceModeRaw === 'true';
+initAccess({ signupMode, signupAllowlist, maintenanceMode });
+logger.info(
+  { signupMode, allowlistSize: signupAllowlist.size, maintenanceMode },
+  'access configured',
+);
+if (signupMode === 'invite' && signupAllowlist.size === 0) {
+  logger.warn('SIGNUP_MODE is invite but SIGNUP_ALLOWLIST is empty: nobody can create an account');
+}
 
 const app = createApp({
   corsMiddleware,

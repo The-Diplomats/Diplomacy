@@ -33,6 +33,11 @@ environments set env vars via the container runtime config, not from `.env`.
   per provider. Each pair must be set together. Provider registration steps are in `.env.example`.
 - `API_PUBLIC_URL`: public base URL of the API surface, used to build the OAuth redirect URI. Required when any OAuth
   provider is configured (`http://localhost:5173/api` locally, `https://api.<env>.diplomacy.gg` in cloud).
+- `SIGNUP_MODE` (`open` default, or `invite`) + `SIGNUP_ALLOWLIST`: in invite mode only the listed emails can create an
+  account, by password or first OAuth sign-in. The list is comma-separated and matched exactly. Existing accounts always
+  sign in.
+- `MAINTENANCE_MODE` (`false` default): `true` returns 503 with `Retry-After` for every API request except `/health` and
+  refuses Socket.IO connections. The admin surface stays up.
 - `PORT` (default 3001), `LOG_LEVEL` (default info), `NODE_ENV` (default development)
 
 ## Scripts

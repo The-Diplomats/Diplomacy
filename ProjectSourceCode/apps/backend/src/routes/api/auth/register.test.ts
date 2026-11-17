@@ -1,6 +1,7 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, test } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from 'vitest';
 
 import { resetAuthRateLimits } from '../../../middleware/auth-rate-limits.js';
+import { initAccess, OPEN_ACCESS } from '../../../services/access.js';
 import { createTestApp, httpsClient, registerAndVerify } from '../../../test/auth-client.js';
 import {
   capturedEmails,
@@ -207,5 +208,60 @@ describe('POST /auth/register/resend', () => {
       identifier: creds.username,
     });
     expect(unknown.status).toBe(202);
+  });
+});
+
+describe('POST /auth/register in invite mode', () => {
+  function inviteOnly(...emails: string[]) {
+    initAccess({
+      signupMode: 'invite',
+      signupAllowlist: new Set(emails.map((email) => email.toLowerCase())),
+      maintenanceMode: false,
+    });
+  }
+
+  afterEach(() => {
+    initAccess(OPEN_ACCESS);
+  });
+
+  test('an allowlisted email registers as usual', async () => {
+    const creds = makeTestCredentials();
+    inviteOnly(creds.email);
+    const res = await httpsClient(createTestApp()).post('/auth/register', creds);
+    expect(res.status).toBe(202);
+    expect(capturedEmails).toHaveLength(1);
+  });
+
+  test('an email not on the allowlist gets 403 and no email', async () => {
+    inviteOnly('someone-else@test.local');
+    const res = await httpsClient(createTestApp()).post('/auth/register', makeTestCredentials());
+    expect(res.status).toBe(403);
+    expect(res.body.detail).toBe('Sign-up is invite-only right now.');
+    expect(capturedEmails).toHaveLength(0);
+  });
+
+  test('the 403 is the same whether or not the account exists', async () => {
+    const creds = makeTestCredentials();
+    const instance = createTestApp();
+    await registerAndVerify(instance, creds);
+    capturedEmails.length = 0;
+    inviteOnly('someone-else@test.local');
+
+    const res = await httpsClient(instance).post('/auth/register', creds);
+    expect(res.status).toBe(403);
+    expect(capturedEmails).toHaveLength(0);
+  });
+
+  test('existing accounts can still log in', async () => {
+    const creds = makeTestCredentials();
+    const instance = createTestApp();
+    await registerAndVerify(instance, creds);
+    inviteOnly('someone-else@test.local');
+
+    const res = await httpsClient(instance).post('/auth/login', {
+      identifier: creds.email,
+      password: creds.password,
+    });
+    expect(res.status).toBe(200);
   });
 });
