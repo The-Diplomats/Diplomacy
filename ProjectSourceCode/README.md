@@ -50,6 +50,26 @@ The seed script refuses to run when `NODE_ENV=production`; cloud envs never get 
 To exercise the register / verify / password-reset flows, register a fresh email instead. With `RESEND_API_KEY` unset
 (the local default), codes print to the backend logs: `docker compose logs backend`.
 
+## OAuth sign-in (optional)
+
+The Google and Microsoft buttons on the login page appear only for providers configured in `apps/backend/.env`. Locally,
+the provider redirects to the Vite dev server, which proxies `/api` to the backend.
+
+1. Register an app with the provider, using this redirect URI (`google` or `microsoft`):
+   `http://localhost:5173/api/auth/oauth/<provider>/callback`
+   - **Google**: Cloud Console, Web application OAuth client. While the consent screen is in Testing mode, only listed
+     test users can sign in.
+   - **Microsoft**: Entra app registration for organizational and personal accounts, with the `email` and `xms_edov`
+     optional ID token claims. Without `xms_edov`, every Microsoft sign-in is rejected as an unverified email.
+2. Set `<PROVIDER>_CLIENT_ID` and `<PROVIDER>_CLIENT_SECRET` in `apps/backend/.env`. `.env.example` has the console
+   steps. Compose already sets `API_PUBLIC_URL`.
+3. Recreate the backend so it picks up the new env: `docker compose up -d --force-recreate backend`.
+   `docker compose restart` reuses the old environment.
+4. Check: `curl http://localhost:5173/api/auth/oauth/providers` lists the enabled providers.
+
+Seeded dev accounts use placeholder emails, so a real provider identity never links to them. Test linking by registering
+with your real email first.
+
 ## VS Code
 
 On first open, click yes to "Would you like to use the workspace's version of TypeScript?" so IDE diagnostics match CLI

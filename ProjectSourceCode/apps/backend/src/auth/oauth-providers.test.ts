@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 
-import { isTrueClaim, suggestUsername } from './oauth-providers.js';
+import { identityFromClaims, isTrueClaim, suggestUsername } from './oauth-providers.js';
 
 describe('suggestUsername', () => {
   test('uses the display name, underscoring spaces', () => {
@@ -36,5 +36,65 @@ describe('isTrueClaim', () => {
 
   test.each([false, 0, '0', 'false', '', undefined, null, 'yes'])('rejects %j', (value) => {
     expect(isTrueClaim(value)).toBe(false);
+  });
+});
+
+describe('identityFromClaims', () => {
+  const base = { iss: 'https://issuer.test', aud: 'client', iat: 0, exp: 0, sub: 'pairwise-sub' };
+
+  describe('google', () => {
+    test('keys on sub and lowercases the email', () => {
+      const identity = identityFromClaims('google', {
+        ...base,
+        sub: 'google-sub',
+        email: 'Ada@Example.com',
+        email_verified: true,
+        name: 'Ada',
+      });
+      expect(identity).toEqual({
+        provider: 'google',
+        subject: 'google-sub',
+        email: 'ada@example.com',
+        emailVerified: true,
+        displayName: 'Ada',
+      });
+    });
+
+    test('is unverified unless email_verified is true', () => {
+      const identity = identityFromClaims('google', { ...base, email: 'a@b.c' });
+      expect(identity?.emailVerified).toBe(false);
+    });
+
+    test('returns null without an email', () => {
+      expect(identityFromClaims('google', base)).toBeNull();
+    });
+  });
+
+  describe('microsoft', () => {
+    const claims = { ...base, tid: 'tenant', oid: 'object', email: 'a@b.c' };
+
+    // `sub` is pairwise per app, so it must not be the subject.
+    test('keys on tid:oid, not sub', () => {
+      expect(identityFromClaims('microsoft', claims)?.subject).toBe('tenant:object');
+    });
+
+    test('trusts the email only when xms_edov is set', () => {
+      expect(identityFromClaims('microsoft', claims)?.emailVerified).toBe(false);
+      expect(identityFromClaims('microsoft', { ...claims, xms_edov: '1' })?.emailVerified).toBe(
+        true,
+      );
+    });
+
+    // A tenant admin can set any `email`, so email_verified alone proves nothing.
+    test('ignores email_verified', () => {
+      const identity = identityFromClaims('microsoft', { ...claims, email_verified: true });
+      expect(identity?.emailVerified).toBe(false);
+    });
+
+    test('returns null without tid, oid or email', () => {
+      expect(identityFromClaims('microsoft', { ...claims, tid: undefined })).toBeNull();
+      expect(identityFromClaims('microsoft', { ...claims, oid: undefined })).toBeNull();
+      expect(identityFromClaims('microsoft', { ...claims, email: undefined })).toBeNull();
+    });
   });
 });

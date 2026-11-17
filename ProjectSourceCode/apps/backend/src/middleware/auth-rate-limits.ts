@@ -11,6 +11,8 @@ function createIpRateLimit(options: {
   windowMs: number;
   limit: number;
   detail: string;
+  /** Replaces the default 429 JSON response. */
+  onLimit?: RequestHandler;
 }): RequestHandler {
   const store = new MemoryStore();
   stores.push(store);
@@ -21,13 +23,15 @@ function createIpRateLimit(options: {
     legacyHeaders: false,
     store,
     keyGenerator: (req) => ipKeyGenerator(req.ip ?? ''),
-    handler: (_req, res) => {
-      res.status(429).json({
-        title: 'Too Many Requests',
-        status: 429,
-        detail: options.detail,
-      });
-    },
+    handler:
+      options.onLimit ??
+      ((_req, res) => {
+        res.status(429).json({
+          title: 'Too Many Requests',
+          status: 429,
+          detail: options.detail,
+        });
+      }),
   });
 }
 
@@ -68,11 +72,23 @@ export const passwordResetVerifyRateLimit = createIpRateLimit({
   detail: 'Too many reset attempts. Try again later.',
 });
 
+// OAuth limits are looser than the password ones: a campus NAT puts many
+// students behind one IP, and state/PKCE already stop replayed callbacks.
 export const oauthLoginRateLimit = createIpRateLimit({
   windowMs: 15 * MINUTE,
-  limit: 20,
+  limit: 60,
   detail: 'Too many sign-in attempts. Try again later.',
 });
+
+/** Separate from login so each sign-in counts once per limiter. */
+export function createOAuthCallbackRateLimit(onLimit: RequestHandler): RequestHandler {
+  return createIpRateLimit({
+    windowMs: 15 * MINUTE,
+    limit: 60,
+    detail: 'Too many sign-in attempts. Try again later.',
+    onLimit,
+  });
+}
 
 export const oauthCompleteRateLimit = createIpRateLimit({
   windowMs: 15 * MINUTE,

@@ -83,6 +83,8 @@ services:
       FRONTEND_ORIGINS: http://localhost:5173
       EMAIL_FROM: no-reply@diplomacy.gg
       APP_URL: http://localhost:5173
+      # Only read when an OAuth provider is configured in apps/backend/.env.
+      API_PUBLIC_URL: http://localhost:5173/api
       PORT: '3001'
       LOG_LEVEL: info
       NODE_ENV: development
