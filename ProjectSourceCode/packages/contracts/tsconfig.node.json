@@ -5,5 +5,5 @@
     "noEmit": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo.node"
   },
-  "include": ["./kubb.config.ts"]
+  "include": ["./kubb.config.ts", "./scripts/**/*.ts"]
 }

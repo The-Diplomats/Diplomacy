@@ -19,3 +19,10 @@ import type { ServerToClientEvents, ClientToServerEvents } from '@diplomacy/cont
 
 Edit the spec, then `pnpm --filter @diplomacy/contracts run generate`. (The generate step also runs automatically before
 `build` and `typecheck`.)
+
+Before pushing a spec change:
+
+```sh
+pnpm --filter @diplomacy/contracts lint     # redocly lint, same as CI
+pnpm --filter @diplomacy/contracts compat   # breaking changes vs origin/main via oasdiff (needs Docker)
+```

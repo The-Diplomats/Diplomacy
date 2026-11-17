@@ -27,6 +27,8 @@
     "build": "pnpm run generate && tsc -b",
     "build:watch": "chokidar \"api/public/**/*.yaml\" \"src/**/*.ts\" --ignore \"src/generated/**\" --ignore \"api/public/openapi.bundled.yaml\" --initial -c \"pnpm run build\"",
     "typecheck": "pnpm run generate && tsc -b --noEmit",
+    "lint": "redocly lint api/public/openapi.yaml",
+    "compat": "node scripts/compat.ts",
     "clean": "rm -rf dist src/generated api/public/openapi.bundled.yaml",
     "prepare": "pnpm run build"
   },
