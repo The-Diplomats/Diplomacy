@@ -57,8 +57,8 @@ gamesRouter.get('/', (_req: Request, res: Response<GamesList>) => {
 
 ## Auth
 
-- **Session-based.** `connect-pg-simple` stores sessions in Postgres; cookie is `SameSite=Lax` scoped to `.diplomacy.gg`
-  in cloud envs, host-only in local dev.
+- **Session-based.** `connect-pg-simple` stores sessions in Postgres; cookie is `SameSite=Lax` and host-only on the API
+  host in every env (`COOKIE_DOMAIN` unset), so one env's session never reaches another's subdomains.
 - **Pattern B registration.** `/auth/register` inserts a user row with `email_verified_at = NULL`, issues a 6-digit
   code, returns 202 (enumeration-safe). The user can't log in until `/auth/register/verify` succeeds.
 - **Enumeration-safe 202s.** `/auth/register`, `/auth/register/resend`, `/auth/password-reset` all return 202 regardless

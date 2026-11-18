@@ -19,14 +19,14 @@ environments set env vars via the container runtime config, not from `.env`.
 - `DATABASE_URL`: Postgres connection string (session store + application data)
 - `SESSION_SECRET`: cookie signing secret
 - `FRONTEND_ORIGINS`: comma-separated list of allowed origins (CORS + Socket.IO)
-- `EMAIL_FROM`: sender address for transactional email (e.g. `no-reply@email.diplomacy.gg`)
+- `EMAIL_FROM`: sender address for transactional email (e.g. `no-reply@diplomacy.gg`)
 - `APP_URL`: base URL of the frontend app, used to build email links (e.g. `http://localhost:5173` in dev)
 
 ### Optional env vars
 
 - `REDIS_URL`: enables the Socket.IO Redis adapter. Without it, the in-memory adapter is used.
-- `COOKIE_DOMAIN`: cookie domain for cross-subdomain session sharing (e.g. `.diplomacy.gg` in cloud envs). Leave unset
-  locally.
+- `COOKIE_DOMAIN`: session cookie domain. Leave unset in every environment, cloud included: the cookie is then host-only
+  on the API host, so one environment's session never reaches another's subdomains.
 - `RESEND_API_KEY`: Resend API key for sending transactional email. Without it, emails are logged to the console instead
   of delivered.
 - `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`, `MICROSOFT_CLIENT_ID` + `MICROSOFT_CLIENT_SECRET`: enable OAuth sign-in
