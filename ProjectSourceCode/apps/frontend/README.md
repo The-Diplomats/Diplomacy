@@ -29,6 +29,12 @@ Dev server runs at http://localhost:5173. `/api` and `/socket.io` are proxied to
 - `VITE_USE_MSW` (default unset): when `true`, starts the MSW service worker in the browser and intercepts `/api/*` with
   the handlers in `mocks/`.
 
+## Hosting
+
+Cloud environments serve `dist/` from Azure Static Web Apps. `public/staticwebapp.config.json` rewrites unknown paths to
+`index.html` so client routes survive a reload, caches the hashed `/assets/*` files for a year, and sets security
+headers.
+
 ## Routes
 
 - `/` → redirects to `/game/test`
@@ -74,7 +80,7 @@ src/
 └─ main.tsx               Entry; conditionally boots MSW before mount
 maps/                    godip `classical.svg` + parse script
 mocks/                   MSW handlers (see Mocks section)
-public/                  Static assets + mockServiceWorker.js + /maps/classical.json
+public/                  Static assets + mockServiceWorker.js + /maps/classical.json + staticwebapp.config.json
 ```
 
 ## Stack
