@@ -131,6 +131,12 @@ jobs:
             version="$CREATED_VERSION"
             sha="$CREATED_SHA"
           fi
+          # Anyone with write access can create a tag; only merged code may be promoted.
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...main" --jq .status)
+          if [ "$status" != ahead ] && [ "$status" != identical ]; then
+            echo "$sha is not on main ($status); refusing to release it"
+            exit 1
+          fi
           echo "Releasing $version at $sha"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"

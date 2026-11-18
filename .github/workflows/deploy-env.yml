@@ -24,7 +24,8 @@ permissions:
   contents: read
 
 # Three jobs so the credentials stay apart: the frontend builds with no secrets, only the deploy
-# job can reach Azure, and E2E runs without an Azure token.
+# job can reach Azure, and E2E runs without an Azure token. No dependency cache: these jobs run
+# in main's context, where a poisoned cache entry would reach every later deploy.
 jobs:
   build-frontend:
     name: Build frontend (${{ inputs.environment }})
@@ -43,8 +44,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          cache: "pnpm"
-          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter "frontend..." build
         env:
@@ -89,8 +88,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          cache: "pnpm"
-          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
       # Only what migrations need, so fewer third-party scripts run in the job holding Azure access.
       - run: pnpm install --frozen-lockfile --filter "@diplomacy/db..."
 
@@ -180,8 +177,6 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: "24"
-          cache: "pnpm"
-          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter frontend exec playwright install --with-deps chromium
 
