@@ -48,6 +48,8 @@ environments set env vars via the container runtime config, not from `.env`.
 - `pnpm --filter backend start`: run compiled dist/index.js
 - `pnpm --filter backend seed`: insert the dev teammate accounts (auto-run by `docker compose up` via the `seeder`
   service; credentials documented in the monorepo README)
+- `pnpm --filter backend seed:scenario <name>`: upsert a named E2E world from `src/scripts/scenarios/` into
+  `DATABASE_URL`. `e2e-auth` needs `E2E_USER_PASSWORD`, `canary` needs `CANARY_PASSWORD` (both at least 16 characters)
 
 ## Testing
 

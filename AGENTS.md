@@ -47,7 +47,7 @@ Release-please owns versioning + changelog. It opens a Release PR against `main`
 
 ## CI gates
 
-A PR must pass: `commitlint`, `lint`, `format`, `typecheck`, `build-test`, `contract-lint` (Redocly, when `packages/contracts/api/**` changed), `compat-check` (oasdiff breaking-change gate, when the spec changed). Post-merge deploy chain (planned): `deploy-dev` → `e2e-dev` → `release-please` → tag → `deploy-stage` → `e2e-stage` → prod approval → `deploy-prod` → `smoke-prod`, each E2E gate with a `workflow_dispatch` break-glass override requiring a `reason`. See `DESIGN_DOC.md` §13 for the full picture; `.github/workflows/` is the source of truth for what currently exists.
+A PR must pass: `commitlint`, `lint`, `format`, `typecheck`, `build-test`, `e2e` (Playwright against the PR's own stack), `container-images` (backend and worker images build), `contract-lint` (Redocly, when `packages/contracts/api/**` changed), `compat-check` (oasdiff breaking-change gate, when the spec changed). Post-merge deploy chain (planned): `deploy-dev` → `e2e-dev` → `release-please` → tag → `deploy-stage` → `e2e-stage` → prod approval → `deploy-prod` → `smoke-prod`, each E2E gate with a `workflow_dispatch` break-glass override requiring a `reason`. See `DESIGN_DOC.md` §13 for the full picture; `.github/workflows/` is the source of truth for what currently exists.
 
 ## Troubleshooting
 

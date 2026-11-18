@@ -4,5 +4,11 @@
     "composite": true,
     "tsBuildInfoFile": "./dist/.tsbuildinfo-node"
   },
-  "include": ["./vite.config.ts", "./vitest.config.ts", "./maps/**/*.ts"]
+  "include": [
+    "./vite.config.ts",
+    "./vitest.config.ts",
+    "./playwright.config.ts",
+    "./maps/**/*.ts",
+    "./e2e/**/*.ts"
+  ]
 }
