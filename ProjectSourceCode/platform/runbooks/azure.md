@@ -47,7 +47,7 @@ because rate limits are kept in memory.
 | Plan           | Free                                                                                  |
 | Source         | Other (not linked to GitHub, so Azure never commits a workflow or adds a repo secret) |
 | Deploys        | `deploy-env.yml`, using the app's deployment token                                    |
-| GitHub secret  | `AZURE_STATIC_WEB_APPS_API_TOKEN` in the matching environment, which allows `main`    |
+| GitHub secret  | `AZURE_STATIC_WEB_APPS_API_TOKEN` in the matching environment                         |
 | Custom domain  | `app.<env>` CNAME to the app's default hostname, DNS only, no TXT record              |
 | Build variable | `VITE_API_URL` set to the env's API host at build time                                |
 
@@ -67,16 +67,17 @@ credential.
 | GitHub variables     | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` in the matching environment     |
 | E2E secrets          | `E2E_USER_PASSWORD` in dev and stage, `CANARY_PASSWORD` in prod                               |
 | Prod approvals       | Two per release: the deploy job, then the smoke-test job                                      |
+| Environment branches | Protected branches only (`main`) in dev, stage and prod; never tags, which anyone can push    |
 
 The subject uses GitHub's immutable format (owner and repository IDs), which this repository's tokens carry; the
 name-only form never matches.
 
-| Problem                                    | Recovery                                                                                       |
-| ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
-| A migration applied but broke the database | Neon console, **Restore**, to the "Restore point (UTC)" logged by that deploy's migrate step   |
-| Stage E2E failed on a flaky spec           | Re-run the failed jobs, or run `release.yml` with `version`                                    |
-| A release is bad in stage or prod          | Run `release.yml` with the previous `version` to redeploy it (schema changes stay applied)     |
-| A release should stop at stage             | Leave prod's approval pending or reject it; later, approve or run `release.yml` with `version` |
+| Problem                                    | Recovery                                                                                                                                                                                                                                      |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A migration applied but broke the database | Put the previous version back first (`release.yml` with its `version`; dev: `az containerapp update --image` with the previous `sha-` tag), then Neon console, **Restore**, to the "Restore point (UTC)" logged by that deploy's migrate step |
+| Stage E2E failed on a flaky spec           | Re-run the failed jobs, or run `release.yml` with `version`                                                                                                                                                                                   |
+| A release is bad in stage or prod          | Run `release.yml` with the previous `version` to redeploy it (schema changes stay applied)                                                                                                                                                    |
+| A release should stop at stage             | Leave prod's approval pending or reject it; later, approve or run `release.yml` with `version`                                                                                                                                                |
 
 ## Checks
 

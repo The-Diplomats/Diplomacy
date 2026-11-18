@@ -59,6 +59,10 @@ jobs:
             echo "proceed=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          if [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "Run this from main; stage and prod only accept runs on main."
+            exit 1
+          fi
           if [ -n "$VERSION" ] && ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "version must look like 1.4.0"
             exit 1
@@ -122,6 +126,7 @@ jobs:
           INPUT_VERSION: ${{ inputs.version }}
           CREATED_VERSION: ${{ needs.release-please.outputs.version }}
           CREATED_SHA: ${{ needs.release-please.outputs.sha }}
+          TESTED_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
           if [ -n "$INPUT_VERSION" ]; then
@@ -136,6 +141,15 @@ jobs:
           if [ "$status" != ahead ] && [ "$status" != identical ]; then
             echo "$sha is not on main ($status); refusing to release it"
             exit 1
+          fi
+          # release-please reads main when it runs, so a Release PR merged after the gate is tagged
+          # before dev has tested it.
+          if [ -n "$TESTED_SHA" ]; then
+            status=$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$TESTED_SHA" --jq .status)
+            if [ "$status" != ahead ] && [ "$status" != identical ]; then
+              echo "$version ($sha) merged after dev tested $TESTED_SHA. Once dev is green on it, run release.yml with version $version."
+              exit 1
+            fi
           fi
           echo "Releasing $version at $sha"
           echo "version=$version" >> "$GITHUB_OUTPUT"

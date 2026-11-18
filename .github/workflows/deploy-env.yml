@@ -52,7 +52,8 @@ jobs:
         with:
           name: frontend-${{ inputs.environment }}
           path: ProjectSourceCode/apps/frontend/dist/
-          retention-days: 7
+          # Prod approval can wait up to 30 days.
+          retention-days: 30
 
   deploy:
     name: Deploy ${{ inputs.environment }}
@@ -90,6 +91,11 @@ jobs:
           node-version: "24"
       # Only what migrations need, so fewer third-party scripts run in the job holding Azure access.
       - run: pnpm install --frozen-lockfile --filter "@diplomacy/db..."
+      # Fetched first so a missing build stops the deploy before anything changes.
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-${{ inputs.environment }}
+          path: frontend-dist
 
       # Proves Azure access before the database changes.
       - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
@@ -138,10 +144,6 @@ jobs:
       - run: az logout
         if: always()
 
-      - uses: actions/download-artifact@v8
-        with:
-          name: frontend-${{ inputs.environment }}
-          path: frontend-dist
       - uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
         with:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
