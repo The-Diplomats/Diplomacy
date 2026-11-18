@@ -5,14 +5,16 @@ import { logger } from '../log.js';
 import { setupAi } from './setup.js';
 
 // One structured call through the worker's own setup, so live calls count against the daily budget.
-const redisUrl = process.env.REDIS_URL;
-if (!redisUrl?.trim()) {
-  logger.error('REDIS_URL is required');
+const redisUrl = process.env.REDIS_URL?.trim();
+if (!redisUrl && process.env.MOCK_AI !== 'true') {
+  logger.error('REDIS_URL is required for live calls (the daily budget lives in Redis)');
   process.exit(1);
 }
 
 // Connects on the first command; mock mode sends none, so it runs without Redis
-const redis = new Redis(redisUrl, { lazyConnect: true });
+const redis = redisUrl
+  ? new Redis(redisUrl, { lazyConnect: true })
+  : new Redis({ lazyConnect: true });
 try {
   const ai = await setupAi(process.env, redis);
   try {
