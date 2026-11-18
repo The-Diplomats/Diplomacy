@@ -107,12 +107,18 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    # AI mode (MOCK_AI, LLM_*) comes from apps/worker/.env; without it, AI turns are disabled.
+    env_file:
+      - path: ./apps/worker/.env
+        required: false
     environment:
       REDIS_URL: redis://redis:6379
       LOG_LEVEL: info
       NODE_ENV: development
     volumes:
       - ./apps/worker/src:/app/apps/worker/src
+      - ./packages/ai/dist:/app/packages/ai/dist
+      - ./packages/ai/fixtures:/app/packages/ai/fixtures
       - ./packages/contracts/dist:/app/packages/contracts/dist
       - ./packages/contracts/api:/app/packages/contracts/api
       - ./packages/queues/dist:/app/packages/queues/dist

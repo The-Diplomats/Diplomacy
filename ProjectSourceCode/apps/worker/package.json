@@ -11,11 +11,13 @@
     "test:watch": "vitest",
     "dev": "tsx watch --env-file=.env src/index.ts | pnpm exec pino-pretty",
     "dev:container": "tsx watch src/index.ts",
+    "ai:smoke": "tsx --env-file-if-exists=.env src/ai/smoke.ts | pnpm exec pino-pretty",
     "start": "node dist/index.js",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "bullmq": "catalog:",
+    "@diplomacy/ai": "workspace:^",
     "@diplomacy/contracts": "workspace:^",
     "@diplomacy/queues": "workspace:^",
     "ioredis": "catalog:",

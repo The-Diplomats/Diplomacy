@@ -120,6 +120,7 @@ pnpm format:check
 | `apps/backend`         | HTTP API server (Express 5)                                   |
 | `apps/worker`          | Background job consumer (BullMQ)                              |
 | `apps/frontend`        | React 19 + Vite SPA (Tailwind v4 + shadcn/ui)                 |
+| `packages/ai`          | LLM client, structured-output schemas, prompts, mock fixtures |
 | `packages/game-types`  | Shared domain types (pure TS)                                 |
 | `packages/contracts`   | OpenAPI spec + generated typed client + Socket.IO event types |
 | `packages/queues`      | Shared BullMQ queue definitions and typed job payloads        |

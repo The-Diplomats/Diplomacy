@@ -38,5 +38,6 @@ worker:
   - changed-files:
       - any-glob-to-any-file:
           - "ProjectSourceCode/apps/worker/**"
+          - "ProjectSourceCode/packages/ai/**"
           - "ProjectSourceCode/packages/queues/**"
           - "ProjectSourceCode/packages/adjudicator/**"
