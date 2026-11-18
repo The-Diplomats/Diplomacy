@@ -4,18 +4,14 @@ on:
   pull_request:
     branches: [main]
   merge_group:
-  push:
-    branches: [main]
-    paths:
-      - "ProjectSourceCode/apps/backend/**"
-      - "ProjectSourceCode/apps/worker/**"
-      - "ProjectSourceCode/packages/**"
-      - "ProjectSourceCode/package.json"
-      - "ProjectSourceCode/pnpm-lock.yaml"
-      - "ProjectSourceCode/pnpm-workspace.yaml"
-      - "ProjectSourceCode/tsconfig*.json"
-      - "ProjectSourceCode/.dockerignore"
-      - ".github/workflows/container-images.yml"
+  # deploy-dev.yml calls this for pushes to main; release.yml calls it with `ref` when the
+  # release commit has no sha- image yet.
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit to build; defaults to the triggering commit
+        type: string
+        default: ""
   workflow_dispatch:
 
 concurrency:
@@ -44,9 +40,15 @@ jobs:
       PUBLISH: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - id: source
+        env:
+          SOURCE_SHA: ${{ inputs.ref || github.sha }}
+        run: echo "short=${SOURCE_SHA::7}" >> "$GITHUB_OUTPUT"
 
       # PRs and the merge queue always run so the required check reports; gate real work by
-      # path changes. Push and manual runs skip the filter, so its empty output lets them build.
+      # path changes. Calls from deploy-dev and manual runs skip the filter, so its empty output lets them build.
       - uses: dorny/paths-filter@v4
         id: filter
         if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
@@ -84,8 +86,8 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/diplomacy-${{ matrix.app }}
           tags: |
-            type=sha,prefix=sha-
-            type=ref,event=branch
+            type=raw,value=sha-${{ steps.source.outputs.short }}
+            type=ref,event=branch,enable=${{ inputs.ref == '' }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         if: steps.filter.outputs.images != 'false'

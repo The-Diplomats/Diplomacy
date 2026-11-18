@@ -1,0 +1,80 @@
+name: Deploy (dev)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Queue deploys instead of cancelling one mid-rollout.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect app changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: read
+    outputs:
+      deploy: ${{ steps.diff.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Compares against what dev last deployed, not the previous push: a newer push can cancel a
+      # queued run, and its changes must still ship.
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          deployed=""
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/deployments?environment=dev&per_page=30" --jq '.[].id'); do
+            state=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id/statuses?per_page=1" --jq '.[0].state // ""')
+            if [ "$state" = success ]; then
+              deployed=$(gh api "repos/$GITHUB_REPOSITORY/deployments/$id" --jq .sha)
+              break
+            fi
+          done
+          echo "Last successful dev deploy: ${deployed:-none}"
+
+          deploy=true
+          if [ "$EVENT" = push ] && [ -n "$deployed" ] && git cat-file -e "$deployed^{commit}" 2>/dev/null; then
+            if git diff --quiet "$deployed" HEAD -- \
+              ProjectSourceCode/apps ProjectSourceCode/packages \
+              ProjectSourceCode/package.json ProjectSourceCode/pnpm-lock.yaml \
+              ProjectSourceCode/pnpm-workspace.yaml 'ProjectSourceCode/tsconfig*.json' \
+              ProjectSourceCode/.dockerignore \
+              .github/workflows/deploy-dev.yml .github/workflows/deploy-env.yml \
+              .github/workflows/container-images.yml; then
+              deploy=false
+            fi
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+          echo "Deploy: $deploy"
+
+  images:
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: read
+    uses: ./.github/workflows/container-images.yml
+
+  deploy:
+    needs: [changes, images]
+    if: needs.changes.outputs.deploy == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: dev
+      ref: ${{ github.sha }}

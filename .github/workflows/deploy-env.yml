@@ -1,0 +1,213 @@
+name: Deploy environment
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: dev, stage or prod
+        type: string
+        required: true
+      ref:
+        description: Commit to deploy
+        type: string
+        required: true
+      image_tag:
+        description: Image tag for backend and worker; defaults to sha-<short ref>
+        type: string
+        default: ""
+      e2e:
+        description: "full: seed + every spec. smoke: @smoke specs as the canary. skip: no specs"
+        type: string
+        default: full
+
+permissions:
+  contents: read
+
+# Three jobs so the credentials stay apart: the frontend builds with no secrets, only the deploy
+# job can reach Azure, and E2E runs without an Azure token.
+jobs:
+  build-frontend:
+    name: Build frontend (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ProjectSourceCode
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: ProjectSourceCode/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter "frontend..." build
+        env:
+          VITE_API_URL: ${{ inputs.environment == 'prod' && 'https://api.diplomacy.gg' || format('https://api.{0}.diplomacy.gg', inputs.environment) }}
+      - uses: actions/upload-artifact@v7
+        with:
+          name: frontend-${{ inputs.environment }}
+          path: ProjectSourceCode/apps/frontend/dist/
+          retention-days: 7
+
+  deploy:
+    name: Deploy ${{ inputs.environment }}
+    needs: build-frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment == 'prod' && 'https://app.diplomacy.gg' || format('https://app.{0}.diplomacy.gg', inputs.environment) }}
+    defaults:
+      run:
+        working-directory: ProjectSourceCode
+    env:
+      RG: rg-diplomacy-${{ inputs.environment }}
+      API_URL: ${{ inputs.environment == 'prod' && 'https://api.diplomacy.gg' || format('https://api.{0}.diplomacy.gg', inputs.environment) }}
+    steps:
+      - name: Resolve image tag
+        env:
+          REF: ${{ inputs.ref }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        working-directory: .
+        run: echo "TAG=${IMAGE_TAG:-sha-${REF::7}}" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: ProjectSourceCode/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
+      # Only what migrations need, so fewer third-party scripts run in the job holding Azure access.
+      - run: pnpm install --frozen-lockfile --filter "@diplomacy/db..."
+
+      # Proves Azure access before the database changes.
+      - uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+      - run: |
+          az extension add --name containerapp --upgrade --only-show-errors
+          az containerapp show -g "$RG" -n ca-backend --query name -o tsv
+
+      # Restore point for Neon's point-in-time restore if a migration goes wrong. A failed
+      # migration stops here, before the containers change.
+      - name: Migrate database
+        env:
+          DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+        run: |
+          echo "Restore point (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          pnpm --filter @diplomacy/db migrate
+
+      - name: Update backend and worker
+        run: |
+          set -euo pipefail
+          for app in backend worker; do
+            az containerapp update -g "$RG" -n "ca-$app" \
+              --image "ghcr.io/the-diplomats/diplomacy-$app:$TAG" --only-show-errors > /dev/null
+          done
+
+      - name: Wait for the new revisions and API health
+        run: |
+          set -euo pipefail
+          for app in backend worker; do
+            for _ in $(seq 60); do
+              state=$(az containerapp show -g "$RG" -n "ca-$app" \
+                --query "[properties.latestRevisionName, properties.latestReadyRevisionName]" -o tsv | paste -sd ' ' -)
+              read -r latest ready <<< "$state"
+              [ "$latest" = "$ready" ] && break
+              sleep 5
+            done
+            [ "$latest" = "$ready" ] || { echo "ca-$app revision $latest never became ready"; exit 1; }
+            echo "ca-$app ready on $latest"
+          done
+          # Backends at min 0 replicas start cold, so give the first request time.
+          timeout 180 bash -c "until curl -sf '$API_URL/health' > /dev/null; do sleep 5; done"
+          curl -s "$API_URL/health"
+      - run: az logout
+        if: always()
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-${{ inputs.environment }}
+          path: frontend-dist
+      - uses: Azure/static-web-apps-deploy@1a947af9992250f3bc2e68ad0754c0b0c11566c9 # v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+          action: upload
+          app_location: frontend-dist
+          skip_app_build: true
+          skip_api_build: true
+
+  e2e:
+    name: E2E (${{ inputs.environment }})
+    needs: deploy
+    if: inputs.e2e != 'skip'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Secrets only, no deployment record. Environment reviewers still apply, so prod asks again
+    # before smoke runs.
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: false
+    defaults:
+      run:
+        working-directory: ProjectSourceCode
+    env:
+      E2E_BASE_URL: ${{ inputs.environment == 'prod' && 'https://app.diplomacy.gg' || format('https://app.{0}.diplomacy.gg', inputs.environment) }}
+      E2E_API_URL: ${{ inputs.environment == 'prod' && 'https://api.diplomacy.gg' || format('https://api.{0}.diplomacy.gg', inputs.environment) }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+      - uses: pnpm/action-setup@v6
+        with:
+          package_json_file: ProjectSourceCode/package.json
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: "pnpm"
+          cache-dependency-path: ProjectSourceCode/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter frontend exec playwright install --with-deps chromium
+
+      - name: Seed the E2E user
+        if: inputs.e2e == 'full'
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+        run: |
+          pnpm --filter "backend..." build
+          pnpm --filter backend seed:scenario e2e-auth
+      - name: E2E
+        if: inputs.e2e == 'full'
+        env:
+          E2E_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+        run: pnpm --filter frontend e2e
+      - name: Smoke tests as the canary
+        if: inputs.e2e == 'smoke'
+        env:
+          E2E_IDENTIFIER: canary@diplomacy.gg
+          E2E_PASSWORD: ${{ secrets.CANARY_PASSWORD }}
+        run: pnpm --filter frontend e2e --grep @smoke
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: e2e-report-${{ inputs.environment }}
+          path: ProjectSourceCode/apps/frontend/playwright-report/
+          retention-days: 7

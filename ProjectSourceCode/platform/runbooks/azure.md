@@ -46,13 +46,37 @@ because rate limits are kept in memory.
 | -------------- | ------------------------------------------------------------------------------------- |
 | Plan           | Free                                                                                  |
 | Source         | Other (not linked to GitHub, so Azure never commits a workflow or adds a repo secret) |
-| Deploys        | `deploy-frontend-<env>.yml`, using the app's deployment token                         |
+| Deploys        | `deploy-env.yml`, using the app's deployment token                                    |
 | GitHub secret  | `AZURE_STATIC_WEB_APPS_API_TOKEN` in the matching environment, which allows `main`    |
 | Custom domain  | `app.<env>` CNAME to the app's default hostname, DNS only, no TXT record              |
 | Build variable | `VITE_API_URL` set to the env's API host at build time                                |
 
 `apps/frontend/public/staticwebapp.config.json` holds the SPA fallback, asset caching and security headers. A leaked
 token is reset under **Overview → Manage deployment token**, then replaced in the GitHub environment.
+
+## Deploys
+
+`deploy-dev.yml` and `release.yml` deploy through `deploy-env.yml`, which signs in to Azure with OIDC: no stored
+credential.
+
+| Setting              | Value                                                                                         |
+| -------------------- | --------------------------------------------------------------------------------------------- |
+| App registration     | `gh-diplomacy-deploy-<env>`, one per environment                                              |
+| Federated credential | `github-<env>`, subject `repo:The-Diplomats@346999637/Diplomacy@1431274665:environment:<env>` |
+| Role                 | Container Apps Contributor on `rg-diplomacy-<env>` only                                       |
+| GitHub variables     | `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID` in the matching environment     |
+| E2E secrets          | `E2E_USER_PASSWORD` in dev and stage, `CANARY_PASSWORD` in prod                               |
+| Prod approvals       | Two per release: the deploy job, then the smoke-test job                                      |
+
+The subject uses GitHub's immutable format (owner and repository IDs), which this repository's tokens carry; the
+name-only form never matches.
+
+| Problem                                    | Recovery                                                                                       |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------- |
+| A migration applied but broke the database | Neon console, **Restore**, to the "Restore point (UTC)" logged by that deploy's migrate step   |
+| Stage E2E failed on a flaky spec           | Re-run the failed jobs, or run `release.yml` with `version`                                    |
+| A release is bad in stage or prod          | Run `release.yml` with the previous `version` to redeploy it (schema changes stay applied)     |
+| A release should stop at stage             | Leave prod's approval pending or reject it; later, approve or run `release.yml` with `version` |
 
 ## Checks
 
