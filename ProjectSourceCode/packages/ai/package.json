@@ -1,0 +1,40 @@
+{
+  "name": "@diplomacy/ai",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Host-neutral LLM client, structured-output calls and mock mode for AI turns",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./mock": {
+      "types": "./dist/mock.d.ts",
+      "import": "./dist/mock.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "fixtures"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "build:watch": "tsc -b --watch",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist",
+    "prepare": "pnpm run build"
+  },
+  "dependencies": {
+    "msw": "catalog:",
+    "openai": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "vitest": "catalog:"
+  }
+}

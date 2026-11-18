@@ -1,7 +1,7 @@
 # worker
 
-Diplomacy background job consumer. Listens on the `notifications` BullMQ queue, dispatches jobs to handlers, and
-broadcasts socket events via `@socket.io/redis-emitter` to the backend's connected clients.
+Diplomacy background job consumer. Listens on the `notifications` and `ai-turns` BullMQ queues, dispatches jobs to
+handlers, and broadcasts socket events via `@socket.io/redis-emitter` to the backend's connected clients.
 
 ## Local setup
 
@@ -21,22 +21,32 @@ The dev script loads `.env` strictly: missing `REDIS_URL` causes startup failure
 ### Optional env vars
 
 - `LOG_LEVEL` (default info), `NODE_ENV` (default development)
+- `MOCK_AI=true`: LLM answers come from `packages/ai/fixtures/llm/`. Refused when `NODE_ENV=production`.
+- `LLM_API_KEY` + `LLM_DAILY_TOKEN_BUDGET` (tokens per UTC day across replicas): a real model. A free key from
+  console.groq.com matches the cloud setup. `LLM_BASE_URL` and `LLM_MODEL` switch host or model; for Ollama, use
+  `http://localhost:11434/v1` (any key value).
+
+With neither, AI turns are disabled and the worker logs a warning.
 
 ## Scripts
 
 - `pnpm --filter worker dev`: hot-reload dev server (tsx watch)
-- `pnpm --filter worker test`: Vitest integration test. Skips if `REDIS_URL` unset.
+- `pnpm --filter worker test`: Vitest. Redis-backed tests skip if `REDIS_URL` unset.
 - `pnpm --filter worker... build`: compile worker + its workspace deps in dep order
 - `pnpm --filter worker start`: run compiled dist/index.js
+- `pnpm --filter worker ai:smoke`: one structured LLM call through the worker's AI setup and `.env` settings (live calls
+  count against the daily budget, so Redis must be up); logs latency and token usage
 
 ## Queues
 
-Consumes jobs from the `notifications` queue defined in `@diplomacy/queues`.
+Consumes jobs from the `notifications` and `ai-turns` queues defined in `@diplomacy/queues`.
 
 ### Job types
 
-- `broadcast`: emits a typed Socket.IO event to all connected clients via `@socket.io/redis-emitter`. Event name and
-  payload are typed against `ServerToClientEvents` from `@diplomacy/contracts`.
+- `broadcast` (`notifications`): emits a typed Socket.IO event to all connected clients via `@socket.io/redis-emitter`.
+  Event name and payload are typed against `ServerToClientEvents` from `@diplomacy/contracts`.
+- `ai-take-turn` (`ai-turns`): one AI power's turn in one phase; the handler is a stub that logs the request. One job at
+  a time; a provider 429 pauses the queue for its `retry-after` and requeues the job without using an attempt.
 
 ## Adding a new broadcast event
 
@@ -130,7 +140,8 @@ The worker opens two separate Redis connections to the same instance:
 
 - **BullMQ connection**: `maxRetriesPerRequest: null` per BullMQ's documented requirement so connection-level failures
   surface for reconnection.
-- **Emitter connection**: standard ioredis defaults; publishes socket events via Redis pub/sub.
+- **Command connection**: standard ioredis defaults; publishes socket events via Redis pub/sub and keeps the daily LLM
+  token count.
 
 The Socket.IO server (backend process) listens to the same Redis via its Redis adapter, so emitter publishes reach
 connected clients across processes.

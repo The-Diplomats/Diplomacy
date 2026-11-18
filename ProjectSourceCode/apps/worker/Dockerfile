@@ -12,7 +12,9 @@ WORKDIR /app
 # then install only worker + its transitive workspace deps.
 FROM base AS deps
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY packages/ai/package.json ./packages/ai/
 COPY packages/contracts/package.json ./packages/contracts/
+COPY packages/game-types/package.json ./packages/game-types/
 COPY packages/queues/package.json ./packages/queues/
 COPY apps/worker/package.json ./apps/worker/
 RUN pnpm install --frozen-lockfile --filter worker... --ignore-scripts

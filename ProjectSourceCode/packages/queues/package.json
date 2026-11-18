@@ -27,6 +27,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@diplomacy/contracts": "workspace:^"
+    "@diplomacy/contracts": "workspace:^",
+    "@diplomacy/game-types": "workspace:^"
   }
 }

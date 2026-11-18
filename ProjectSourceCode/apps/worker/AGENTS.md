@@ -11,6 +11,7 @@ src/
 ├── index.ts                # bootstrap: load env, start workers, wire emitter
 ├── worker.ts               # Worker factory (one per queue)
 ├── emitter.ts              # @socket.io/redis-emitter for cross-process broadcast
+├── ai/                     # AI mode setup (mock/live/disabled), daily token budget, ai:smoke script
 ├── handlers/               # one file per job type (resolvePhase, aiTakeTurn, etc.)
 └── log.ts                  # pino logger
 ```
@@ -50,30 +51,27 @@ Worker jobs **must be safe to run twice** — BullMQ retries on failure, and sta
 - **No engine state in the worker.** The emitter can't read sockets, join rooms, or inspect clients. If you need those,
   delegate through backend via a job.
 
-## AI turns (Groq)
+## AI turns
 
-See `DESIGN_DOC.md` §11 for the full flow.
+See `DESIGN_DOC.md` §11 for the full flow. The LLM client, schemas, prompts and fixtures live in `@diplomacy/ai`
+(`packages/ai/AGENTS.md`); the worker owns loading game state, validating, writing and emitting.
 
-- **Groq client** via the official OpenAI-compatible SDK pointed at `api.groq.com/openai/v1`. Config: `GROQ_API_KEY`,
-  model default `llama-3.1-8b-instant`.
-- **Prompt pack assembly** lives in a dedicated helper — not inlined in the job handler. Board state + rules + legal
-  moves + AI memory + recent chat.
-- **JSON mode** via `response_format: { type: "json_object" }`. 3-retry loop on parse failure. After 3 retries, fall
-  back to §10 phase-default orders (Hold / Disband / auto-disband per phase type).
-- **Validate output semantically** with `getLegalMoves()` from `@diplomacy/adjudicator` before any DB write. AI can't
-  submit an illegal order; retry or fall back.
-- **`MOCK_AI=true`** (set in CI + local dev by default) bypasses Groq and reads from `test/fixtures/llm/*.json`. MSW
-  intercepts the Groq HTTPS endpoint. Required for deterministic CI E2E.
-- **Per-dev Groq key** goes in `apps/worker/.env`, never committed. Cloud envs use `GROQ_API_KEY` from GH environment
-  secrets.
+- **Use the `llm` from `setupAi()`**, never `createLlmClient` directly. In live mode it is wrapped by the daily token
+  budget; going around it removes the cost ceiling.
+- **Validate output semantically** with `getLegalMoves()` from `@diplomacy/adjudicator` before any DB write. Up to 3
+  attempts for illegal orders, then fall back to §10 phase-default orders (Hold / Disband / auto-disband per phase
+  type). `TokenBudgetExceededError` and a disabled `llm` (null) go straight to the fallback.
+- **Let `LlmRateLimitError` propagate.** The `ai-turns` worker pauses the queue for the provider's `retry-after` and
+  requeues the job without using an attempt.
+- **Per-dev key** goes in `apps/worker/.env`, never committed. Cloud envs use `LLM_API_KEY` from GH environment secrets.
 
 ## Logging
 
 - **Pino with structured context.** Every log entry includes `job_id`, `game_id`, `phase_id` where applicable.
 - **Never log AI prompt output verbatim at `info` level.** Full prompts are `debug` only — they're large and can contain
   player chat that should stay in the game.
-- **Don't log `GROQ_API_KEY`** or any part of the Authorization header. `pino.redact` covers common keys; don't test it
-  with real values.
+- **Don't log `LLM_API_KEY`** or any part of the Authorization header. Nothing redacts it for you; log the model and
+  token usage, never the client or its config.
 
 ## Scheduling
 
@@ -85,7 +83,8 @@ See `DESIGN_DOC.md` §11 for the full flow.
 ## Testing
 
 - **Vitest, same as backend.** Jobs tested in isolation by invoking the handler with a payload + mocked services.
-- **Mock Groq via MSW** — same fixtures CI uses. Don't call the real API in tests.
+- **Mock the LLM via MSW** — `createMockLlmServer` from `@diplomacy/ai/mock`, same fixtures CI uses. Don't call the real
+  API in tests.
 - **Idempotency tests** are mandatory: invoke the handler twice with the same payload, assert no duplicate writes.
 
 ## What not to do
@@ -96,7 +95,7 @@ See `DESIGN_DOC.md` §11 for the full flow.
 - Don't emit from the worker without naming a room. Global broadcasts leak private state (DMs to the wrong game, phase
   updates to spectators).
 - Don't hold engine state in the worker. The emitter is write-only; reads belong to the backend.
-- Don't call real Groq in CI. `MOCK_AI=true` + MSW fixtures. The `ai-smoke.yml` workflow is the only place that
-  exercises real Groq, and it's `workflow_dispatch` only.
+- Don't call a real LLM in CI. `MOCK_AI=true` + MSW fixtures. The `ai-smoke.yml` workflow is the only place that
+  exercises a real host, and it's `workflow_dispatch` only.
 - Don't persist AI memory except through the typed `ai_memory` writer. Never serve it via any API — see `DESIGN_DOC.md`
   §15 AI memory privacy.

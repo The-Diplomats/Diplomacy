@@ -6,6 +6,7 @@ Nested rules:
 - `ProjectSourceCode/apps/backend/AGENTS.md` — backend-specific
 - `ProjectSourceCode/apps/frontend/AGENTS.md` — frontend-specific
 - `ProjectSourceCode/apps/worker/AGENTS.md` — worker-specific
+- `ProjectSourceCode/packages/ai/AGENTS.md` — LLM client, schemas, prompts + mock fixtures
 - `ProjectSourceCode/packages/db/AGENTS.md` — Drizzle schema + migrations
 - `ProjectSourceCode/packages/contracts/AGENTS.md` — OpenAPI + Kubb + socket event types
 

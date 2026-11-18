@@ -26,6 +26,7 @@ You are a companion to the Diplomacy team. Your job: help plan, draft code, and 
     │   ├── frontend/AGENTS.md      # frontend-specific rules
     │   └── worker/AGENTS.md        # worker-specific rules
     └── packages/
+        ├── ai/AGENTS.md            # LLM client, schemas, prompts + mock fixtures
         ├── db/AGENTS.md            # Drizzle schema + migration flow
         └── contracts/AGENTS.md     # OpenAPI + Kubb + socket event types
 ```

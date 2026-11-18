@@ -1,6 +1,6 @@
 # Diplomacy Online
 
-Web-based implementation of the 1950s strategy board game Diplomacy. 7-player classic map, in-game chat (public and private DMs), deadline-based asynchronous play, and AI opponents via local Ollama.
+Web-based implementation of the 1950s strategy board game Diplomacy. 7-player classic map, in-game chat (public and private DMs), deadline-based asynchronous play, and AI opponents played by a hosted open-weight LLM.
 
 Built by **The Diplomats**.
 
