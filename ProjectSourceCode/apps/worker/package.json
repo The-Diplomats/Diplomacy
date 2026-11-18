@@ -11,7 +11,7 @@
     "test:watch": "vitest",
     "dev": "tsx watch --env-file=.env src/index.ts | pnpm exec pino-pretty",
     "dev:container": "tsx watch src/index.ts",
-    "ai:smoke": "tsx --env-file-if-exists=.env src/ai/smoke.ts | pnpm exec pino-pretty",
+    "ai:smoke": "tsx --env-file-if-exists=.env src/ai/smoke.ts",
     "start": "node dist/index.js",
     "clean": "rm -rf dist"
   },

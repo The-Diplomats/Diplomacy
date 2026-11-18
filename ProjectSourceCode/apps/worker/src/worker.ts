@@ -55,7 +55,14 @@ export function createAiTurnsWorker(options: AiTurnsWorkerOptions): Worker<AiTur
         throw error;
       }
     },
-    // One turn at a time keeps bursts under the provider's per-minute limits.
-    { connection: options.connection, concurrency: 1, ...IDLE_POLLING },
+    {
+      connection: options.connection,
+      // One turn at a time keeps bursts under the provider's per-minute limits.
+      concurrency: 1,
+      // Groq's free-tier request limit. BullMQ only honors a queue.rateLimit cooldown across
+      // workers when a limiter is set.
+      limiter: { max: 30, duration: 60_000 },
+      ...IDLE_POLLING,
+    },
   );
 }

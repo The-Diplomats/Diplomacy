@@ -81,7 +81,17 @@ export function createLlmClient(config: LlmConfig): LlmClient {
         );
       }
 
-      return { data: JSON.parse(content) as T, usage };
+      let data: T;
+      try {
+        data = JSON.parse(content) as T;
+      } catch {
+        throw new LlmResponseError(
+          'LLM returned invalid JSON',
+          choice.finish_reason,
+          usage.totalTokens,
+        );
+      }
+      return { data, usage };
     },
   };
 }

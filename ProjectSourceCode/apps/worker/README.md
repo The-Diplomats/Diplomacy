@@ -34,7 +34,8 @@ With neither, AI turns are disabled and the worker logs a warning.
 - `pnpm --filter worker test`: Vitest. Redis-backed tests skip if `REDIS_URL` unset.
 - `pnpm --filter worker... build`: compile worker + its workspace deps in dep order
 - `pnpm --filter worker start`: run compiled dist/index.js
-- `pnpm --filter worker ai:smoke`: one structured LLM call with the `.env` settings; prints latency and token usage
+- `pnpm --filter worker ai:smoke`: one structured LLM call through the worker's AI setup and `.env` settings (live calls
+  count against the daily budget, so Redis must be up); logs latency and token usage
 
 ## Queues
 

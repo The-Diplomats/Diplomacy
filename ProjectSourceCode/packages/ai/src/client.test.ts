@@ -93,4 +93,13 @@ describe('createLlmClient', () => {
     expect((error as LlmResponseError).finishReason).toBe('length');
     expect((error as LlmResponseError).totalTokens).toBe(52);
   });
+
+  test('rejects an answer that is not valid JSON and keeps its usage', async () => {
+    server.use(http.post(COMPLETIONS_URL, () => HttpResponse.json(completion('not json'))));
+
+    const error = await client.complete(SMOKE_REQUEST).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(LlmResponseError);
+    expect((error as LlmResponseError).totalTokens).toBe(52);
+  });
 });

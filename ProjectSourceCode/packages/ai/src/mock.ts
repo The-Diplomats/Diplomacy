@@ -20,7 +20,7 @@ interface CompletionRequestBody {
  */
 export function createMockLlmServer(baseUrl: string = DEFAULT_LLM_BASE_URL): SetupServer {
   return setupServer(
-    http.post(`${baseUrl}/chat/completions`, async ({ request }) => {
+    http.post(`${baseUrl.replace(/\/$/, '')}/chat/completions`, async ({ request }) => {
       const body = (await request.json()) as CompletionRequestBody;
       const name = body.response_format?.json_schema?.name ?? '';
       if (!FIXTURE_NAME.test(name)) {
