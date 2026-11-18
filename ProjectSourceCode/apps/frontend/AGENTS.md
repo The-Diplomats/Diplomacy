@@ -120,6 +120,9 @@ When in doubt, read `src/components/ui/` for the actual component shape.
   the shared `QueryClientProvider`.
 - **Real sessions in tests** come from MSW returning 200 with a user payload. Don't fake session state directly in the
   store.
+- **E2E specs live in `e2e/`** (Playwright Test, `*.spec.ts`) and run against a real stack, never MSW. Sign in through
+  the UI or API with the seeded `e2e-auth` user; build heavier world state with a backend scenario. Tag a spec `@smoke`
+  only if it is safe against prod: anything it creates, it deletes before it ends (create, assert, delete).
 
 ## What not to do
 

@@ -20,6 +20,7 @@ Dev server runs at http://localhost:5173. `/api` and `/socket.io` are proxied to
 - `pnpm --filter frontend test`: Vitest in browser mode (real Chromium via Playwright)
 - `pnpm --filter frontend test:watch`: Vitest watch mode
 - `pnpm --filter frontend preview`: serve the built bundle
+- `pnpm --filter frontend e2e`: Playwright specs in `e2e/` against a running stack (see Testing)
 - `pnpm --filter frontend maps:build`: re-parse `maps/classical.svg` into `public/maps/classical.json`
 
 ## Env vars
@@ -64,6 +65,17 @@ Tests run in a real Chromium instance via Vitest browser mode + Playwright. Conf
 - `VITE_USE_MSW` is irrelevant for tests — tests that need request mocks import `worker` from `mocks/browser.ts` and
   call `worker.start()` / `worker.resetHandlers()` in their setup. `mocks/node.ts` is for anything that actually runs in
   Node (e.g. a future headless harness) and isn't used by the browser suite.
+
+End-to-end specs live in `e2e/` and run with Playwright Test against a running stack, not against mocks. Config:
+`playwright.config.ts`. Against `pnpm dev`, seed the user once, then run:
+
+```sh
+E2E_USER_PASSWORD=<16+ chars> pnpm --filter backend seed:scenario e2e-auth
+E2E_PASSWORD=<same> pnpm --filter frontend e2e
+```
+
+`E2E_BASE_URL` (default `http://localhost:5173`), `E2E_API_URL` (default `<base>/api`) and `E2E_IDENTIFIER` (default the
+`e2e-auth` email) point the specs elsewhere. Specs tagged `@smoke` are the ones safe to run against prod.
 
 ## Feature layout
 
