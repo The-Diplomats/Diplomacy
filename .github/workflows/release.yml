@@ -220,6 +220,11 @@ jobs:
       ref: ${{ needs.resolve.outputs.sha }}
       image_tag: v${{ needs.resolve.outputs.version }}
       e2e: ${{ inputs.skip_e2e && 'skip' || 'full' }}
+    secrets:
+      MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
 
   prod:
     needs: [resolve, stage]
@@ -236,6 +241,10 @@ jobs:
       ref: ${{ needs.resolve.outputs.sha }}
       image_tag: v${{ needs.resolve.outputs.version }}
       e2e: smoke
+    secrets:
+      MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
+      AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+      CANARY_PASSWORD: ${{ secrets.CANARY_PASSWORD }}
 
   release-notes-file:
     name: Open release notes PR
