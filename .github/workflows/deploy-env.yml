@@ -70,6 +70,38 @@ jobs:
           # Prod approval can wait up to 30 days.
           retention-days: 30
 
+      # A frontend build failure skips deploy and e2e; their notification steps never run.
+      # Report it here so stage and prod are not silent in that case. Dev stays silent.
+      - name: Notify Discord (build failure)
+        if: failure() && inputs.environment != 'dev'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PROMOTIONS }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          REF: ${{ inputs.ref }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        working-directory: .
+        shell: bash
+        run: |
+          set +e
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK_PROMOTIONS not set, skipping."
+            exit 0
+          fi
+          TAG="${IMAGE_TAG:-sha-${REF::7}}"
+          jq -n \
+            --argjson color 15158332 \
+            --arg title "$ENVIRONMENT ❌ $TAG failed (frontend build)" \
+            --arg url "$RUN_URL" \
+            --arg description "Check the run for the failing step." \
+            --arg footer "Commit $TAG" \
+            '{embeds: [{color: $color, title: $title, url: $url,
+              description: ($description | .[0:4000]),
+              footer: {text: $footer}}]}' \
+          | curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+            || echo "::warning::Discord post failed; continuing."
+
   deploy:
     name: Deploy ${{ inputs.environment }}
     needs: build-frontend
@@ -220,7 +252,8 @@ jobs:
             '{embeds: [{color: $color, title: $title, url: $url}
               + (if $description == "" then {} else {description: ($description | .[0:4000])} end)
               + {footer: {text: $footer}}]}' \
-          | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+          | curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Content-Type: application/json" -d @- "$WEBHOOK" \
             || echo "::warning::Discord post failed; continuing."
 
   e2e:
@@ -334,5 +367,6 @@ jobs:
             '{embeds: [{color: $color, title: $title, url: $url,
               description: ($description | .[0:4000]),
               footer: {text: $footer}}]}' \
-          | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+          | curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Content-Type: application/json" -d @- "$WEBHOOK" \
             || echo "::warning::Discord post failed; continuing."

@@ -32,7 +32,10 @@ jobs:
             exit 0
           fi
           tag="${BRANCH#release-notes/}"
-          data=$(gh release view "$tag" --json name,body,url,publishedAt,targetCommitish 2>/dev/null)
+          # No checkout, so gh has no repo context. --repo supplies it explicitly instead of
+          # relying on a working-directory detection that is not there.
+          data=$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json name,body,url,publishedAt,targetCommitish 2>/dev/null)
           if [ -z "$data" ]; then
             echo "No GitHub release for $tag; nothing to post."
             exit 0
@@ -53,5 +56,6 @@ jobs:
               + (if $url == "" then {} else {url: $url} end)
               + (if $description == "" then {} else {description: ($description | .[0:4000])} end)
               + {footer: {text: $footer}}]}' \
-          | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+          | curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Content-Type: application/json" -d @- "$WEBHOOK" \
             || echo "::warning::Discord post failed; continuing."

@@ -54,5 +54,6 @@ jobs:
             '{embeds: [{color: $color, title: $title, url: $url,
               description: $description,
               footer: {text: $footer}}]}' \
-          | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+          | curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Content-Type: application/json" -d @- "$WEBHOOK" \
             || echo "::warning::Discord post failed; continuing."
