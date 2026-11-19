@@ -46,21 +46,38 @@ export function isArmyAdjacent(from: ProvinceCode, to: ProvinceCode): boolean {
   return ARMY_ADJACENCY[from].includes(to);
 }
 
-// Sea provinces reachable from `province` by a chain of seas, which is where a convoy can run.
-export function seasLinkedTo(province: ProvinceCode): Set<ProvinceCode> {
-  const seas = PROVINCE_CODES.filter(isSea);
-  const frontier = seas.filter((sea) => canReach('fleet', sea, province));
-  const linked = new Set(frontier);
-  for (let sea = frontier.pop(); sea; sea = frontier.pop()) {
-    for (const location of FLEET_ADJACENCY[sea]) {
-      const next = provinceOf(location);
-      if (isSea(next) && !linked.has(next)) {
-        linked.add(next);
-        frontier.push(next);
+const SEAS = PROVINCE_CODES.filter(isSea);
+
+const convoyRouteSeas = new Map<string, ReadonlySet<ProvinceCode>>();
+
+// Seas that lie on at least one convoy route from `origin` to `target` that never revisits a sea.
+// Exhaustive, but the classic map needs at most a few hundred steps per pair, and results are cached.
+export function seasOnConvoyRoutes(
+  origin: ProvinceCode,
+  target: ProvinceCode,
+): ReadonlySet<ProvinceCode> {
+  const key = `${origin}-${target}`;
+  const cached = convoyRouteSeas.get(key);
+  if (cached) {
+    return cached;
+  }
+  const onRoute = new Set<ProvinceCode>();
+  const route: ProvinceCode[] = [];
+  const extend = (sea: ProvinceCode): void => {
+    route.push(sea);
+    if (canReach('fleet', sea, target)) {
+      route.forEach((step) => onRoute.add(step));
+    }
+    for (const next of SEAS) {
+      if (!route.includes(next) && canReach('fleet', sea, next)) {
+        extend(next);
       }
     }
-  }
-  return linked;
+    route.pop();
+  };
+  SEAS.filter((sea) => canReach('fleet', sea, origin)).forEach(extend);
+  convoyRouteSeas.set(key, onRoute);
+  return onRoute;
 }
 
 // Whether a unit could move into `province` without a convoy; also the reach of a support order.

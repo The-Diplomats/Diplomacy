@@ -53,6 +53,50 @@ describe('resolve', () => {
     ]);
   });
 
+  test('a head-to-head loser does not leave a standoff behind its attacker', () => {
+    const { nextBoard } = resolve(
+      {
+        ...spring1901,
+        units: [
+          { type: 'army', owner: 'germany', location: 'ber' },
+          { type: 'army', owner: 'germany', location: 'sil' },
+          { type: 'army', owner: 'russia', location: 'pru' },
+        ],
+      },
+      [
+        { action: 'move', unit: 'ber', to: 'pru' },
+        { action: 'support', unit: 'sil', supported: 'ber', to: 'pru' },
+        { action: 'move', unit: 'pru', to: 'ber' },
+      ],
+    );
+    expect(nextBoard.dislodged).toEqual([
+      { unit: { type: 'army', owner: 'russia', location: 'pru' }, attackerFrom: 'ber' },
+    ]);
+    expect(nextBoard.standoffs).toEqual([]);
+  });
+
+  test('a fleet off every non-repeating sea route does not show convoy intent', () => {
+    // The Barents Sea borders only the Norwegian Sea among seas, so no route can pass through it.
+    const { results } = resolve(
+      {
+        ...spring1901,
+        units: [
+          { type: 'army', owner: 'france', location: 'pic' },
+          { type: 'fleet', owner: 'france', location: 'bar' },
+          { type: 'army', owner: 'germany', location: 'bel' },
+          { type: 'fleet', owner: 'england', location: 'eng' },
+        ],
+      },
+      [
+        { action: 'move', unit: 'pic', to: 'bel' },
+        { action: 'convoy', unit: 'bar', army: 'pic', to: 'bel' },
+        { action: 'convoy', unit: 'eng', army: 'pic', to: 'bel' },
+        { action: 'move', unit: 'bel', to: 'pic' },
+      ],
+    );
+    expect(results).toMatchObject({ pic: 'bounced', bel: 'bounced' });
+  });
+
   test('does not resolve retreat or build phases yet', () => {
     expect(() => resolve({ ...spring1901, phaseType: 'retreat' }, [])).toThrow('NotImplemented');
   });

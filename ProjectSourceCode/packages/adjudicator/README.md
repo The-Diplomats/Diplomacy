@@ -11,9 +11,9 @@ const { results, nextBoard } = resolve(board, orders);
 const options = nextBoard.dislodged.map((dislodged) => retreatOptions(nextBoard, dislodged));
 ```
 
-`resolve()` adjudicates movement phases: `results` has one entry per submitted order, keyed by its `unit`, and
-`nextBoard` is the retreat-phase board with dislodged units and standoffs. Retreat and build phases throw
-`NotImplemented`.
+`resolve()` adjudicates movement phases: `results` is keyed by each order's `unit`, and `nextBoard` is the retreat-phase
+board with dislodged units and standoffs. An order gets a result only when its `unit` names a province holding a unit;
+when several orders name the same unit, only the first is used. Retreat and build phases throw `NotImplemented`.
 
 ## Rules
 

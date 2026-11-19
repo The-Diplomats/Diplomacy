@@ -15,7 +15,7 @@ import {
   isCoastal,
   isSea,
   provinceOf,
-  seasLinkedTo,
+  seasOnConvoyRoutes,
 } from './map.js';
 
 interface EntryBase {
@@ -179,6 +179,12 @@ class MovementResolver {
   pathSucceeds(index: number): boolean {
     const move = this.move(index);
     return !move.byConvoy || this.resolve(this.decisionId('path', index));
+  }
+
+  // A failed move still blocks retreats into its target unless it had no effect there: a broken
+  // convoy, or the loser of a head-to-head battle.
+  contestsTarget(index: number): boolean {
+    return this.preventStrength(index) > 0;
   }
 
   isDislodged(index: number): boolean {
@@ -538,7 +544,8 @@ function routeFleets<Fleet extends Entry>(fleets: readonly Fleet[], move: MoveEn
 // form a route; otherwise it is a convoyed move that fails without matching convoy orders.
 // A move to an adjacent province goes by convoy only when a route exists and the army is ordered
 // `viaConvoy` or a fleet of its own power has a legal order to convoy it (one that lies on some
-// sea path between the two provinces, even if not on the route formed); otherwise over land.
+// route between the two provinces that never revisits a sea, even if not on the route formed);
+// otherwise over land.
 function travelMode(move: MoveEntry, entries: readonly Entry[]): 'land' | 'convoy' | 'illegal' {
   if (move.unit.type !== 'army') {
     return 'land';
@@ -557,9 +564,7 @@ function travelMode(move: MoveEntry, entries: readonly Entry[]): 'land' | 'convo
   if (onRoute.length === 0) {
     return 'land';
   }
-  const seaPath = new Set(
-    [...seasLinkedTo(move.province)].filter((sea) => seasLinkedTo(move.target).has(sea)),
-  );
+  const seaPath = seasOnConvoyRoutes(move.province, move.target);
   const ownIntent = convoys.some(
     (convoy) => convoy.unit.owner === move.unit.owner && seaPath.has(convoy.province),
   );
@@ -637,7 +642,7 @@ export function adjudicateMovement(
       entries.flatMap((entry, index) =>
         entry.kind === 'move' &&
         !resolver.moveSucceeds(index) &&
-        resolver.pathSucceeds(index) &&
+        resolver.contestsTarget(index) &&
         !occupiedAfter.has(entry.target)
           ? [entry.target]
           : [],

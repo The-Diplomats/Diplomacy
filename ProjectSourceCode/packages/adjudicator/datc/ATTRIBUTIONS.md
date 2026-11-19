@@ -8,7 +8,10 @@
   `variants/classical/datc/datc_v2.4_06.txt`, licensed GPL-3.0-or-later; attribution: godip contributors
   (https://github.com/zond/godip/graphs/contributors)
 
-Change from the godip copy: the misspelled power "Germnay" in case 6.A.5 is corrected to "Germany". The file header
-records the same change.
+Changes from the godip copy, also recorded in the file header:
+
+- Case 6.A.5: the misspelled power "Germnay" is corrected to "Germany".
+- Case 6.F.15 was labeled a second 6.F.14 and had Italy's convoyed unit as a fleet in North Africa, so its convoy could
+  never succeed. It is relabeled 6.F.15 and restored to DATC's army, which reaches Wales.
 
 Our project ships under the same license.

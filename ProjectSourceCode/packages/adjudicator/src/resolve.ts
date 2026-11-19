@@ -3,7 +3,7 @@ import type { BoardState, MapLocation, Order, OrderResult, Power } from '@diplom
 import { adjudicateMovement } from './movement.js';
 
 export interface Resolution {
-  // Keyed by each submitted order's `unit`.
+  // Keyed by order `unit`; only orders for an occupied province, first order per unit.
   readonly results: Readonly<Partial<Record<MapLocation, OrderResult>>>;
   readonly nextBoard: BoardState;
   readonly winner: Power | null;

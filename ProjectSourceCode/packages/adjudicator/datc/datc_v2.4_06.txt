@@ -20,7 +20,8 @@
 # in the godip/classical domain.
 #
 # Copied from godip (GPL-3.0) into @diplomacy/adjudicator, with
-# one fix: the "Germnay" typo in 6.A.5.
+# two fixes: the "Germnay" typo in 6.A.5, and 6.F.15 (labeled a
+# second 6.F.14) restored to DATC's army in North Africa.
 #
 #############################################################
 
@@ -2115,7 +2116,7 @@ END
 # simple convoy paradox with additional convoy
 # (paradox rules only apply to paradox core)
 # SYZKMAN resolution
-CASE 6.F.14
+CASE 6.F.15
 PRESTATE_SETPHASE Spring 1901, Movement
 PRESTATE
 	England: F lon
@@ -2124,7 +2125,7 @@ PRESTATE
 	France: F eng
 	Italy: F iri
 	Italy: F mid
-	Italy: F naf
+	Italy: A naf
 ORDERS
 	England: F lon S F wal-eng
 	England: F wal-eng
@@ -2132,14 +2133,14 @@ ORDERS
 	France: F eng C A bre-lon
 	Italy: F iri C A naf-wal
 	Italy: F mid C A naf-wal
-	Italy: F naf-wal
+	Italy: A naf-wal
 POSTSTATE
 	England: F lon
 	England: F eng	# wal-eng OK
 	France: A bre
 	Italy: F iri
 	Italy: F mid
-	Italy: F naf	# naf-wal OK
+	Italy: A wal	# naf-wal OK
 POSTSTATE_DISLODGED
 	France: F eng	
 END
