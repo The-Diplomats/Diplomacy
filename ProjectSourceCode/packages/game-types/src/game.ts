@@ -1,12 +1,12 @@
 import type { OrderAction } from './orders.js';
 import type { Power } from './powers.js';
-import type { ProvinceCode } from './provinces.js';
+import type { MapLocation, ProvinceCode } from './provinces.js';
 import type { UnitType } from './units.js';
 
 export interface Unit {
   readonly type: UnitType;
   readonly owner: Power;
-  readonly location: ProvinceCode;
+  readonly location: MapLocation;
 }
 
 export interface BoardState {

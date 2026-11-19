@@ -20,10 +20,13 @@
     "build": "tsup",
     "build:watch": "tsup --watch",
     "typecheck": "tsc -b --noEmit",
+    "test": "vitest --run",
+    "test:watch": "vitest",
     "clean": "rm -rf dist",
     "prepare": "pnpm run build"
   },
   "devDependencies": {
-    "tsup": "catalog:"
+    "tsup": "catalog:",
+    "vitest": "catalog:"
   }
 }
