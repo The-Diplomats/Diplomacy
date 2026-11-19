@@ -1,0 +1,97 @@
+name: Deploy (dev)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Queue deploys instead of cancelling one mid-rollout.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  changes:
+    name: Detect app changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      deploy: ${{ steps.diff.outputs.deploy }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      # Compares against the last commit dev deployed AND passed E2E on, not the previous push: a
+      # newer push can cancel a queued run, and its changes must still ship. If the latest attempted
+      # deploy failed or was cancelled, there is no baseline, so dev is redeployed.
+      - id: diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = push ]; then
+            head=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+            if [ "$head" != "$GITHUB_SHA" ]; then
+              echo "main moved on to $head; its run deploys instead."
+              echo "deploy=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
+          tested=""
+          # shellcheck disable=SC2016 # $ENV is jq's, not the shell's
+          while read -r run_id run_sha; do
+            jobs=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" \
+              --jq '.jobs[] | "\(.name)=\(.conclusion)"')
+            # Runs that skipped the deploy say nothing about what dev is running.
+            if ! grep -q '^deploy / ' <<< "$jobs"; then
+              continue
+            fi
+            if grep -qx 'deploy / E2E (dev)=success' <<< "$jobs"; then
+              tested="$run_sha"
+            fi
+            break
+          done < <(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy-dev.yml/runs?branch=main&status=completed&per_page=30" \
+            --jq '.workflow_runs[] | select(.id != ($ENV.GITHUB_RUN_ID | tonumber)) | "\(.id) \(.head_sha)"')
+          echo "Last commit dev deployed and passed E2E on: ${tested:-none}"
+
+          deploy=true
+          if [ "$EVENT" = push ] && [ -n "$tested" ] && git cat-file -e "$tested^{commit}" 2>/dev/null; then
+            if git diff --quiet "$tested" HEAD -- \
+              ProjectSourceCode/apps ProjectSourceCode/packages \
+              ProjectSourceCode/package.json ProjectSourceCode/pnpm-lock.yaml \
+              ProjectSourceCode/pnpm-workspace.yaml 'ProjectSourceCode/tsconfig*.json' \
+              ProjectSourceCode/.dockerignore \
+              .github/workflows/deploy-dev.yml .github/workflows/deploy-env.yml \
+              .github/workflows/container-images.yml; then
+              deploy=false
+            fi
+          fi
+          echo "deploy=$deploy" >> "$GITHUB_OUTPUT"
+          echo "Deploy: $deploy"
+
+  images:
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    permissions:
+      contents: read
+      packages: write
+      pull-requests: read
+    uses: ./.github/workflows/container-images.yml
+
+  deploy:
+    needs: [changes, images]
+    if: needs.changes.outputs.deploy == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/deploy-env.yml
+    with:
+      environment: dev
+      ref: ${{ github.sha }}

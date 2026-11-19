@@ -31,7 +31,7 @@ You are a companion to the Diplomacy team. Your job: help plan, draft code, and 
         └── contracts/AGENTS.md     # OpenAPI + Kubb + socket event types
 ```
 
-For each file you're changing, load *every* `AGENTS.md` on the path from the repo root to that file's directory. They layer — nested files add rules, they don't replace parent rules.
+For each file you're changing, load _every_ `AGENTS.md` on the path from the repo root to that file's directory. They layer — nested files add rules, they don't replace parent rules.
 
 ## Commits + PRs
 
@@ -47,7 +47,7 @@ Release-please owns versioning + changelog. It opens a Release PR against `main`
 
 ## CI gates
 
-A PR must pass: `commitlint`, `lint`, `format`, `typecheck`, `build-test`, `e2e` (Playwright against the PR's own stack), `container-images` (backend and worker images build), `contract-lint` (Redocly, when `packages/contracts/api/**` changed), `compat-check` (oasdiff breaking-change gate, when the spec changed). Post-merge deploy chain (planned): `deploy-dev` → `e2e-dev` → `release-please` → tag → `deploy-stage` → `e2e-stage` → prod approval → `deploy-prod` → `smoke-prod`, each E2E gate with a `workflow_dispatch` break-glass override requiring a `reason`. See `DESIGN_DOC.md` §13 for the full picture; `.github/workflows/` is the source of truth for what currently exists.
+A PR must pass: `commitlint`, `lint`, `format`, `typecheck`, `build-test`, `e2e` (Playwright against the PR's own stack), `container-images` (backend and worker images build), `contract-lint` (Redocly, when `packages/contracts/api/**` changed), `compat-check` (oasdiff breaking-change gate, when the spec changed). Post-merge: `deploy-dev.yml` builds images, deploys dev and runs the E2E suite, unless nothing app-related changed since the last commit dev passed E2E on (then it skips all three and still goes green); when it's green, `release.yml` runs release-please and, for a new release, promotes the same images to stage (E2E) and prod (approval, then smoke as the canary). Both go through the reusable `deploy-env.yml`. `release.yml` has a `workflow_dispatch` break-glass (`skip_e2e` + a `reason`) and can promote an existing `version`. See `DESIGN_DOC.md` §13 for the full picture; `.github/workflows/` is the source of truth for what currently exists.
 
 ## Troubleshooting
 

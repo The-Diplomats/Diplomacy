@@ -85,8 +85,10 @@ isolation + multi-env easier than a module-level `db` export.
 
 - **Run via `pnpm --filter @diplomacy/db migrate`** against Neon's _direct_ (non-pooled) URL. pgBouncer transaction-mode
   breaks advisory locks + transactional DDL.
-- **Executed by `migrate.yml`** as a reusable workflow before every ACA deploy. Creates a Neon branch
-  `pre-migration-{sha}` first; on failure promotes the branch back. See `DESIGN_DOC.md` §13.
+- **Executed by `deploy-env.yml`** before every ACA deploy. It logs a UTC restore point first; a failed migration stops
+  the deploy before containers change, and a bad one is undone with Neon point-in-time restore. See `DESIGN_DOC.md` §13.
+- **Migrations must stay backward compatible** with the code already running: they apply while the previous containers
+  still serve traffic.
 - **Never run migrations from the running backend/worker process.** The schema-mutation privilege lives only in the
   migrate step.
 
