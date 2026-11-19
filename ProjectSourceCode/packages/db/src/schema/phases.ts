@@ -1,5 +1,5 @@
 import type { BoardState } from '@diplomacy/game-types';
-import { PHASE_TYPES } from '@diplomacy/game-types';
+import { PHASE_TYPES, SEASONS } from '@diplomacy/game-types';
 import { sql } from 'drizzle-orm';
 import {
   index,
@@ -17,6 +17,8 @@ import { games } from './games.js';
 // Valid phase types used by the Diplomacy game.
 export const phaseType = pgEnum('phase_type', PHASE_TYPES);
 
+export const season = pgEnum('season', SEASONS);
+
 export const phases = pgTable(
   'phases',
   {
@@ -27,11 +29,14 @@ export const phases = pgTable(
       .notNull()
       .references(() => games.id, { onDelete: 'cascade' }),
 
+    // Game year, starting at 1901.
+    year: integer('year').notNull(),
+
+    // Build phases are recorded as fall.
+    season: season('season').notNull(),
+
     // Movement, retreat, or build.
     phaseType: phaseType('phase_type').notNull(),
-
-    // Current game turn.
-    turn: integer('turn').notNull(),
 
     // Snapshot of the board during this phase.
     boardState: jsonb('board_state').$type<BoardState>().notNull(),
@@ -60,6 +65,14 @@ export const phases = pgTable(
     uniqueIndex('phases_game_open_idx')
       .on(table.gameId)
       .where(sql`${table.resolvedAt} IS NULL`),
+
+    // One row per point on the game clock, e.g. Fall 1901 retreat.
+    uniqueIndex('phases_game_clock_idx').on(
+      table.gameId,
+      table.year,
+      table.season,
+      table.phaseType,
+    ),
 
     // Phase history for a game, oldest first.
     index('phases_game_created_at_idx').on(table.gameId, table.createdAt),
