@@ -8,6 +8,7 @@ import { Server } from 'socket.io';
 
 import { logger } from './log.js';
 import { access } from './services/access.js';
+import { registerGameRoomHandlers } from './sockets/game-rooms.js';
 import { registerHealthSocketHandlers } from './sockets/health.js';
 import { classifySurface, extractForwardedHost } from './surface.js';
 
@@ -75,6 +76,7 @@ export function createSocketServer(
   }
 
   registerHealthSocketHandlers(io);
+  registerGameRoomHandlers(io);
 
   const close = async () => {
     await new Promise<void>((resolve) => io.close(() => resolve()));
