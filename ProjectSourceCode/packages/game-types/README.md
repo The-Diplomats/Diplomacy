@@ -13,7 +13,8 @@ import { POWERS, type Power, type BoardState, CLASSIC_PROVINCES } from '@diploma
 - `POWERS`, `SEASONS`, `PHASE_TYPES`, `UNIT_TYPES`, `PROVINCE_CODES`, `COAST_CODES`, `ORDER_ACTIONS`, `ORDER_RESULTS`:
   const arrays + union types
 - `MapLocation`: a province code or a split-coast code (`stp/nc`); where a unit stands
-- `Unit`, `BoardState`, `Order`: domain interfaces
+- `Unit`, `DislodgedUnit`, `BoardState`: board snapshot stored per phase
+- `Order`: discriminated union on `action`, grouped as `MovementOrder`, `RetreatPhaseOrder` and `BuildPhaseOrder`
 - `CLASSIC_PROVINCES`: name, type, supply center and home power per province
 - `ARMY_ADJACENCY`, `FLEET_ADJACENCY`: movement graphs; fleets on split-coast provinces move between coast codes
 - `STARTING_UNITS`: the Spring 1901 position
