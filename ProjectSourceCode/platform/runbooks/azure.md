@@ -72,12 +72,13 @@ credential.
 The subject uses GitHub's immutable format (owner and repository IDs), which this repository's tokens carry; the
 name-only form never matches.
 
-| Problem                                    | Recovery                                                                                                                                                                                                                                      |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A migration applied but broke the database | Put the previous version back first (`release.yml` with its `version`; dev: `az containerapp update --image` with the previous `sha-` tag), then Neon console, **Restore**, to the "Restore point (UTC)" logged by that deploy's migrate step |
-| Stage E2E failed on a flaky spec           | Re-run the failed jobs, or run `release.yml` with `version`                                                                                                                                                                                   |
-| A release is bad in stage or prod          | Run `release.yml` with the previous `version` to redeploy it (schema changes stay applied)                                                                                                                                                    |
-| A release should stop at stage             | Leave prod's approval pending or reject it; later, approve or run `release.yml` with `version`                                                                                                                                                |
+| Problem                                    | Recovery                                                                                                                                                                                                                                             |
+| ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A migration applied but broke the database | Put the previous version back first (stage/prod: see "A release is bad"; dev: see "Dev is broken by a merge"), then Neon console, **Restore**, to the "Restore point (UTC)" logged by that deploy's migrate step                                     |
+| Dev is broken by a merge                   | Merge a revert PR; `deploy-dev` redeploys backend, worker and frontend from `main`. For faster container recovery, `az containerapp update --image` with the previous `sha-` tag first; the frontend stays on the new build until the revert deploys |
+| Stage E2E failed on a flaky spec           | Re-run the failed jobs, or run `release.yml` with `version`                                                                                                                                                                                          |
+| A release is bad in stage or prod          | Run `release.yml` with the previous `version` to redeploy it (schema changes stay applied). If stage E2E then fails on that version and the rollback must reach prod, run it again with `skip_e2e` and a reason (at least 20 characters)             |
+| A release should stop at stage             | Leave prod's approval pending or reject it; later, approve or run `release.yml` with `version`                                                                                                                                                       |
 
 ## Checks
 
