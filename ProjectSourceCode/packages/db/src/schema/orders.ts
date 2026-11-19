@@ -20,6 +20,13 @@ export const orderAction = pgEnum('order_action', ORDER_ACTIONS);
 
 export const orderResult = pgEnum('order_result', ORDER_RESULTS);
 
+// Distributes over the union so each action keeps its own fields.
+export type OrderDetails = Order extends infer Variant
+  ? Variant extends Order
+    ? Omit<Variant, 'unit' | 'action'>
+    : never
+  : never;
+
 export const orders = pgTable(
   'orders',
   {
@@ -41,7 +48,7 @@ export const orders = pgTable(
     action: orderAction('action').notNull(),
 
     // Order details beyond unit and action, which live in their own columns.
-    orderData: jsonb('order_data').$type<Omit<Order, 'unit' | 'action'>>().notNull(),
+    orderData: jsonb('order_data').$type<OrderDetails>().notNull(),
 
     // Null until adjudication.
     result: orderResult('result'),

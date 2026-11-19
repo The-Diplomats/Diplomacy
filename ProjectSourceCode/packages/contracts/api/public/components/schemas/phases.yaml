@@ -5,46 +5,253 @@ PhaseType:
     - retreat
     - build
 
+Season:
+  type: string
+  description: Build phases are recorded as fall.
+  enum:
+    - spring
+    - fall
+
 UnitType:
   type: string
   enum:
     - army
     - fleet
 
+ProvinceCode:
+  type: string
+  enum:
+    - adr
+    - aeg
+    - alb
+    - ank
+    - apu
+    - arm
+    - bal
+    - bar
+    - bel
+    - ber
+    - bla
+    - boh
+    - bot
+    - bre
+    - bud
+    - bul
+    - bur
+    - cly
+    - con
+    - den
+    - eas
+    - edi
+    - eng
+    - fin
+    - gal
+    - gas
+    - gol
+    - gre
+    - hel
+    - hol
+    - ion
+    - iri
+    - kie
+    - lon
+    - lvn
+    - lvp
+    - mar
+    - mid
+    - mos
+    - mun
+    - naf
+    - nap
+    - nat
+    - nrg
+    - nth
+    - nwy
+    - par
+    - pic
+    - pie
+    - por
+    - pru
+    - rom
+    - ruh
+    - rum
+    - ser
+    - sev
+    - sil
+    - ska
+    - smy
+    - spa
+    - stp
+    - swe
+    - syr
+    - tri
+    - tun
+    - tus
+    - tyr
+    - tys
+    - ukr
+    - ven
+    - vie
+    - wal
+    - war
+    - wes
+    - yor
+
+MapLocation:
+  type: string
+  description: A province code, or a coast of a split-coast province (`stp/nc`).
+  enum:
+    - adr
+    - aeg
+    - alb
+    - ank
+    - apu
+    - arm
+    - bal
+    - bar
+    - bel
+    - ber
+    - bla
+    - boh
+    - bot
+    - bre
+    - bud
+    - bul
+    - bur
+    - cly
+    - con
+    - den
+    - eas
+    - edi
+    - eng
+    - fin
+    - gal
+    - gas
+    - gol
+    - gre
+    - hel
+    - hol
+    - ion
+    - iri
+    - kie
+    - lon
+    - lvn
+    - lvp
+    - mar
+    - mid
+    - mos
+    - mun
+    - naf
+    - nap
+    - nat
+    - nrg
+    - nth
+    - nwy
+    - par
+    - pic
+    - pie
+    - por
+    - pru
+    - rom
+    - ruh
+    - rum
+    - ser
+    - sev
+    - sil
+    - ska
+    - smy
+    - spa
+    - stp
+    - swe
+    - syr
+    - tri
+    - tun
+    - tus
+    - tyr
+    - tys
+    - ukr
+    - ven
+    - vie
+    - wal
+    - war
+    - wes
+    - yor
+    - bul/ec
+    - bul/sc
+    - spa/nc
+    - spa/sc
+    - stp/nc
+    - stp/sc
+
 Unit:
   type: object
   additionalProperties: false
-  required:
-    - type
-    - owner
-    - location
   properties:
     type:
       $ref: '#/UnitType'
     owner:
       $ref: './common.yaml#/Power'
     location:
-      type: string
+      $ref: '#/MapLocation'
+  required:
+    - type
+    - owner
+    - location
+
+DislodgedUnit:
+  type: object
+  additionalProperties: false
+  properties:
+    unit:
+      $ref: '#/Unit'
+    attackerFrom:
+      description: Null when the attacker arrived by convoy.
+      oneOf:
+        - $ref: '#/ProvinceCode'
+        - type: 'null'
+  required:
+    - unit
+    - attackerFrom
 
 BoardState:
   type: object
   additionalProperties: false
-  required:
-    - turn
-    - units
-    - supplyCenters
   properties:
-    turn:
+    year:
       type: integer
-      minimum: 0
+      minimum: 1901
+    season:
+      $ref: '#/Season'
+    phaseType:
+      $ref: '#/PhaseType'
     units:
       type: array
       items:
         $ref: '#/Unit'
     supplyCenters:
       type: object
+      propertyNames:
+        $ref: '#/ProvinceCode'
       additionalProperties:
         $ref: './common.yaml#/Power'
+    dislodged:
+      type: array
+      description: Units awaiting a retreat order; empty outside retreat phases.
+      items:
+        $ref: '#/DislodgedUnit'
+    standoffs:
+      type: array
+      description: Provinces left empty by a standoff; no unit may retreat there.
+      items:
+        $ref: '#/ProvinceCode'
+  required:
+    - year
+    - season
+    - phaseType
+    - units
+    - supplyCenters
+    - dislodged
+    - standoffs
 
 Phase:
   type: object
@@ -79,27 +286,161 @@ Phase:
     - boardState
     - readiness
 
-OrderAction:
-  type: string
-  enum:
-    - hold
-    - move
-    - support
-    - convoy
-    - retreat
-    - build
-    - disband
-    - waive
-
 OrderResult:
   type: string
   enum:
-    - pending
     - success
     - bounced
     - cut
-    - dislodged
+    - void
     - disbanded
+
+HoldOrder:
+  type: object
+  additionalProperties: false
+  description: The unit stays where it is.
+  properties:
+    action:
+      type: string
+      enum:
+        - hold
+    unit:
+      $ref: '#/MapLocation'
+  required:
+    - action
+    - unit
+
+MoveOrder:
+  type: object
+  additionalProperties: false
+  description: The unit moves to an adjacent location, or by convoy when `viaConvoy` is set.
+  properties:
+    action:
+      type: string
+      enum:
+        - move
+    unit:
+      $ref: '#/MapLocation'
+    to:
+      $ref: '#/MapLocation'
+    viaConvoy:
+      type: boolean
+  required:
+    - action
+    - unit
+    - to
+
+SupportOrder:
+  type: object
+  additionalProperties: false
+  description: Supports the unit in `supported` moving to `to`, or holding when `to` is omitted.
+  properties:
+    action:
+      type: string
+      enum:
+        - support
+    unit:
+      $ref: '#/MapLocation'
+    supported:
+      $ref: '#/ProvinceCode'
+    to:
+      $ref: '#/ProvinceCode'
+  required:
+    - action
+    - unit
+    - supported
+
+ConvoyOrder:
+  type: object
+  additionalProperties: false
+  description: A fleet carries the army in `army` toward `to`.
+  properties:
+    action:
+      type: string
+      enum:
+        - convoy
+    unit:
+      $ref: '#/MapLocation'
+    army:
+      $ref: '#/ProvinceCode'
+    to:
+      $ref: '#/ProvinceCode'
+  required:
+    - action
+    - unit
+    - army
+    - to
+
+RetreatOrder:
+  type: object
+  additionalProperties: false
+  description: A dislodged unit retreats to `to`.
+  properties:
+    action:
+      type: string
+      enum:
+        - retreat
+    unit:
+      $ref: '#/MapLocation'
+    to:
+      $ref: '#/MapLocation'
+  required:
+    - action
+    - unit
+    - to
+
+DisbandOrder:
+  type: object
+  additionalProperties: false
+  description: Removes the unit, in a retreat or build phase.
+  properties:
+    action:
+      type: string
+      enum:
+        - disband
+    unit:
+      $ref: '#/MapLocation'
+  required:
+    - action
+    - unit
+
+BuildOrder:
+  type: object
+  additionalProperties: false
+  description: Places a new unit at `unit`, an unoccupied home supply center. Unused builds are waived.
+  properties:
+    action:
+      type: string
+      enum:
+        - build
+    unit:
+      $ref: '#/MapLocation'
+    unitType:
+      $ref: '#/UnitType'
+  required:
+    - action
+    - unit
+    - unitType
+
+OrderInput:
+  oneOf:
+    - $ref: '#/HoldOrder'
+    - $ref: '#/MoveOrder'
+    - $ref: '#/SupportOrder'
+    - $ref: '#/ConvoyOrder'
+    - $ref: '#/RetreatOrder'
+    - $ref: '#/DisbandOrder'
+    - $ref: '#/BuildOrder'
+  discriminator:
+    propertyName: action
+    mapping:
+      hold: '#/HoldOrder'
+      move: '#/MoveOrder'
+      support: '#/SupportOrder'
+      convoy: '#/ConvoyOrder'
+      retreat: '#/RetreatOrder'
+      disband: '#/DisbandOrder'
+      build: '#/BuildOrder'
 
 Order:
   type: object
@@ -108,40 +449,17 @@ Order:
     id:
       type: string
       format: uuid
-    unit:
-      type: string
-    action:
-      $ref: '#/OrderAction'
-    from:
-      type: string
-    to:
-      type: string
-    targetUnit:
-      type: string
+    order:
+      $ref: '#/OrderInput'
     result:
+      description: Null until the phase is adjudicated.
       oneOf:
         - $ref: '#/OrderResult'
         - type: 'null'
   required:
     - id
-    - action
-
-OrderInput:
-  type: object
-  additionalProperties: false
-  properties:
-    unit:
-      type: string
-    action:
-      $ref: '#/OrderAction'
-    from:
-      type: string
-    to:
-      type: string
-    targetUnit:
-      type: string
-  required:
-    - action
+    - order
+    - result
 
 SubmitOrdersRequest:
   type: object

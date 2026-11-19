@@ -1,16 +1,25 @@
 # @diplomacy/game-types
 
-Pure TypeScript domain types for Diplomacy. No runtime logic, zero runtime dependencies.
+Pure TypeScript domain types for Diplomacy, plus the static classic map. No runtime logic, zero runtime dependencies.
 
 ## Usage
 
 ```ts
-import { POWERS, type Power, type BoardState, CLASSIC_MAP_META } from '@diplomacy/game-types';
+import { POWERS, type Power, type BoardState, CLASSIC_PROVINCES } from '@diplomacy/game-types';
 ```
 
 ## Exports
 
-- `POWERS`, `SEASONS`, `PHASE_TYPES`, `UNIT_TYPES`, `PROVINCE_CODES`, `ORDER_ACTIONS`, `ORDER_RESULTS`: const arrays +
-  union types
-- `Unit`, `BoardState`, `Order`: domain interfaces
-- `CLASSIC_MAP_META`: stub map metadata (full 76-province data lands with adjudicator work)
+- `POWERS`, `SEASONS`, `PHASE_TYPES`, `UNIT_TYPES`, `PROVINCE_CODES`, `COAST_CODES`, `ORDER_ACTIONS`, `ORDER_RESULTS`:
+  const arrays + union types
+- `MapLocation`: a province code or a split-coast code (`stp/nc`); where a unit stands
+- `Unit`, `DislodgedUnit`, `BoardState`: board snapshot stored per phase
+- `Order`: discriminated union on `action`, grouped as `MovementOrder`, `RetreatPhaseOrder` and `BuildPhaseOrder`
+- `CLASSIC_PROVINCES`: name, type, supply center and home power per province
+- `ARMY_ADJACENCY`, `FLEET_ADJACENCY`: movement graphs; fleets on split-coast provinces move between coast codes
+- `STARTING_UNITS`: the Spring 1901 position
+
+The classic map graph and starting position are transcribed from [godip](https://github.com/zond/godip) (GPL-3.0), with
+the same province ids as the frontend map.
+
+Tests: `pnpm --filter @diplomacy/game-types run test` (Vitest).
