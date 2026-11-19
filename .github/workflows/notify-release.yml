@@ -1,0 +1,57 @@
+name: Notify Release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Post to Discord
+    # The release-notes PR opened by release.yml always lives on this branch prefix. A dev PR that
+    # happens to use that prefix hits the missing-release guard in the step below.
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release-notes/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post to Discord
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ github.event.pull_request.head.ref }}
+          MERGED_BY: ${{ github.event.pull_request.merged_by.login }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_RELEASES }}
+        run: |
+          set +e
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK_RELEASES not set, skipping."
+            exit 0
+          fi
+          tag="${BRANCH#release-notes/}"
+          data=$(gh release view "$tag" --json name,body,url,publishedAt,targetCommitish 2>/dev/null)
+          if [ -z "$data" ]; then
+            echo "No GitHub release for $tag; nothing to post."
+            exit 0
+          fi
+          name=$(jq -r '.name // ""' <<< "$data")
+          url=$(jq -r '.url // ""' <<< "$data")
+          sha=$(jq -r '.targetCommitish // ""' <<< "$data")
+          published=$(jq -r '.publishedAt // "" | split("T")[0]' <<< "$data")
+          body=$(jq -r '.body // ""' <<< "$data" | head -c 1500)
+          footer="$published · ${sha:0:7} · released by $MERGED_BY"
+          jq -n \
+            --argjson color 3447003 \
+            --arg title "$name" \
+            --arg url "$url" \
+            --arg description "$body" \
+            --arg footer "$footer" \
+            '{embeds: [{color: $color, title: $title}
+              + (if $url == "" then {} else {url: $url} end)
+              + (if $description == "" then {} else {description: ($description | .[0:4000])} end)
+              + {footer: {text: $footer}}]}' \
+          | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+            || echo "::warning::Discord post failed; continuing."

@@ -1,0 +1,58 @@
+name: Notify Prod Waiting
+
+# GitHub fires deployment_status with state=waiting when a deployment enters the reviewer-approval
+# state. The prod deploy job and the prod smoke-test job both name the `prod` environment and
+# both create deployments, so each pending approval posts its own notification.
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  notify:
+    name: Post to Discord
+    if: >-
+      github.event.deployment_status.state == 'waiting' &&
+      github.event.deployment.environment == 'prod'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Post to Discord
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_SHA: ${{ github.event.deployment.sha }}
+          LOG_URL: ${{ github.event.deployment_status.log_url }}
+          FALLBACK_URL: ${{ github.server_url }}/${{ github.repository }}/deployments
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PROMOTIONS }}
+        run: |
+          set +e
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK_PROMOTIONS not set, skipping."
+            exit 0
+          fi
+          # gh api avoids the ref-mismatch trap of a repo checkout, since any release before this
+          # file landed on main would not carry the workflow's own scripts.
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/commits/$DEPLOY_SHA" \
+            --jq '[.commit.message, "\n"] | add' 2>/dev/null \
+            | awk -F'tag: ' 'NR==1 {next} {print $2; exit}')
+          # Fallback: list tags and match by SHA.
+          if [ -z "$tag" ]; then
+            tag=$(gh api "repos/$GITHUB_REPOSITORY/tags?per_page=100" \
+              --jq ".[] | select(.commit.sha == \"$DEPLOY_SHA\") | .name" 2>/dev/null | head -1)
+          fi
+          version="${tag#diplomacy-v}"
+          target_url="${LOG_URL:-$FALLBACK_URL}"
+          title="prod ⏸ v${version:-?} waiting for approval"
+          footer="Commit ${DEPLOY_SHA:0:7}"
+          jq -n \
+            --argjson color 15844367 \
+            --arg title "$title" \
+            --arg url "$target_url" \
+            --arg description "Approve the pending job in the run to continue. Any teammate on the-diplomats can approve (not the one who triggered the run)." \
+            --arg footer "$footer" \
+            '{embeds: [{color: $color, title: $title, url: $url,
+              description: $description,
+              footer: {text: $footer}}]}' \
+          | curl -fsS -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+            || echo "::warning::Discord post failed; continuing."
