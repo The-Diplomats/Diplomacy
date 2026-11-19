@@ -225,6 +225,7 @@ jobs:
       AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      DISCORD_WEBHOOK_PROMOTIONS: ${{ secrets.DISCORD_WEBHOOK_PROMOTIONS }}
 
   prod:
     needs: [resolve, stage]
@@ -245,6 +246,7 @@ jobs:
       MIGRATION_DATABASE_URL: ${{ secrets.MIGRATION_DATABASE_URL }}
       AZURE_STATIC_WEB_APPS_API_TOKEN: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
       CANARY_PASSWORD: ${{ secrets.CANARY_PASSWORD }}
+      DISCORD_WEBHOOK_PROMOTIONS: ${{ secrets.DISCORD_WEBHOOK_PROMOTIONS }}
 
   release-notes-file:
     name: Open release notes PR

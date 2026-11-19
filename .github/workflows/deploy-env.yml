@@ -32,6 +32,8 @@ on:
         required: false
       CANARY_PASSWORD:
         required: false
+      DISCORD_WEBHOOK_PROMOTIONS:
+        required: false
 
 permissions:
   contents: read
@@ -67,6 +69,38 @@ jobs:
           path: ProjectSourceCode/apps/frontend/dist/
           # Prod approval can wait up to 30 days.
           retention-days: 30
+
+      # A frontend build failure skips deploy and e2e; their notification steps never run.
+      # Report it here so stage and prod are not silent in that case. Dev stays silent.
+      - name: Notify Discord (build failure)
+        if: failure() && inputs.environment != 'dev'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PROMOTIONS }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          REF: ${{ inputs.ref }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        working-directory: .
+        shell: bash
+        run: |
+          set +e
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK_PROMOTIONS not set, skipping."
+            exit 0
+          fi
+          TAG="${IMAGE_TAG:-sha-${REF::7}}"
+          jq -n \
+            --argjson color 15158332 \
+            --arg title "$ENVIRONMENT ❌ $TAG failed (frontend build)" \
+            --arg url "$RUN_URL" \
+            --arg description "Check the run for the failing step." \
+            --arg footer "Commit $TAG" \
+            '{embeds: [{color: $color, title: $title, url: $url,
+              description: ($description | .[0:4000]),
+              footer: {text: $footer}}]}' \
+          | curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+            || echo "::warning::Discord post failed; continuing."
 
   deploy:
     name: Deploy ${{ inputs.environment }}
@@ -165,17 +199,74 @@ jobs:
           skip_app_build: true
           skip_api_build: true
 
+      # Prod: post every time (success means "smoke pending", failure is a prod rollback moment).
+      # Stage: post on failure, and on success when the E2E job is skipped (break-glass) so stage
+      # never finishes silently. Otherwise stage's terminal message comes from the E2E job below.
+      # Cancellation stays silent either way, because "failed" would mislead the reader.
+      - name: Notify Discord (deploy outcome)
+        if: >-
+          always() && job.status != 'cancelled' && inputs.environment != 'dev' &&
+          (inputs.environment == 'prod' ||
+          (inputs.environment == 'stage' && (failure() || inputs.e2e == 'skip')))
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PROMOTIONS }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          E2E_MODE: ${{ inputs.e2e }}
+          STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        working-directory: .
+        shell: bash
+        run: |
+          set +e
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK_PROMOTIONS not set, skipping."
+            exit 0
+          fi
+          if [ "$STATUS" = success ]; then
+            color=3066993
+            icon="✅"
+            verb="deployed"
+            if [ "$ENVIRONMENT" = prod ]; then
+              description="Smoke tests waiting for approval. Any teammate on the-diplomats can approve (not the one who triggered the run)."
+            elif [ "$E2E_MODE" = skip ]; then
+              description="E2E skipped (break-glass)."
+            else
+              description=""
+            fi
+          else
+            color=15158332
+            icon="❌"
+            if [ "$ENVIRONMENT" = stage ]; then
+              verb="failed (deploy)"
+            else
+              verb="deploy failed"
+            fi
+            description="Check the run for the failing step."
+          fi
+          jq -n \
+            --argjson color "$color" \
+            --arg title "$ENVIRONMENT $icon $TAG $verb" \
+            --arg url "$RUN_URL" \
+            --arg description "$description" \
+            --arg footer "Commit $TAG" \
+            '{embeds: [{color: $color, title: $title, url: $url}
+              + (if $description == "" then {} else {description: ($description | .[0:4000])} end)
+              + {footer: {text: $footer}}]}' \
+          | curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+            || echo "::warning::Discord post failed; continuing."
+
   e2e:
     name: E2E (${{ inputs.environment }})
     needs: deploy
     if: inputs.e2e != 'skip'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Secrets only, no deployment record. Environment reviewers still apply, so prod asks again
-    # before smoke runs.
+    # Needs the environment secrets; reviewers apply too, so prod asks again before smoke runs.
+    # Creating a deployment record is what makes GitHub emit the `deployment_status: waiting`
+    # event that notify-prod-waiting.yml listens for, so smoke's approval gets a Discord ping.
     environment:
       name: ${{ inputs.environment }}
-      deployment: false
     defaults:
       run:
         working-directory: ProjectSourceCode
@@ -221,3 +312,61 @@ jobs:
           name: e2e-report-${{ inputs.environment }}
           path: ProjectSourceCode/apps/frontend/playwright-report/
           retention-days: 7
+
+      - name: Resolve image tag
+        if: always() && inputs.environment != 'dev'
+        env:
+          REF: ${{ inputs.ref }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        working-directory: .
+        run: echo "TAG=${IMAGE_TAG:-sha-${REF::7}}" >> "$GITHUB_ENV"
+      # Terminal E2E result: "stage deployed/failed (E2E)" or "prod verified/smoke failed".
+      # Cancellation is silent (would read as a false "failed").
+      - name: Notify Discord (E2E outcome)
+        if: always() && job.status != 'cancelled' && inputs.environment != 'dev'
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_PROMOTIONS }}
+          ENVIRONMENT: ${{ inputs.environment }}
+          STATUS: ${{ job.status }}
+          APP_URL: ${{ env.E2E_BASE_URL }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        working-directory: .
+        shell: bash
+        run: |
+          set +e
+          if [ -z "$WEBHOOK" ]; then
+            echo "::warning::DISCORD_WEBHOOK_PROMOTIONS not set, skipping."
+            exit 0
+          fi
+          if [ "$STATUS" = success ]; then
+            color=3066993
+            icon="✅"
+            if [ "$ENVIRONMENT" = prod ]; then
+              verb="verified"
+            else
+              verb="deployed"
+            fi
+            description="App $APP_URL"
+          else
+            color=15158332
+            icon="❌"
+            if [ "$ENVIRONMENT" = prod ]; then
+              verb="smoke failed"
+              description="Deploy is already live. Roll back with release.yml + previous version. Playwright report on the run."
+            else
+              verb="failed (E2E)"
+              description="Playwright report on the run."
+            fi
+          fi
+          jq -n \
+            --argjson color "$color" \
+            --arg title "$ENVIRONMENT $icon $TAG $verb" \
+            --arg url "$RUN_URL" \
+            --arg description "$description" \
+            --arg footer "Commit $TAG" \
+            '{embeds: [{color: $color, title: $title, url: $url,
+              description: ($description | .[0:4000]),
+              footer: {text: $footer}}]}' \
+          | curl -fsS --connect-timeout 5 --max-time 15 \
+              -H "Content-Type: application/json" -d @- "$WEBHOOK" \
+            || echo "::warning::Discord post failed; continuing."
