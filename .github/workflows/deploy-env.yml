@@ -19,6 +19,19 @@ on:
         description: "full: seed + every spec. smoke: @smoke specs as the canary. skip: no specs"
         type: string
         default: full
+    # Environment secrets reach a called workflow only when the caller passes them; unpassed ones
+    # arrive empty without an error.
+    secrets:
+      MIGRATION_DATABASE_URL:
+        required: true
+      AZURE_STATIC_WEB_APPS_API_TOKEN:
+        required: true
+      DATABASE_URL:
+        required: false
+      E2E_USER_PASSWORD:
+        required: false
+      CANARY_PASSWORD:
+        required: false
 
 permissions:
   contents: read
