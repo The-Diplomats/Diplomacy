@@ -1,8 +1,11 @@
+import type { Session, SessionData } from 'express-session';
+
 import { logger } from '../log.js';
 import { db } from '../services/db.js';
 import { type DiplomacySocketServer } from '../socket.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+type SessionRequest = { session?: Session & Partial<SessionData> };
 
 export function gameRoom(gameId: string): string {
   return `game:${gameId}`;
@@ -15,7 +18,8 @@ export function registerGameRoomHandlers(io: DiplomacySocketServer): void {
         return;
       }
 
-      const user = socket.request.session?.user;
+      const { session } = socket.request as typeof socket.request & SessionRequest;
+      const user = session?.user;
       const gameId = payload?.gameId;
       if (!user || typeof gameId !== 'string' || !UUID_PATTERN.test(gameId)) {
         ack({ ok: false });
