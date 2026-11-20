@@ -20,8 +20,10 @@
 # in the godip/classical domain.
 #
 # Copied from godip (GPL-3.0) into @diplomacy/adjudicator, with
-# two fixes: the "Germnay" typo in 6.A.5, and 6.F.15 (labeled a
-# second 6.F.14) restored to DATC's army in North Africa.
+# these cases restored to DATC: 6.A.5 ("Germnay" typo); 6.F.15
+# (labeled a second 6.F.14, army in North Africa); 6.H.5 and
+# 6.H.5.mod (Russian support of F bla-ank); 6.H.14 and 6.H.15
+# (positions after the movement phase); 6.H.16 (F mid-spa/nc).
 #
 #############################################################
 
@@ -3198,7 +3200,7 @@ PRESTATE_DISLODGED
 	Turkey: F ank
 PRESTATE_RESULTS
 	FAILURE: Turkey: F ank H
-	SUCCESS: Russia: F con S A ruh-hol
+	SUCCESS: Russia: F con S F bla-ank
 	SUCCESS: Russia: F bla-ank
 ORDERS
 	Turkey: F ank-bla			# cannot retreat to black sea! disbanded
@@ -3220,7 +3222,7 @@ PRESTATE_DISLODGED
 	Turkey: F ank
 PRESTATE_RESULTS
 	FAILURE: Turkey: F ank H
-	SUCCESS: Russia: F con S A ruh-hol
+	SUCCESS: Russia: F con S F bla-ank
 	SUCCESS: Russia: F bla-ank
 ORDERS
 	Turkey: F ank-con			# cannot retreat to con (unit there)! disbanded
@@ -3496,15 +3498,15 @@ END
 # No retreat with support in main phase
 CASE 6.H.14
 PRESTATE_SETPHASE Spring 1901, Retreat
-PRESTATE	
+PRESTATE
 	England: F eng
-	France: A par
+	France: A pic
 	France: A bre
 	Germany: A mun
-	Germany: A mar
+	Germany: A bur
 PRESTATE_DISLODGED
 	England: A pic
-	France: A bur	
+	France: A bur
 PRESTATE_RESULTS
 	FAILURE: England: A pic H
 	FAILURE: England: F eng C A pic-bel
@@ -3518,10 +3520,10 @@ ORDERS
 	France: A bur-bel		# will disband
 POSTSTATE
 	England: F eng
-	France: A par
+	France: A pic
 	France: A bre
 	Germany: A mun
-	Germany: A mar
+	Germany: A bur
 END
 
 
@@ -3530,8 +3532,10 @@ END
 CASE 6.H.15
 PRESTATE_SETPHASE Spring 1901, Retreat
 PRESTATE
-	France: F spa/sc
+	France: F por
 	France: F mid
+PRESTATE_DISLODGED
+	England: F por
 PRESTATE_RESULTS
 	SUCCESS: France: F spa/sc-por
 	SUCCESS: France: F mid S F spa/sc-por
@@ -3539,7 +3543,7 @@ PRESTATE_RESULTS
 ORDERS
 	# NO orders; English F por destroyed
 POSTSTATE
-	France: F spa/sc
+	France: F por
 	France: F mid
 END
 
@@ -3556,7 +3560,7 @@ PRESTATE
 PRESTATE_DISLODGED
 	France: F wes
 PRESTATE_RESULTS
-	FAILURE: France: F mid-spa
+	FAILURE: France: F mid-spa/nc
 	FAILURE: France: F gas-spa/nc
 	FAILURE: France: F wes H
 	SUCCESS: Italy: F tun S F tys-wes

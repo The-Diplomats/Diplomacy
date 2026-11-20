@@ -15,24 +15,41 @@ import { isMapLocation, provinceOf } from '../map.js';
 
 export interface DatcOrder {
   readonly power: Power;
-  readonly unitType: UnitType;
+  // Null when the order line names no unit type, as in "Remove pic".
+  readonly unitType: UnitType | null;
   readonly order: Order;
+}
+
+export interface DatcResult extends DatcOrder {
+  readonly success: boolean;
 }
 
 export interface DatcCase {
   readonly id: string;
   readonly title: string;
+  // For retreat cases, `dislodged` lacks attacker origins; `previousMovement` holds the
+  // movement-phase orders that produced the position.
   readonly board: BoardState;
+  readonly previousMovement: readonly DatcResult[];
   readonly orders: readonly DatcOrder[];
   readonly expectedUnits: readonly Unit[];
   readonly expectedDislodged: readonly Unit[];
 }
 
-type Block = 'prestate' | 'prestateDislodged' | 'orders' | 'poststate' | 'poststateDislodged';
+type Block =
+  | 'prestate'
+  | 'prestateDislodged'
+  | 'supplyCenters'
+  | 'previousMovement'
+  | 'orders'
+  | 'poststate'
+  | 'poststateDislodged';
 
 const BLOCKS: Readonly<Record<string, Block>> = {
   PRESTATE: 'prestate',
   PRESTATE_DISLODGED: 'prestateDislodged',
+  PRESTATE_SUPPLYCENTER_OWNERS: 'supplyCenters',
+  PRESTATE_RESULTS: 'previousMovement',
   ORDERS: 'orders',
   POSTSTATE: 'poststate',
   POSTSTATE_DISLODGED: 'poststateDislodged',
@@ -122,8 +139,8 @@ export function parseOrder(line: string): DatcOrder | null {
   }
   if (first === 'remove' || first === 'disband') {
     const unitType = parseUnitType(second);
-    const unit = parseLocation(third);
-    return unitType && unit ? { power, unitType, order: { action: 'disband', unit } } : null;
+    const unit = parseLocation(unitType ? third : second);
+    return unit ? { power, unitType, order: { action: 'disband', unit } } : null;
   }
 
   const unitType = parseUnitType(first);
@@ -181,6 +198,18 @@ export function parseOrder(line: string): DatcOrder | null {
   }
 }
 
+// "SUCCESS: England: F nth H" records an order from the movement phase before a retreat case.
+function parseResultLine(line: string): DatcResult | null {
+  const match = /^(success|failure):\s*(.*)$/i.exec(line);
+  const parsed = parseOrder(match?.[2] ?? '');
+  return match && parsed ? { ...parsed, success: match[1]?.toLowerCase() === 'success' } : null;
+}
+
+function parseSupplyCenter(line: string): [ProvinceCode, Power] {
+  const unit = parseUnit(line);
+  return [provinceOf(unit.location), unit.owner];
+}
+
 function parsePhase(text: string): Pick<BoardState, 'year' | 'season' | 'phaseType'> {
   const match = /^(spring|fall)\s+(\d+),\s*(\w+)$/i.exec(text.trim());
   const season = match?.[1]?.toLowerCase();
@@ -225,6 +254,8 @@ export function parseDatc(text: string): DatcCase[] {
         lines: {
           prestate: [],
           prestateDislodged: [],
+          supplyCenters: [],
+          previousMovement: [],
           orders: [],
           poststate: [],
           poststateDislodged: [],
@@ -253,12 +284,15 @@ export function parseDatc(text: string): DatcCase[] {
         board: {
           ...current.phase,
           units,
-          supplyCenters: {},
+          supplyCenters: Object.fromEntries(current.lines.supplyCenters.map(parseSupplyCenter)),
           dislodged: current.lines.prestateDislodged
             .map(parseUnit)
             .map((unit) => ({ unit, attackerFrom: null })),
           standoffs: [],
         },
+        previousMovement: current.lines.previousMovement.flatMap(
+          (resultLine) => parseResultLine(resultLine) ?? [],
+        ),
         orders: current.lines.orders.flatMap((orderLine) => parseOrder(orderLine) ?? []),
         expectedUnits: current.same
           ? units.filter((unit) => !dislodgedKeys.has(unitKey(unit)))
