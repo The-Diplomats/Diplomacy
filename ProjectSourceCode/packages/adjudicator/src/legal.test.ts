@@ -1,6 +1,12 @@
 import { readFileSync } from 'node:fs';
 
-import { type BoardState, type Order, POWERS, type Unit } from '@diplomacy/game-types';
+import {
+  type BoardState,
+  FLEET_ADJACENCY,
+  type Order,
+  POWERS,
+  type Unit,
+} from '@diplomacy/game-types';
 import { describe, expect, test } from 'vitest';
 
 import { parseDatc } from './datc/parse.js';
@@ -218,30 +224,36 @@ describe('legalOrders', () => {
   });
 
   // Every listed order, given what it depends on, is carried out by the engine and never voided.
-  test('every legal order on every DATC movement board survives adjudication', () => {
-    const datc = readFileSync(new URL('../datc/datc_v2.4_06.txt', import.meta.url), 'utf8');
-    const boards = [
-      spring1901,
-      ...parseDatc(datc)
-        .map(({ board }) => board)
-        .filter((board) => board.phaseType === 'movement'),
-    ];
-    let checked = 0;
-    for (const board of boards) {
-      for (const power of POWERS) {
-        for (const order of legalOrders(board, power)) {
-          const dependency = dependencyOf(board, order);
-          if (dependency === undefined) {
-            continue;
+  // About 10k adjudications: ~0.5 s locally, a few times that on a CI runner, so it gets more
+  // than Vitest's 5 s default.
+  test(
+    'every legal order on every DATC movement board survives adjudication',
+    { timeout: 20_000 },
+    () => {
+      const datc = readFileSync(new URL('../datc/datc_v2.4_06.txt', import.meta.url), 'utf8');
+      const boards = [
+        spring1901,
+        ...parseDatc(datc)
+          .map(({ board }) => board)
+          .filter((board) => board.phaseType === 'movement'),
+      ];
+      let checked = 0;
+      for (const board of boards) {
+        for (const power of POWERS) {
+          for (const order of legalOrders(board, power)) {
+            const dependency = dependencyOf(board, order);
+            if (dependency === undefined) {
+              continue;
+            }
+            const { results } = adjudicateMovement(board.units, [order, ...dependency]);
+            expect(results[order.unit], JSON.stringify(order)).not.toBe('void');
+            checked += 1;
           }
-          const { results } = adjudicateMovement(board.units, [order, ...dependency]);
-          expect(results[order.unit], JSON.stringify(order)).not.toBe('void');
-          checked += 1;
         }
       }
-    }
-    expect(checked).toBeGreaterThan(10_000);
-  });
+      expect(checked).toBeGreaterThan(10_000);
+    },
+  );
 });
 
 // The orders another unit must give for `order` to apply, or undefined when one other order
@@ -254,16 +266,12 @@ function dependencyOf(board: BoardState, order: Order): Order[] | undefined {
     if (!supported) {
       return undefined;
     }
+    // A fleet needs the exact coast it would reach in the target province.
     const to =
       supported.type === 'fleet'
-        ? legalOrders(board, supported.owner).find(
-            (candidate) =>
-              candidate.action === 'move' &&
-              candidate.unit === supported.location &&
-              provinceOf(candidate.to) === order.to,
-          )
-        : { action: 'move' as const, unit: supported.location, to: order.to };
-    return to ? [to] : undefined;
+        ? FLEET_ADJACENCY[supported.location].find((location) => provinceOf(location) === order.to)
+        : order.to;
+    return to ? [{ action: 'move', unit: supported.location, to }] : undefined;
   }
   if (order.action === 'convoy') {
     const army = unitAt(order.army);
