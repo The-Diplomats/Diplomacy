@@ -10,6 +10,7 @@ import { logger } from './log.js';
 import { access } from './services/access.js';
 import { registerGameRoomHandlers } from './sockets/game-rooms.js';
 import { registerHealthSocketHandlers } from './sockets/health.js';
+import { registerSessionRoomHandlers } from './sockets/session-rooms.js';
 import { classifySurface, extractForwardedHost } from './surface.js';
 
 export type DiplomacySocketServer = Server<ClientToServerEvents, ServerToClientEvents>;
@@ -76,6 +77,7 @@ export function createSocketServer(
   }
 
   registerHealthSocketHandlers(io);
+  registerSessionRoomHandlers(io);
   registerGameRoomHandlers(io);
 
   const close = async () => {

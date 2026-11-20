@@ -227,3 +227,19 @@ describe('message:new', () => {
     expect(await received_msg).toMatchObject({ gameId: gameB, text: 'to game B' });
   });
 });
+
+describe('logout', () => {
+  test('disconnects sockets opened with a session when session ends (logout)', async () => {
+    const user = await signedInUser();
+    const socket = await connect(user.cookie);
+    const disconnected = new Promise<string>((resolve) => socket.once('disconnect', resolve));
+
+    const res = await supertest(app)
+      .post('/auth/logout')
+      .set('X-Forwarded-Proto', 'https')
+      .set('Cookie', user.cookie);
+    expect(res.status).toBe(204);
+
+    expect(await disconnected).toBe('io server disconnect');
+  });
+});

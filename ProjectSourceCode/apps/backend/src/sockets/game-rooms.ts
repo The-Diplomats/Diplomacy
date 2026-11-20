@@ -1,11 +1,9 @@
-import type { Session, SessionData } from 'express-session';
-
 import { logger } from '../log.js';
 import { db } from '../services/db.js';
 import { type DiplomacySocketServer } from '../socket.js';
+import { type SessionRequest } from './session-rooms.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-type SessionRequest = { session?: Session & Partial<SessionData> };
 
 export function gameRoom(gameId: string): string {
   return `game:${gameId}`;
