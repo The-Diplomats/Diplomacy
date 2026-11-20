@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.4.0](https://github.com/The-Diplomats/Diplomacy/compare/diplomacy-v1.3.2...diplomacy-v1.4.0) (2026-11-20)
+
+
+### Features
+
+* add the classic map and gameplay domain types ([#134](https://github.com/The-Diplomats/Diplomacy/issues/134)) ([bc1c900](https://github.com/The-Diplomats/Diplomacy/commit/bc1c90054725b52babfe93ca33b3b6fe717ff95f))
+* **adjudicator:** resolve movement phases ([#136](https://github.com/The-Diplomats/Diplomacy/issues/136)) ([1a9328b](https://github.com/The-Diplomats/Diplomacy/commit/1a9328badf770002e4e30d1a823d72d2b287bd79))
+* **adjudicator:** resolve retreat and build phases and advance the game clock ([#137](https://github.com/The-Diplomats/Diplomacy/issues/137)) ([e3121d4](https://github.com/The-Diplomats/Diplomacy/commit/e3121d4b45e61f4ed3db387c0d88bf4cae2fb2be))
+* **adjudicator:** validate orders and list legal orders and defaults ([#139](https://github.com/The-Diplomats/Diplomacy/issues/139)) ([3236a45](https://github.com/The-Diplomats/Diplomacy/commit/3236a454c48a70d9f136fcfc450c04fe64ef849e))
+
 ## [1.3.2](https://github.com/The-Diplomats/Diplomacy/compare/diplomacy-v1.3.1...diplomacy-v1.3.2) (2026-11-19)
 
 
