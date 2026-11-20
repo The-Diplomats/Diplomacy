@@ -156,13 +156,19 @@ describe('validateOrder in retreat and build phases', () => {
   });
 
   test('validateOrders caps builds and disbands at what is owed and rejects duplicates', () => {
+    // Two builds owed and three legal build sites, so only the cap stops the third.
+    const twoOwed = boardWith([{ type: 'army', owner: 'russia', location: 'ukr' }], {
+      season: 'fall',
+      phaseType: 'build',
+      supplyCenters: { mos: 'russia', stp: 'russia', sev: 'russia' },
+    });
     expect(
-      validateOrders(buildBoard, 'russia', [
+      validateOrders(twoOwed, 'russia', [
         { action: 'build', unit: 'mos', unitType: 'army' },
         { action: 'build', unit: 'stp/nc', unitType: 'fleet' },
-        { action: 'build', unit: 'sev', unitType: 'fleet' },
-      ]).map(({ index }) => index),
-    ).toEqual([2]);
+        { action: 'build', unit: 'sev', unitType: 'army' },
+      ]),
+    ).toEqual([{ index: 2, reason: 'russia is owed only 2 build(s)' }]);
     expect(
       validateOrders(buildBoard, 'france', [
         { action: 'disband', unit: 'bur' },
