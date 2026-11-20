@@ -1,10 +1,28 @@
-import type { BoardState, Order } from '@diplomacy/game-types';
+import type { BoardState, MapLocation, Order, OrderResult, Power } from '@diplomacy/game-types';
+
+import { adjudicateMovement } from './movement.js';
 
 export interface Resolution {
+  // Keyed by order `unit`; only orders for an occupied province, first order per unit.
+  readonly results: Readonly<Partial<Record<MapLocation, OrderResult>>>;
   readonly nextBoard: BoardState;
-  readonly resolvedOrders: readonly Order[];
+  readonly winner: Power | null;
 }
 
-export function resolve(_board: BoardState, _orders: readonly Order[]): Resolution {
-  throw new Error('NotImplemented: @diplomacy/adjudicator resolve() is a scaffold stub');
+export function resolve(board: BoardState, orders: readonly Order[]): Resolution {
+  if (board.phaseType !== 'movement') {
+    throw new Error(`NotImplemented: resolving ${board.phaseType} phases`);
+  }
+  const outcome = adjudicateMovement(board.units, orders);
+  return {
+    results: outcome.results,
+    nextBoard: {
+      ...board,
+      phaseType: 'retreat',
+      units: outcome.units,
+      dislodged: outcome.dislodged,
+      standoffs: outcome.standoffs,
+    },
+    winner: null,
+  };
 }
