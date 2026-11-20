@@ -21,7 +21,7 @@ import {
 import { Separator } from '../../../components/ui/separator';
 import { useSession } from '../../auth/useSession';
 import { POWER_COLORS } from '../../map/powers';
-import { useGameMessages, useLiveGameMessages, useSendMessage } from '../useChat';
+import { useGameMessages, useSendMessage } from '../useChat';
 
 function formatTime(isoString: string): string {
   return new Date(isoString).toLocaleTimeString([], {
@@ -39,7 +39,6 @@ export function ChatDrawer({ onClose }: Props) {
   const { id: gameId = '' } = useParams();
   const { data: session } = useSession();
   const { data: messages = [], isPending, isError } = useGameMessages(gameId);
-  useLiveGameMessages(gameId);
   const sendMessage = useSendMessage(gameId);
   const [draft, setDraft] = useState('');
 
