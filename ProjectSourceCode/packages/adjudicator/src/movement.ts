@@ -68,7 +68,12 @@ export interface MovementOutcome {
   readonly standoffs: readonly ProvinceCode[];
 }
 
-function moveDestination(unit: Unit, province: ProvinceCode, to: MapLocation): MapLocation | null {
+// Where a move order lands, or null when the unit could never get there.
+export function moveDestination(
+  unit: Unit,
+  province: ProvinceCode,
+  to: MapLocation,
+): MapLocation | null {
   const target = provinceOf(to);
   if (target === province) {
     return null;
@@ -515,8 +520,13 @@ class MovementResolver {
   }
 }
 
+interface Positioned {
+  readonly unit: Unit;
+  readonly province: ProvinceCode;
+}
+
 // Fleets linked to `start` through a chain of the given fleets.
-function convoyChain<Fleet extends Entry>(
+function convoyChain<Fleet extends Positioned>(
   convoys: readonly Fleet[],
   start: ProvinceCode,
 ): Set<Fleet> {
@@ -535,9 +545,34 @@ function convoyChain<Fleet extends Entry>(
   return chain;
 }
 
-function routeFleets<Fleet extends Entry>(fleets: readonly Fleet[], move: MoveEntry): Fleet[] {
-  const fromOrigin = convoyChain(fleets, move.province);
-  return [...convoyChain(fleets, move.target)].filter((fleet) => fromOrigin.has(fleet));
+function routeFleets<Fleet extends Positioned>(
+  fleets: readonly Fleet[],
+  origin: ProvinceCode,
+  target: ProvinceCode,
+): Fleet[] {
+  const fromOrigin = convoyChain(fleets, origin);
+  return [...convoyChain(fleets, target)].filter((fleet) => fromOrigin.has(fleet));
+}
+
+// Fleets at sea on this board linked into a chain that could carry an army from `origin` to
+// `target`, whatever their orders.
+export function convoyRouteFleets(
+  units: readonly Unit[],
+  origin: ProvinceCode,
+  target: ProvinceCode,
+): Unit[] {
+  const fleetsAtSea = units
+    .map((unit) => ({ unit, province: provinceOf(unit.location) }))
+    .filter(({ unit, province }) => unit.type === 'fleet' && isSea(province));
+  return routeFleets(fleetsAtSea, origin, target).map(({ unit }) => unit);
+}
+
+export function convoyRoutePossible(
+  units: readonly Unit[],
+  origin: ProvinceCode,
+  target: ProvinceCode,
+): boolean {
+  return convoyRouteFleets(units, origin, target).length > 0;
 }
 
 // 2000 rulebook. A move to a non-adjacent province is illegal only when no fleets at sea could
@@ -554,12 +589,10 @@ function travelMode(move: MoveEntry, entries: readonly Entry[]): 'land' | 'convo
     (entry): entry is ConvoyEntry =>
       entry.kind === 'convoy' && entry.army === move.province && entry.to === move.target,
   );
-  const onRoute = routeFleets(convoys, move);
+  const onRoute = routeFleets(convoys, move.province, move.target);
   if (!isArmyAdjacent(move.province, move.target)) {
-    const fleetsAtSea = entries.filter(
-      (entry) => entry.unit.type === 'fleet' && isSea(entry.province),
-    );
-    return routeFleets(fleetsAtSea, move).length > 0 ? 'convoy' : 'illegal';
+    const units = entries.map((entry) => entry.unit);
+    return convoyRoutePossible(units, move.province, move.target) ? 'convoy' : 'illegal';
   }
   if (onRoute.length === 0) {
     return 'land';
