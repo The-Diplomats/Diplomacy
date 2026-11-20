@@ -21,6 +21,19 @@ const mustAct = affectedPowers(nextBoard);
   supply centers has no choice: its units are removed without waiting on its orders.
 - `winner` is set when a power holds 18 supply centers once Fall's moves and retreats are done.
 
+Orders from players go through validation first:
+
+- `validateOrders(board, power, orders)` checks a power's full submission and returns one problem per rejected order
+  (illegal for the phase, a second order for the same unit, more builds or disbands than owed). An empty list means the
+  set is accepted.
+- `validateOrder(board, power, order)` checks one order and gives the reason when it's illegal.
+- `legalOrders(board, power)` lists every order the power may give this phase, built from the same checks.
+- `defaultOrders(board, power, submitted)` gives the orders that stand in for what the power didn't submit: hold in
+  movement, disband in retreat, and in a build phase the civil-disorder disbands still owed. Unused builds are waived.
+
+An order that passes validation is never voided for being impossible; a support or convoy can still be voided when no
+matching order is given.
+
 Other exports: `retreatOptions`, `affectedPowers` (the powers that must act in a phase), `buildSites`,
 `adjustmentDelta`, `mustAdjust`, `supplyCenterCount`, `civilDisorderOrder`, `homeDistance`.
 

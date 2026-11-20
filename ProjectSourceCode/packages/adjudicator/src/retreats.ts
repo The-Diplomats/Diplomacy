@@ -38,7 +38,7 @@ export function retreatOptions(
 
 // An army ignores any coast it names. For a fleet, a split-coast province named without a coast
 // resolves only when one coast is an option.
-function retreatTarget(
+export function retreatTarget(
   unit: Unit,
   options: readonly MapLocation[],
   destination: MapLocation,

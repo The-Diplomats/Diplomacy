@@ -110,7 +110,8 @@ export function civilDisorderOrder(units: readonly Unit[]): Unit[] {
     .map(({ unit }) => unit);
 }
 
-function buildLocation(location: MapLocation, unitType: UnitType): MapLocation | null {
+// Where a build order places its unit, or null when that unit type can't stand there.
+export function buildLocation(location: MapLocation, unitType: UnitType): MapLocation | null {
   const province = provinceOf(location);
   const meta = CLASSIC_PROVINCES[province];
   if (unitType === 'army') {
