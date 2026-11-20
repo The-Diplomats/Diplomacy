@@ -10,6 +10,7 @@ import { type Request, type Response, Router } from 'express';
 
 import type { MessageWithSender } from '../../../repositories/messages.js';
 import { db } from '../../../services/db.js';
+import { broadcastPublicMessage } from '../../../services/realtime.js';
 
 function toMessage(row: MessageWithSender): Message {
   return {
@@ -71,9 +72,9 @@ messagesRouter.post(
       text,
     });
 
-    return res
-      .status(201)
-      .json(toMessage({ ...message, fromUsername: user.username, fromPower: player.power }));
+    const saved = toMessage({ ...message, fromUsername: user.username, fromPower: player.power });
+    broadcastPublicMessage(saved);
+    return res.status(201).json(saved);
   },
 );
 
