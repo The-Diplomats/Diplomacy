@@ -19,7 +19,7 @@ import { POWERS, type Power, type BoardState, CLASSIC_PROVINCES } from '@diploma
 - `ARMY_ADJACENCY`, `FLEET_ADJACENCY`: movement graphs; fleets on split-coast provinces move between coast codes
 - `STARTING_UNITS`: the Spring 1901 position
 
-The classic map graph and starting position are transcribed from [godip](https://github.com/zond/godip) (GPL-3.0), with
-the same province ids as the frontend map.
+The classic map graph and starting position come from godip and use the same province ids as the frontend map; see
+`ATTRIBUTIONS.md`.
 
 Tests: `pnpm --filter @diplomacy/game-types run test` (Vitest).
