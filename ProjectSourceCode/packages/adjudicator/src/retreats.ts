@@ -36,8 +36,14 @@ export function retreatOptions(
   });
 }
 
-// A split-coast province named without a coast resolves only when one coast is an option.
-function retreatTarget(options: readonly MapLocation[], to: MapLocation): MapLocation | null {
+// An army ignores any coast it names. For a fleet, a split-coast province named without a coast
+// resolves only when one coast is an option.
+function retreatTarget(
+  unit: Unit,
+  options: readonly MapLocation[],
+  destination: MapLocation,
+): MapLocation | null {
+  const to = unit.type === 'army' ? provinceOf(destination) : destination;
   if (options.includes(to)) {
     return to;
   }
@@ -61,7 +67,7 @@ export function resolveRetreats(board: BoardState, orders: readonly Order[]): Ph
     const order = ordersByProvince.get(provinceOf(dislodged.unit.location));
     const target =
       order?.action === 'retreat'
-        ? retreatTarget(retreatOptions(board, dislodged), order.to)
+        ? retreatTarget(dislodged.unit, retreatOptions(board, dislodged), order.to)
         : null;
     return { unit: dislodged.unit, order, target };
   });

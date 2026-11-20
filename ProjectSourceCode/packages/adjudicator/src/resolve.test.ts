@@ -173,6 +173,34 @@ describe('retreats', () => {
     expect(results).toEqual({ bur: 'void' });
     expect(nextBoard.units).toEqual(retreatBoard.units);
   });
+
+  test('an army ignores a coast in its retreat; a fleet must name a reachable one', () => {
+    const coastBoard: BoardState = {
+      ...retreatBoard,
+      units: [],
+      dislodged: [
+        { unit: { type: 'army', owner: 'france', location: 'gas' }, attackerFrom: 'bre' },
+      ],
+    };
+    const { results, nextBoard } = resolve(coastBoard, [
+      { action: 'retreat', unit: 'gas', to: 'spa/nc' },
+    ]);
+    expect(results).toEqual({ gas: 'success' });
+    expect(nextBoard.units).toEqual([{ type: 'army', owner: 'france', location: 'spa' }]);
+
+    const fleetBoard: BoardState = {
+      ...coastBoard,
+      dislodged: [
+        { unit: { type: 'fleet', owner: 'france', location: 'gas' }, attackerFrom: 'bre' },
+      ],
+    };
+    expect(resolve(fleetBoard, [{ action: 'retreat', unit: 'gas', to: 'spa/sc' }]).results).toEqual(
+      { gas: 'void' },
+    );
+    expect(
+      resolve(fleetBoard, [{ action: 'retreat', unit: 'gas', to: 'spa' }]).nextBoard.units,
+    ).toEqual([{ type: 'fleet', owner: 'france', location: 'spa/nc' }]);
+  });
 });
 
 describe('end of year', () => {
