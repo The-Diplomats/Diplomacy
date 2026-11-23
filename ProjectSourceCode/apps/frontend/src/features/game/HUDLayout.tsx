@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import { useParams } from 'react-router';
 
 import { Themed } from '../../components/Themed';
 import { useZoomPan } from '../map/hooks/useZoomPan';
@@ -17,13 +18,27 @@ import { ProvincePopover } from './hud/ProvincePopover';
 import { UserMenu } from './hud/UserMenu';
 import { ZoomControls } from './hud/ZoomControls';
 import { HUDSlot } from './HUDSlot';
+import { useLiveGameMessages, useUnreadMessages } from './useChat';
 
 type PlayablePower = Exclude<Power, 'neutral' | 'water'>;
 
 export function HUDLayout() {
   const [activePower, setActivePower] = useState<PlayablePower | null>(null);
   const [timelineOpen, setTimelineOpen] = useState(false);
+
   const [chatOpen, setChatOpen] = useState(false);
+  const { id: gameId = '' } = useParams();
+  useLiveGameMessages(gameId);
+  const { unread, markRead } = useUnreadMessages(gameId, chatOpen);
+  function toggleChat() {
+    markRead();
+    setChatOpen(!chatOpen);
+  }
+  function closeChat() {
+    markRead();
+    setChatOpen(false);
+  }
+
   const [gamePanelExpanded, setGamePanelExpanded] = useState(false);
   const [selectedProvince, setSelectedProvince] = useState<{
     id: string;
@@ -107,7 +122,7 @@ export function HUDLayout() {
               onZoomOut={zoomPan.zoomOut}
               onReset={zoomPan.recenter}
             />
-            <ChatToggle unread={3} onClick={() => setChatOpen(!chatOpen)} />
+            <ChatToggle unread={unread} onClick={toggleChat} />
             <PhaseTimelineTrigger
               open={timelineOpen}
               onClick={() => setTimelineOpen(!timelineOpen)}
@@ -129,7 +144,7 @@ export function HUDLayout() {
                 timelineOpen ? 'bottom-[calc(3.5%+172px)]' : 'bottom-[calc(3.5%+52px)]'
               }`}
             >
-              <ChatDrawer onClose={() => setChatOpen(false)} />
+              <ChatDrawer onClose={closeChat} />
             </div>
           )}
         </Themed>

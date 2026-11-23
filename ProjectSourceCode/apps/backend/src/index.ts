@@ -13,6 +13,7 @@ import { initAccess } from './services/access.js';
 import { initDb, shutdownDb } from './services/db.js';
 import { initEmails } from './services/emails.js';
 import { initOAuth, type OAuthConfig } from './services/oauth.js';
+import { initRealtime } from './services/realtime.js';
 import { createSocketServer } from './socket.js';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -135,6 +136,7 @@ const socketServer = createSocketServer(httpServer, {
   origins,
   redisUrl,
 });
+initRealtime(socketServer.io);
 
 httpServer.on('error', (err) => {
   logger.error({ err, port }, 'backend failed to start');
