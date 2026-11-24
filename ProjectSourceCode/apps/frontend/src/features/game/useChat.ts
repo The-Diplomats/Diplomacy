@@ -1,17 +1,31 @@
-import type { Message } from '@diplomacy/contracts';
-import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Message, Player, User } from '@diplomacy/contracts';
+import {
+  type QueryClient,
+  type QueryKey,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 
 import { createGameSocket } from '../../api/socket';
-import { useSession } from '../auth/useSession';
-import { getGameMessages, postGameMessage } from './api';
+import { sessionQueryKey, useSession } from '../auth/useSession';
+import { getDmThread, getGameMessages, getGamePlayers, postDm, postGameMessage } from './api';
 
 export function gameMessagesQueryKey(gameId: string) {
   return ['games', gameId, 'messages'] as const;
 }
 
-function addMessage(queryClient: QueryClient, gameId: string, message: Message): void {
-  queryClient.setQueryData<Message[]>(gameMessagesQueryKey(gameId), (current = []) =>
+export function dmThreadQueryKey(gameId: string, participantId: string) {
+  return ['games', gameId, 'messages', 'dm', participantId] as const;
+}
+
+export function gamePlayersQueryKey(gameId: string) {
+  return ['games', gameId, 'players'] as const;
+}
+
+function appendMessage(queryClient: QueryClient, queryKey: QueryKey, message: Message): void {
+  queryClient.setQueryData<Message[]>(queryKey, (current = []) =>
     current.some((existing) => existing.id === message.id) ? current : [...current, message],
   );
 }
@@ -27,8 +41,14 @@ export function useSendMessage(gameId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (text: string) => postGameMessage(gameId, text),
-    onSuccess: (message) => addMessage(queryClient, gameId, message),
+    onSuccess: (message) => appendMessage(queryClient, gameMessagesQueryKey(gameId), message),
   });
+}
+
+function myPlayerIdFromCache(queryClient: QueryClient, gameId: string): string | undefined {
+  const session = queryClient.getQueryData<User | null>(sessionQueryKey);
+  const players = queryClient.getQueryData<Player[]>(gamePlayersQueryKey(gameId));
+  return players?.find((player) => player.userId === session?.id)?.id;
 }
 
 export function useLiveGameMessages(gameId: string): void {
@@ -45,7 +65,22 @@ export function useLiveGameMessages(gameId: string): void {
       });
     });
 
-    socket.on('message:new', (message) => addMessage(queryClient, gameId, message));
+    socket.on('message:new', (message) =>
+      appendMessage(queryClient, gameMessagesQueryKey(gameId), message),
+    );
+
+    socket.on('message:dm', (message) => {
+      const myPlayerId = myPlayerIdFromCache(queryClient, gameId);
+      if (!myPlayerId) {
+        void queryClient.invalidateQueries({ queryKey: [...gameMessagesQueryKey(gameId), 'dm'] });
+        return;
+      }
+      const otherPlayerId =
+        message.fromPlayerId === myPlayerId ? message.toPlayerId : message.fromPlayerId;
+      if (otherPlayerId) {
+        appendMessage(queryClient, dmThreadQueryKey(gameId, otherPlayerId), message);
+      }
+    });
 
     return () => {
       socket.disconnect();
@@ -96,4 +131,34 @@ export function useUnreadMessages(gameId: string, chatOpen: boolean) {
       ).length;
 
   return { unread, markRead };
+}
+
+export function useGamePlayers(gameId: string) {
+  return useQuery({
+    queryKey: gamePlayersQueryKey(gameId),
+    queryFn: ({ signal }) => getGamePlayers(gameId, signal),
+  });
+}
+
+export function useMyPlayer(gameId: string): Player | undefined {
+  const { data: players = [] } = useGamePlayers(gameId);
+  const { data: session } = useSession();
+  return players.find((player) => player.userId === session?.id);
+}
+
+export function useDmThread(gameId: string, participantId: string | null) {
+  return useQuery({
+    queryKey: dmThreadQueryKey(gameId, participantId ?? ''),
+    queryFn: ({ signal }) => getDmThread(gameId, participantId ?? '', signal),
+    enabled: participantId !== null,
+  });
+}
+
+export function useSendDm(gameId: string, participantId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (text: string) => postDm(gameId, participantId, text),
+    onSuccess: (message) =>
+      appendMessage(queryClient, dmThreadQueryKey(gameId, participantId), message),
+  });
 }
