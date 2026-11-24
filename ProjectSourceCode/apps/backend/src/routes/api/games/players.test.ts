@@ -59,7 +59,7 @@ async function signedInUser() {
   return { client, userId: me.body.id as string, username: me.body.username as string };
 }
 
-async function seat(gameId: string, userId: string): Promise<string> {
+async function seat(gameId: string, userId: string | null): Promise<string> {
   const row = await createPlayerRepository(db).addSeat({ gameId, userId, isAi: userId === null });
   if (!row) {
     throw new Error('Unable to set test player');
