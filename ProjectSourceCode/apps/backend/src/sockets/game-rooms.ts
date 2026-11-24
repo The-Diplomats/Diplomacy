@@ -9,6 +9,10 @@ export function gameRoom(gameId: string): string {
   return `game:${gameId}`;
 }
 
+export function playerRoom(playerId: string): string {
+  return `player:${playerId}`;
+}
+
 export function registerGameRoomHandlers(io: DiplomacySocketServer): void {
   io.on('connection', (socket) => {
     socket.on('game:join', async (payload, ack) => {
@@ -30,7 +34,7 @@ export function registerGameRoomHandlers(io: DiplomacySocketServer): void {
           ack({ ok: false });
           return;
         }
-        await socket.join(gameRoom(gameId));
+        await socket.join([gameRoom(gameId), playerRoom(player.id)]);
         ack({ ok: true });
       } catch (err) {
         logger.error({ err, gameId }, 'game:join failed');
