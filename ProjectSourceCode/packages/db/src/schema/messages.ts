@@ -1,5 +1,4 @@
-import { sql } from 'drizzle-orm';
-import { check, foreignKey, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { foreignKey, index, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 import { games } from './games.js';
 import { players } from './players.js';
@@ -36,8 +35,6 @@ export const messages = pgTable(
       foreignColumns: [players.id, players.gameId],
       name: 'messages_to_player_game_fk',
     }).onDelete('cascade'),
-
-    check('messages_no_self_dm_check', sql`${table.fromPlayerId} <> ${table.toPlayerId}`),
   ],
 );
 
