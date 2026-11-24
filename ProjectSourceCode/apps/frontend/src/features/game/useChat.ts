@@ -3,6 +3,7 @@ import {
   type QueryClient,
   type QueryKey,
   useMutation,
+  useQueries,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
@@ -88,51 +89,6 @@ export function useLiveGameMessages(gameId: string): void {
   }, [gameId, queryClient]);
 }
 
-function lastReadKey(gameId: string): string {
-  return `chat:lastReadAt:${gameId}`;
-}
-
-function loadLastReadAt(gameId: string): string | null {
-  try {
-    return localStorage.getItem(lastReadKey(gameId));
-  } catch {
-    return null;
-  }
-}
-
-function saveLastReadAt(gameId: string, createdAt: string): void {
-  try {
-    localStorage.setItem(lastReadKey(gameId), createdAt);
-  } catch {
-    /* If it can't save to local storage for some reason, then the unread feature just won't work */
-  }
-}
-
-export function useUnreadMessages(gameId: string, chatOpen: boolean) {
-  const { data: messages = [] } = useGameMessages(gameId);
-  const { data: session } = useSession();
-  const [lastReadAt, setLastReadAt] = useState(() => loadLastReadAt(gameId));
-
-  function markRead(): void {
-    const newest = messages.at(-1)?.createdAt;
-    if (!newest) {
-      return;
-    }
-    setLastReadAt(newest);
-    saveLastReadAt(gameId, newest);
-  }
-
-  const unread = chatOpen
-    ? 0
-    : messages.filter(
-        (message) =>
-          message.fromUsername !== session?.username &&
-          (lastReadAt === null || message.createdAt > lastReadAt),
-      ).length;
-
-  return { unread, markRead };
-}
-
 export function useGamePlayers(gameId: string) {
   return useQuery({
     queryKey: gamePlayersQueryKey(gameId),
@@ -161,4 +117,93 @@ export function useSendDm(gameId: string, participantId: string) {
     onSuccess: (message) =>
       appendMessage(queryClient, dmThreadQueryKey(gameId, participantId), message),
   });
+}
+
+export function conversationKey(participantId: string | null): string {
+  return participantId ?? 'public';
+}
+
+type ReadMarkers = Record<string, string>;
+
+function readMarkersKey(gameId: string): string {
+  return `chat:readMarkers:${gameId}`;
+}
+
+function loadReadMarkers(gameId: string): ReadMarkers {
+  try {
+    const raw = localStorage.getItem(readMarkersKey(gameId));
+    return raw ? (JSON.parse(raw) as ReadMarkers) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveReadMarkers(gameId: string, markers: ReadMarkers): void {
+  try {
+    localStorage.setItem(readMarkersKey(gameId), JSON.stringify(markers));
+  } catch {
+    // Don't save
+  }
+}
+
+function countUnread(
+  messages: Message[],
+  lastReadAt: string | undefined,
+  myPlayerId: string | undefined,
+): number {
+  return messages.filter(
+    (message) =>
+      message.fromPlayerId !== myPlayerId &&
+      (lastReadAt === undefined || message.createdAt > lastReadAt),
+  ).length;
+}
+
+/** Unread counts for each conversation and in total
+ * activeParticipantId is the conversation currently open (null if public conversation, undefined if no conversation is open)
+ */
+export function useUnreadCounts(gameId: string, activeParticipantId: string | null | undefined) {
+  const { data: players = [] } = useGamePlayers(gameId);
+  const myPlayer = useMyPlayer(gameId);
+  const { data: publicMessages = [] } = useGameMessages(gameId);
+  const others = players.filter((player) => player.id !== myPlayer?.id);
+
+  const dmThreads = useQueries({
+    queries: others.map((player) => ({
+      queryKey: dmThreadQueryKey(gameId, player.id),
+      queryFn: ({ signal }: { signal: AbortSignal }) => getDmThread(gameId, player.id, signal),
+    })),
+  });
+
+  const [markers, setMarkers] = useState(() => loadReadMarkers(gameId));
+
+  const threads = [
+    { participantId: null as string | null, messages: publicMessages },
+    ...others.map((player, index) => ({
+      participantId: player.id as string | null,
+      messages: dmThreads[index]?.data ?? [],
+    })),
+  ];
+
+  const byConversation: Record<string, number> = {};
+  let total = 0;
+  for (const { participantId, messages } of threads) {
+    const key = conversationKey(participantId);
+    const count =
+      participantId === activeParticipantId ? 0 : countUnread(messages, markers[key], myPlayer?.id);
+    byConversation[key] = count;
+    total += count;
+  }
+
+  function markRead(participantId: string | null): void {
+    const thread = threads.find((t) => t.participantId === participantId);
+    const newest = thread?.messages.at(-1)?.createdAt;
+    if (!newest) {
+      return;
+    }
+    const next = { ...markers, [conversationKey(participantId)]: newest };
+    setMarkers(next);
+    saveReadMarkers(gameId, next);
+  }
+
+  return { total, byConversation, markRead };
 }

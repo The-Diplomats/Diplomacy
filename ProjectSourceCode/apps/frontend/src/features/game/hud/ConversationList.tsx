@@ -1,6 +1,7 @@
 import type { Player } from '@diplomacy/contracts';
 
 import { POWER_COLORS } from '../../map/powers';
+import { conversationKey } from '../useChat';
 
 /** Displays the name for a seat, which is the username
  * or AI: (power) for AI players */
@@ -17,9 +18,10 @@ type RowProps = {
   color: string;
   initials: string;
   onClick: () => void;
+  unread: number;
 };
 
-function ConversationRow({ label, detail, color, initials, onClick }: RowProps) {
+function ConversationRow({ label, detail, color, initials, unread, onClick }: RowProps) {
   return (
     <button
       type="button"
@@ -36,6 +38,11 @@ function ConversationRow({ label, detail, color, initials, onClick }: RowProps) 
         <span className="truncate text-sm font-medium text-foreground">{label}</span>
         <span className="truncate text-xs text-muted-foreground">{detail}</span>
       </div>
+      {unread > 0 && (
+        <span className="ml-auto rounded-full bg-red-300 px-1.5 text-[10px] font-semibold text-red-700 dark:bg-red-950 dark:text-red-300">
+          {unread > 9 ? '9+' : unread}
+        </span>
+      )}
     </button>
   );
 }
@@ -44,19 +51,21 @@ type Props = {
   players: Player[];
   myPlayerId: string | undefined;
   onSelect: (participantId: string | null) => void;
+  unread: Record<string, number>;
 };
 
-export function ConversationList({ players, myPlayerId, onSelect }: Props) {
+export function ConversationList({ players, myPlayerId, unread, onSelect }: Props) {
   const others = players.filter((player) => player.id !== myPlayerId);
 
   return (
-    <div className="flex flex-col oveflow-y-auto py-2">
+    <div className="flex flex-col overflow-y-auto py-2">
       <ConversationRow
         label="Public chat"
         detail="Everyone in the game"
         color={POWER_COLORS.neutral.fill}
         initials="ALL"
         onClick={() => onSelect(null)}
+        unread={unread[conversationKey(null)] ?? 0}
       />
       {myPlayerId && (
         <ConversationRow
@@ -65,6 +74,7 @@ export function ConversationList({ players, myPlayerId, onSelect }: Props) {
           color={POWER_COLORS.water.fill}
           initials="ME"
           onClick={() => onSelect(myPlayerId)}
+          unread={0}
         />
       )}
       {others.map((player) => (
@@ -75,6 +85,7 @@ export function ConversationList({ players, myPlayerId, onSelect }: Props) {
           color={POWER_COLORS[player.power ?? 'neutral'].fill}
           initials={playerName(player).slice(0, 2).toUpperCase()}
           onClick={() => onSelect(player.id)}
+          unread={unread[conversationKey(player.id)] ?? 0}
         />
       ))}
     </div>

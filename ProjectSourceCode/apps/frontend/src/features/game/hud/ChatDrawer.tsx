@@ -40,17 +40,27 @@ function formatTime(isoString: string): string {
 }
 
 type Props = {
+  participantId: string | null;
+  view: 'thread' | 'list';
+  unreadByConversation: Record<string, number>;
+  onOpenConversation: (participantId: string | null) => void;
+  onShowList: () => void;
   onClose: () => void;
 };
 
-export function ChatDrawer({ onClose }: Props) {
+export function ChatDrawer({
+  participantId,
+  view,
+  unreadByConversation,
+  onOpenConversation,
+  onShowList,
+  onClose,
+}: Props) {
   const { id: gameId = '' } = useParams();
   const { data: session } = useSession();
   const { data: players = [] } = useGamePlayers(gameId);
   const myPlayer = useMyPlayer(gameId);
 
-  const [view, setView] = useState<'thread' | 'list'>('list');
-  const [participantId, setParticipantId] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
 
   const publicThread = useGameMessages(gameId);
@@ -73,9 +83,8 @@ export function ChatDrawer({ onClose }: Props) {
   const subtitle = isPublic ? 'Global press' : 'Private';
 
   function openConversation(id: string | null) {
-    setParticipantId(id);
     setDraft('');
-    setView('thread');
+    onOpenConversation(id);
   }
 
   function handleSend(event: { preventDefault(): void }) {
@@ -96,7 +105,7 @@ export function ChatDrawer({ onClose }: Props) {
               variant="ghost"
               size="icon-sm"
               aria-label="All conversations"
-              onClick={() => setView('list')}
+              onClick={onShowList}
             >
               <ArrowLeft />
             </Button>
@@ -117,7 +126,12 @@ export function ChatDrawer({ onClose }: Props) {
       <Separator />
 
       {view === 'list' ? (
-        <ConversationList players={players} myPlayerId={myPlayer?.id} onSelect={openConversation} />
+        <ConversationList
+          players={players}
+          myPlayerId={myPlayer?.id}
+          unread={unreadByConversation}
+          onSelect={openConversation}
+        />
       ) : (
         <>
           <MessageScrollerProvider autoScroll defaultScrollPosition="end">
