@@ -1,7 +1,7 @@
 import { logger } from '../log.js';
 import { db } from '../services/db.js';
 import { type DiplomacySocketServer } from '../socket.js';
-import { type SessionRequest } from './session-rooms.js';
+import { reloadSession, type SessionRequest } from './session-rooms.js';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -17,14 +17,18 @@ export function registerGameRoomHandlers(io: DiplomacySocketServer): void {
       }
 
       const { session } = socket.request as typeof socket.request & SessionRequest;
-      const user = session?.user;
       const gameId = payload?.gameId;
-      if (!user || typeof gameId !== 'string' || !UUID_PATTERN.test(gameId)) {
+      if (!session?.user || typeof gameId !== 'string' || !UUID_PATTERN.test(gameId)) {
         ack({ ok: false });
         return;
       }
 
       try {
+        const user = (await reloadSession(session)) ? session.user : undefined;
+        if (!user) {
+          ack({ ok: false });
+          return;
+        }
         const player = await db.players.findByUserInGame({ gameId, userId: user.id });
         if (!player) {
           ack({ ok: false });
