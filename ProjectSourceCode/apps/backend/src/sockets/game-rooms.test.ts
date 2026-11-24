@@ -34,11 +34,14 @@ let baseUrl: string;
 let closeSocketServer: () => Promise<void>;
 const openSockets: ClientSocket[] = [];
 const testGameIds: string[] = [];
+let store: session.MemoryStore;
 
 beforeAll(async () => {
   db = setupTestServices();
 
+  store = new session.MemoryStore();
   const sessionMiddleware = session({
+    store,
     secret: 'test-secret',
     resave: false,
     saveUninitialized: false,
@@ -110,6 +113,11 @@ async function signedInUser() {
     .set('X-Forwarded-Proto', 'https')
     .set('Cookie', cookie);
   return { cookie, userId: me.body.id as string };
+}
+
+function sessionIdFromCookie(cookie: string): string {
+  const value = decodeURIComponent(cookie.split('=')[1] ?? '');
+  return value.slice(2, value.lastIndexOf('.'));
 }
 
 async function seatPlayer(gameId: string, userId: string): Promise<string> {
@@ -255,6 +263,19 @@ describe('logout', () => {
     expect(res.status).toBe(204);
 
     expect(await disconnected).toBe('io server disconnect');
+  });
+
+  test('socket whose session no longer exists cannot connect to a game', async () => {
+    const gameId = await createTestGame();
+    const user = await signedInUser();
+    await seatPlayer(gameId, user.userId);
+    const socket = await connect(user.cookie);
+
+    await new Promise<void>((resolve) => {
+      store.destroy(sessionIdFromCookie(user.cookie), () => resolve());
+    });
+
+    expect(await join(socket, gameId)).toEqual({ ok: false });
   });
 });
 
