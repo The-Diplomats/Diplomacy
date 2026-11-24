@@ -22,6 +22,9 @@ export interface PlayerRepository {
 
   /** Retrieves a user's seat in a specific game. */
   findByUserInGame(input: { gameId: string; userId: string }): Promise<PlayerSeat | null>;
+
+  /** Retrieves a set by id if it belongs to the specific game */
+  findInGame(input: { gameId: string; playerId: string }): Promise<PlayerSeat | null>;
 }
 
 export function createPlayerRepository(db: DbClient): PlayerRepository {
@@ -54,6 +57,13 @@ export function createPlayerRepository(db: DbClient): PlayerRepository {
     async findByUserInGame({ gameId, userId }) {
       const row = await db.query.players.findFirst({
         where: (p, { and, eq }) => and(eq(p.gameId, gameId), eq(p.userId, userId)),
+      });
+      return row ?? null;
+    },
+
+    async findInGame({ gameId, playerId }) {
+      const row = await db.query.players.findFirst({
+        where: (p, { and, eq }) => and(eq(p.id, playerId), eq(p.gameId, gameId)),
       });
       return row ?? null;
     },

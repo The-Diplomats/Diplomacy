@@ -1,7 +1,9 @@
 import type {
+  GetGameDmMessagesPathParams,
   GetGameMessagesPathParams,
   Message,
   MessageList,
+  PostGameDmMessagePathParams,
   PostGameMessagePathParams,
   ProblemDetails,
   SendMessageRequest,
@@ -109,5 +111,113 @@ messagesRouter.get(
 
     const rows = await db.messages.listPublicByGame(req.params.gameId);
     return res.status(200).json({ messages: rows.map(toMessage) });
+  },
+);
+
+messagesRouter.get(
+  '/:gameId/messages/dm/:participantId',
+  async (
+    req: Request<GetGameDmMessagesPathParams, MessageList | ProblemDetails>,
+    res: Response<MessageList | ProblemDetails>,
+  ) => {
+    const user = req.session.user;
+    if (!user) {
+      return res.status(401).json({
+        type: 'about:blank',
+        title: 'Unauthorized',
+        status: 401,
+        detail: 'Not logged in.',
+      });
+    }
+
+    const { gameId, participantId } = req.params;
+    const player = await db.players.findByUserInGame({ gameId, userId: user.id });
+    if (!player) {
+      return res.status(403).json({
+        type: 'about:blank',
+        title: 'Forbidden',
+        status: 403,
+        detail: 'User is not a part of this game.',
+      });
+    }
+
+    // participant is the other player in the thread
+    const participant = await db.players.findInGame({ gameId, playerId: participantId });
+    if (!participant) {
+      return res.status(404).json({
+        type: 'about:blank',
+        title: 'Not Found',
+        status: 404,
+        detail: 'Player not found in this game.',
+      });
+    }
+
+    const rows = await db.messages.listDmThread({
+      gameId,
+      playerId: player.id,
+      otherPlayerId: participant.id,
+    });
+    return res.status(200).json({ messages: rows.map(toMessage) });
+  },
+);
+
+messagesRouter.post(
+  '/:gameId/messages/dm/:participantId',
+  async (
+    req: Request<PostGameDmMessagePathParams, Message | ProblemDetails, SendMessageRequest>,
+    res: Response<Message | ProblemDetails>,
+  ) => {
+    const user = req.session.user;
+    if (!user) {
+      return res.status(401).json({
+        type: 'about:blank',
+        title: 'Unauthorized',
+        status: 401,
+        detail: 'Not logged in.',
+      });
+    }
+
+    const { gameId, participantId } = req.params;
+    const player = await db.players.findByUserInGame({ gameId, userId: user.id });
+    if (!player) {
+      return res.status(403).json({
+        type: 'about:blank',
+        title: 'Forbidden',
+        status: 403,
+        detail: 'User is not a part of this game.',
+      });
+    }
+
+    // participant is the other player in the thread
+    const participant = await db.players.findInGame({ gameId, playerId: participantId });
+    if (!participant) {
+      return res.status(404).json({
+        type: 'about:blank',
+        title: 'Not Found',
+        status: 404,
+        detail: 'Player not found in this game.',
+      });
+    }
+
+    const text = req.body.text.trim();
+    if (text.length === 0) {
+      return res.status(400).json({
+        type: 'about:blank',
+        title: 'Bad Request',
+        status: 400,
+        detail: 'Message cannot be empty.',
+      });
+    }
+
+    const message = await db.messages.create({
+      gameId,
+      fromPlayerId: player.id,
+      toPlayerId: participant.id,
+      text,
+    });
+
+    return res
+      .status(201)
+      .json(toMessage({ ...message, fromUsername: user.username, fromPower: player.power }));
   },
 );
