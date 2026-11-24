@@ -172,7 +172,7 @@ export function ChatDrawer({
                               </MessageHeader>
                             )}
                             <div
-                              className={`rounded-2xl px-3.5 py-2 text-sm ${
+                              className={`rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap break-words ${
                                 self
                                   ? 'self-end px-1 bg-primary text-primary-foreground'
                                   : 'self-start bg-muted text-foreground'
