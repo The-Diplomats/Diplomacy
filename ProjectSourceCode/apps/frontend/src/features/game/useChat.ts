@@ -125,22 +125,22 @@ export function conversationKey(participantId: string | null): string {
 
 type ReadMarkers = Record<string, string>;
 
-function readMarkersKey(gameId: string): string {
-  return `chat:readMarkers:${gameId}`;
+function readMarkersKey(playerId: string): string {
+  return `chat:readMarkers:${playerId}`;
 }
 
-function loadReadMarkers(gameId: string): ReadMarkers {
+function loadReadMarkers(playerId: string): ReadMarkers {
   try {
-    const raw = localStorage.getItem(readMarkersKey(gameId));
+    const raw = localStorage.getItem(readMarkersKey(playerId));
     return raw ? (JSON.parse(raw) as ReadMarkers) : {};
   } catch {
     return {};
   }
 }
 
-function saveReadMarkers(gameId: string, markers: ReadMarkers): void {
+function saveReadMarkers(playerId: string, markers: ReadMarkers): void {
   try {
-    localStorage.setItem(readMarkersKey(gameId), JSON.stringify(markers));
+    localStorage.setItem(readMarkersKey(playerId), JSON.stringify(markers));
   } catch {
     // Don't save
   }
@@ -174,7 +174,14 @@ export function useUnreadCounts(gameId: string, activeParticipantId: string | nu
     })),
   });
 
-  const [markers, setMarkers] = useState(() => loadReadMarkers(gameId));
+  const [loaded, setLoaded] = useState<{ playerId: string | undefined; markers: ReadMarkers }>({
+    playerId: undefined,
+    markers: {},
+  });
+  if (loaded.playerId !== myPlayer?.id) {
+    setLoaded({ playerId: myPlayer?.id, markers: myPlayer ? loadReadMarkers(myPlayer.id) : {} });
+  }
+  const markers = loaded.markers;
 
   const threads = [
     { participantId: null as string | null, messages: publicMessages },
@@ -197,12 +204,12 @@ export function useUnreadCounts(gameId: string, activeParticipantId: string | nu
   function markRead(participantId: string | null): void {
     const thread = threads.find((t) => t.participantId === participantId);
     const newest = thread?.messages.at(-1)?.createdAt;
-    if (!newest) {
+    if (!newest || !myPlayer) {
       return;
     }
     const next = { ...markers, [conversationKey(participantId)]: newest };
-    setMarkers(next);
-    saveReadMarkers(gameId, next);
+    setLoaded({ playerId: myPlayer.id, markers: next });
+    saveReadMarkers(myPlayer.id, next);
   }
 
   return { total, byConversation, markRead };

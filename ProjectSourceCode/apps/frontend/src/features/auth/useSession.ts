@@ -9,7 +9,7 @@ import type {
   RegisterVerifyRequest,
   User,
 } from '@diplomacy/contracts';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { ApiError } from '../../api/client';
 import {
@@ -29,6 +29,14 @@ import {
 
 export const sessionQueryKey = ['session'] as const;
 
+/** Drops every cached query, including chats, then records who is now signed in
+ * Call on every sign-in and sign-out to prevent cache leaks
+ */
+function replaceSession(queryClient: QueryClient, user: User | null): void {
+  queryClient.clear();
+  queryClient.setQueryData<User | null>(sessionQueryKey, user);
+}
+
 export function useSession() {
   return useQuery({
     queryKey: sessionQueryKey,
@@ -42,7 +50,7 @@ export function useLogin() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: LoginRequest) => postAuthLogin(body),
-    onSuccess: (user) => queryClient.setQueryData<User | null>(sessionQueryKey, user),
+    onSuccess: (user) => replaceSession(queryClient, user),
   });
 }
 
@@ -57,7 +65,7 @@ export function useRegisterVerify() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: RegisterVerifyRequest) => postAuthRegisterVerify(body),
-    onSuccess: (user) => queryClient.setQueryData<User | null>(sessionQueryKey, user),
+    onSuccess: (user) => replaceSession(queryClient, user),
   });
 }
 
@@ -77,7 +85,7 @@ export function usePasswordResetVerify() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: PasswordResetVerifyRequest) => postAuthPasswordResetVerify(body),
-    onSuccess: (user) => queryClient.setQueryData<User | null>(sessionQueryKey, user),
+    onSuccess: (user) => replaceSession(queryClient, user),
   });
 }
 
@@ -85,7 +93,7 @@ export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: postAuthLogout,
-    onSettled: () => queryClient.setQueryData<User | null>(sessionQueryKey, null),
+    onSettled: () => replaceSession(queryClient, null),
   });
 }
 
@@ -118,7 +126,7 @@ export function useOAuthComplete() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (body: OAuthCompleteRequest) => postAuthOAuthComplete(body),
-    onSuccess: (user) => queryClient.setQueryData<User | null>(sessionQueryKey, user),
+    onSuccess: (user) => replaceSession(queryClient, user),
   });
 }
 
