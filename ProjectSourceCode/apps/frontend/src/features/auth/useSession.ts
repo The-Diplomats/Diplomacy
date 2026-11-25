@@ -31,9 +31,12 @@ export const sessionQueryKey = ['session'] as const;
 
 /** Drops every cached query, including chats, then records who is now signed in
  * Call on every sign-in and sign-out to prevent cache leaks
+ * Session query is kept and updated in place so things watching it are notified
  */
 function replaceSession(queryClient: QueryClient, user: User | null): void {
-  queryClient.clear();
+  queryClient.removeQueries({
+    predicate: (query) => query.queryKey[0] !== sessionQueryKey[0],
+  });
   queryClient.setQueryData<User | null>(sessionQueryKey, user);
 }
 
