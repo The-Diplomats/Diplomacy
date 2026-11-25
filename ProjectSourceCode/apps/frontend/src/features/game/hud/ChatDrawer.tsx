@@ -66,11 +66,11 @@ export function ChatDrawer({
   const publicThread = useGameMessages(gameId);
   const dmThread = useDmThread(gameId, participantId);
   const sendPublic = useSendMessage(gameId);
-  const sendDm = useSendDm(gameId, participantId ?? '');
+  const sendDm = useSendDm(gameId);
 
   const isPublic = participantId === null;
   const { data: messages = [], isPending, isError } = isPublic ? publicThread : dmThread;
-  const sendMessage = isPublic ? sendPublic : sendDm;
+  const isSending = isPublic ? sendPublic.isPending : sendDm.isPending;
 
   const participant = players.find((player) => player.id === participantId);
   const title = isPublic
@@ -90,10 +90,15 @@ export function ChatDrawer({
   function handleSend(event: { preventDefault(): void }) {
     event.preventDefault();
     const text = draft.trim();
-    if (text === '' || sendMessage.isPending) {
+    if (text === '' || isSending) {
       return;
     }
-    sendMessage.mutate(text, { onSuccess: () => setDraft('') });
+    const clearIfUnchanged = () => setDraft((current) => (current.trim() === text ? '' : current));
+    if (participantId === null) {
+      sendPublic.mutate(text, { onSuccess: clearIfUnchanged });
+    } else {
+      sendDm.mutate({ participantId, text }, { onSuccess: clearIfUnchanged });
+    }
   }
 
   return (
@@ -220,7 +225,7 @@ export function ChatDrawer({
                 size="icon-sm"
                 className="rounded-full"
                 aria-label="Send"
-                disabled={sendMessage.isPending}
+                disabled={isSending}
               >
                 <ArrowUp />
               </Button>

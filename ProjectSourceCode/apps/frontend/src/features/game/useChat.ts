@@ -110,11 +110,12 @@ export function useDmThread(gameId: string, participantId: string | null) {
   });
 }
 
-export function useSendDm(gameId: string, participantId: string) {
+export function useSendDm(gameId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (text: string) => postDm(gameId, participantId, text),
-    onSuccess: (message) =>
+    mutationFn: ({ participantId, text }: { participantId: string; text: string }) =>
+      postDm(gameId, participantId, text),
+    onSuccess: (message, { participantId }) =>
       appendMessage(queryClient, dmThreadQueryKey(gameId, participantId), message),
   });
 }
