@@ -1,5 +1,22 @@
 # Changelog
 
+## [1.4.0](https://github.com/The-Diplomats/Diplomacy/compare/diplomacy-v1.3.2...diplomacy-v1.4.0) (2026-11-25)
+
+
+### Features
+
+* add the classic map and gameplay domain types ([#134](https://github.com/The-Diplomats/Diplomacy/issues/134)) ([bc1c900](https://github.com/The-Diplomats/Diplomacy/commit/bc1c90054725b52babfe93ca33b3b6fe717ff95f))
+* **adjudicator:** resolve movement phases ([#136](https://github.com/The-Diplomats/Diplomacy/issues/136)) ([1a9328b](https://github.com/The-Diplomats/Diplomacy/commit/1a9328badf770002e4e30d1a823d72d2b287bd79))
+* **adjudicator:** resolve retreat and build phases and advance the game clock ([#137](https://github.com/The-Diplomats/Diplomacy/issues/137)) ([e3121d4](https://github.com/The-Diplomats/Diplomacy/commit/e3121d4b45e61f4ed3db387c0d88bf4cae2fb2be))
+* **adjudicator:** validate orders and list legal orders and defaults ([#139](https://github.com/The-Diplomats/Diplomacy/issues/139)) ([3236a45](https://github.com/The-Diplomats/Diplomacy/commit/3236a454c48a70d9f136fcfc450c04fe64ef849e))
+* private chat, chat conversation list, and updated unread indicators ([#141](https://github.com/The-Diplomats/Diplomacy/issues/141)) ([e25170b](https://github.com/The-Diplomats/Diplomacy/commit/e25170b2b8e3761b7bba095d294f8710a80425dd))
+* socket.IO message delivery and reception + chat unread indicator ([#138](https://github.com/The-Diplomats/Diplomacy/issues/138)) ([f4f8643](https://github.com/The-Diplomats/Diplomacy/commit/f4f8643b4f7a4c3e2363438e810bd8e49a51f015))
+
+
+### Bug Fixes
+
+* patch for the second issue pointed out in PR [#138](https://github.com/The-Diplomats/Diplomacy/issues/138) ([#140](https://github.com/The-Diplomats/Diplomacy/issues/140)) ([c146229](https://github.com/The-Diplomats/Diplomacy/commit/c146229b6368d6c0eabcf85f12a5682f3dbf0911))
+
 ## [1.3.2](https://github.com/The-Diplomats/Diplomacy/compare/diplomacy-v1.3.1...diplomacy-v1.3.2) (2026-11-19)
 
 
