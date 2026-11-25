@@ -18,7 +18,7 @@ import { ProvincePopover } from './hud/ProvincePopover';
 import { UserMenu } from './hud/UserMenu';
 import { ZoomControls } from './hud/ZoomControls';
 import { HUDSlot } from './HUDSlot';
-import { useLiveGameMessages, useUnreadMessages } from './useChat';
+import { useLiveGameMessages, useUnreadCounts } from './useChat';
 
 type PlayablePower = Exclude<Power, 'neutral' | 'water'>;
 
@@ -27,16 +27,40 @@ export function HUDLayout() {
   const [timelineOpen, setTimelineOpen] = useState(false);
 
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatView, setChatView] = useState<'thread' | 'list'>('list');
+  const [participantId, setParticipantId] = useState<string | null>(null);
   const { id: gameId = '' } = useParams();
   useLiveGameMessages(gameId);
-  const { unread, markRead } = useUnreadMessages(gameId, chatOpen);
+
+  // activeParticipantId is the conversation opened on the screen right now (undefined if there isn't one)
+  const activeParticipantId = chatOpen && chatView === 'thread' ? participantId : undefined;
+  const { total, byConversation, markRead } = useUnreadCounts(gameId, activeParticipantId);
+
+  function leaveConversation() {
+    if (activeParticipantId !== undefined) {
+      markRead(activeParticipantId);
+    }
+  }
+
   function toggleChat() {
-    markRead();
+    leaveConversation();
+    setChatView('list');
     setChatOpen(!chatOpen);
   }
+
   function closeChat() {
-    markRead();
+    leaveConversation();
     setChatOpen(false);
+  }
+
+  function showConversationList() {
+    leaveConversation();
+    setChatView('list');
+  }
+
+  function openConversation(id: string | null) {
+    setParticipantId(id);
+    setChatView('thread');
   }
 
   const [gamePanelExpanded, setGamePanelExpanded] = useState(false);
@@ -122,7 +146,7 @@ export function HUDLayout() {
               onZoomOut={zoomPan.zoomOut}
               onReset={zoomPan.recenter}
             />
-            <ChatToggle unread={unread} onClick={toggleChat} />
+            <ChatToggle unread={total} onClick={toggleChat} />
             <PhaseTimelineTrigger
               open={timelineOpen}
               onClick={() => setTimelineOpen(!timelineOpen)}
@@ -144,7 +168,14 @@ export function HUDLayout() {
                 timelineOpen ? 'bottom-[calc(3.5%+172px)]' : 'bottom-[calc(3.5%+52px)]'
               }`}
             >
-              <ChatDrawer onClose={closeChat} />
+              <ChatDrawer
+                participantId={participantId}
+                view={chatView}
+                unreadByConversation={byConversation}
+                onOpenConversation={openConversation}
+                onShowList={showConversationList}
+                onClose={closeChat}
+              />
             </div>
           )}
         </Themed>

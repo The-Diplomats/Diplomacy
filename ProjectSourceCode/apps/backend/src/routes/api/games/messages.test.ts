@@ -190,3 +190,60 @@ describe('GET /games/:gameId/messages', () => {
     expect(list.map((message) => message.text)).toEqual(['public msg']);
   });
 });
+
+describe('DM threads', () => {
+  test('a thread goes to both players and nobody else', async () => {
+    const gameId = await createTestGame();
+    const bob = await signedInUser();
+    const noah = await signedInUser();
+    const srisha = await signedInUser();
+    const bobId = await seatPlayer(gameId, bob.userId);
+    const noahId = await seatPlayer(gameId, noah.userId);
+    const srishaId = await seatPlayer(gameId, srisha.userId);
+
+    await bob.client.post(`/games/${gameId}/messages/dm/${noahId}`, { text: 'bob to noah' });
+    await noah.client.post(`/games/${gameId}/messages/dm/${bobId}`, { text: 'noah to bob' });
+    await bob.client.post(`/games/${gameId}/messages/dm/${srishaId}`, { text: 'bob to srisha' });
+    await srisha.client.post(`/games/${gameId}/messages/dm/${noahId}`, { text: 'srisha to noah' });
+    await bob.client.post(`/games/${gameId}/messages`, { text: 'hello all' });
+
+    const res = await bob.client.get(`/games/${gameId}/messages/dm/${noahId}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.messages.map((m: Message) => m.text)).toEqual(['bob to noah', 'noah to bob']);
+  });
+
+  test('notes to self visible only to self', async () => {
+    const gameId = await createTestGame();
+    const bob = await signedInUser();
+    const noah = await signedInUser();
+    const bobId = await seatPlayer(gameId, bob.userId);
+    await seatPlayer(gameId, noah.userId);
+
+    const sent = await bob.client.post(`/games/${gameId}/messages/dm/${bobId}`, {
+      text: 'secret plans: ...',
+    });
+    expect(sent.status).toBe(201);
+
+    const own = await bob.client.get(`/games/${gameId}/messages/dm/${bobId}`);
+    expect(own.body.messages.map((m: Message) => m.text)).toEqual(['secret plans: ...']);
+
+    const noahView = await noah.client.get(`/games/${gameId}/messages/dm/${bobId}`);
+    expect(noahView.body.messages).toEqual([]);
+  });
+
+  test('rejects someone from another game', async () => {
+    const gameA = await createTestGame();
+    const gameB = await createTestGame();
+    const bob = await signedInUser();
+    const noah = await signedInUser();
+    await seatPlayer(gameA, bob.userId);
+    const noahInB = await seatPlayer(gameB, noah.userId);
+
+    const res = await bob.client.post(`/games/${gameA}/messages/dm/${noahInB}`, {
+      text: 'cross game message',
+    });
+
+    expect(res.status).toBe(404);
+  });
+});

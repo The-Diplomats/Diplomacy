@@ -74,6 +74,8 @@ paths:
     $ref: './paths/games.yaml#/paths/~1games~1{gameId}~1start'
   /games/{gameId}/draw-vote:
     $ref: './paths/games.yaml#/paths/~1games~1{gameId}~1draw-vote'
+  /games/{gameId}/players:
+    $ref: './paths/games.yaml#/paths/~1games~1{gameId}~1players'
 
   /games/{gameId}/phases/current:
     $ref: './paths/phases.yaml#/paths/~1games~1{gameId}~1phases~1current'

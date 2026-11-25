@@ -8,5 +8,6 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   'health:pong': (payload: { timestamp: number }) => void;
   'health:tick': (payload: { at: number }) => void;
+  'message:dm': (message: Message) => void;
   'message:new': (message: Message) => void;
 }

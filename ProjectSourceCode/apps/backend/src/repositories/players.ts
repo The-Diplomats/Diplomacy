@@ -1,7 +1,9 @@
-import { type DbClient, players } from '@diplomacy/db';
+import { type DbClient, players, users } from '@diplomacy/db';
 import type { Power } from '@diplomacy/game-types';
+import { asc, eq, getTableColumns } from 'drizzle-orm';
 
 export type PlayerSeat = typeof players.$inferSelect;
+export type PlayerWithUsername = PlayerSeat & { username: string | null };
 
 export interface PlayerRepository {
   /** Seats a user or AI into a game. Returns null when the seat (or power) is already taken. */
@@ -15,8 +17,14 @@ export interface PlayerRepository {
   /** Lists every seat in a game. */
   findByGame(gameId: string): Promise<PlayerSeat[]>;
 
+  /** Lists every seat in a game including the users' usernames in join order */
+  listWithUsernamesByGame(gameId: string): Promise<PlayerWithUsername[]>;
+
   /** Retrieves a user's seat in a specific game. */
   findByUserInGame(input: { gameId: string; userId: string }): Promise<PlayerSeat | null>;
+
+  /** Retrieves a set by id if it belongs to the specific game */
+  findInGame(input: { gameId: string; playerId: string }): Promise<PlayerSeat | null>;
 }
 
 export function createPlayerRepository(db: DbClient): PlayerRepository {
@@ -37,9 +45,25 @@ export function createPlayerRepository(db: DbClient): PlayerRepository {
       });
     },
 
+    async listWithUsernamesByGame(gameId) {
+      return db
+        .select({ ...getTableColumns(players), username: users.username })
+        .from(players)
+        .leftJoin(users, eq(players.userId, users.id))
+        .where(eq(players.gameId, gameId))
+        .orderBy(asc(players.joinedAt));
+    },
+
     async findByUserInGame({ gameId, userId }) {
       const row = await db.query.players.findFirst({
         where: (p, { and, eq }) => and(eq(p.gameId, gameId), eq(p.userId, userId)),
+      });
+      return row ?? null;
+    },
+
+    async findInGame({ gameId, playerId }) {
+      const row = await db.query.players.findFirst({
+        where: (p, { and, eq }) => and(eq(p.id, playerId), eq(p.gameId, gameId)),
       });
       return row ?? null;
     },

@@ -76,6 +76,11 @@ Player:
         - type: string
           format: uuid
         - type: 'null'
+    username:
+      oneOf:
+        - type: string
+        - type: 'null'
+      description: null for AI seats
     power:
       oneOf:
         - $ref: ./common.yaml#/Power
@@ -90,6 +95,7 @@ Player:
   required:
     - id
     - userId
+    - username
     - power
     - isAi
     - afkCounter
@@ -149,3 +155,14 @@ DrawVoteStatus:
     - votes
     - eligibleVoters
     - unanimous
+
+PlayerList:
+  type: object
+  additionalProperties: false
+  properties:
+    players:
+      type: array
+      items:
+        $ref: '#/Player'
+  required:
+    - players

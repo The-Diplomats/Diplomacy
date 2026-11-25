@@ -1,0 +1,1 @@
+ALTER TABLE "messages" DROP CONSTRAINT "messages_no_self_dm_check";

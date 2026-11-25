@@ -120,11 +120,12 @@ function sessionIdFromCookie(cookie: string): string {
   return value.slice(2, value.lastIndexOf('.'));
 }
 
-async function seatPlayer(gameId: string, userId: string): Promise<void> {
+async function seatPlayer(gameId: string, userId: string): Promise<string> {
   const row = await createPlayerRepository(db).addSeat({ gameId, userId });
   if (!row) {
     throw new Error('Failed to seat the test user');
   }
+  return row.id;
 }
 
 function connect(cookie?: string): Promise<ClientSocket> {
@@ -150,9 +151,22 @@ function nextMessage(socket: ClientSocket): Promise<Message> {
   return new Promise((resolve) => socket.once('message:new', resolve));
 }
 
+function nextDm(socket: ClientSocket): Promise<Message> {
+  return new Promise((resolve) => socket.once('message:dm', resolve));
+}
+
 async function postMessage(cookie: string, gameId: string, text: string): Promise<void> {
   const res = await supertest(app)
     .post(`/games/${gameId}/messages`)
+    .set('X-Forwarded-Proto', 'https')
+    .set('Cookie', cookie)
+    .send({ text });
+  expect(res.status).toBe(201);
+}
+
+async function postDm(cookie: string, gameId: string, toPlayerId: string, text: string) {
+  const res = await supertest(app)
+    .post(`/games/${gameId}/messages/dm/${toPlayerId}`)
     .set('X-Forwarded-Proto', 'https')
     .set('Cookie', cookie)
     .send({ text });
@@ -262,5 +276,36 @@ describe('logout', () => {
     });
 
     expect(await join(socket, gameId)).toEqual({ ok: false });
+  });
+});
+
+describe('message:dm', () => {
+  test('message sent to sender and recipient but not others', async () => {
+    const gameId = await createTestGame();
+    const bob = await signedInUser();
+    const noah = await signedInUser();
+    const srisha = await signedInUser();
+    await seatPlayer(gameId, bob.userId);
+    const noahPlayerId = await seatPlayer(gameId, noah.userId);
+    const srishaPlayerId = await seatPlayer(gameId, srisha.userId);
+
+    const bobSocket = await connect(bob.cookie);
+    const noahSocket = await connect(noah.cookie);
+    const srishaSocket = await connect(srisha.cookie);
+    await join(bobSocket, gameId);
+    await join(noahSocket, gameId);
+    await join(srishaSocket, gameId);
+
+    const bobGets = nextDm(bobSocket);
+    const noahGets = nextDm(noahSocket);
+    const srishaGets = nextDm(srishaSocket);
+
+    await postDm(bob.cookie, gameId, noahPlayerId, 'to Noah only');
+    await postDm(bob.cookie, gameId, srishaPlayerId, 'to Srisha only');
+
+    expect(await noahGets).toMatchObject({ text: 'to Noah only', toPlayerId: noahPlayerId });
+    expect(await bobGets).toMatchObject({ text: 'to Noah only' });
+
+    expect(await srishaGets).toMatchObject({ text: 'to Srisha only', toPlayerId: srishaPlayerId });
   });
 });

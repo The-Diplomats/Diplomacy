@@ -3,6 +3,7 @@ import { type RequestHandler, Router } from 'express';
 import { surfaceOnly } from '../../middleware/surface-only.js';
 import { authRouter } from './auth/index.js';
 import { messagesRouter } from './games/messages.js';
+import { playersRouter } from './games/players.js';
 import { healthRouter } from './health.js';
 
 export function createApiSurface(validator: RequestHandler[]): Router {
@@ -12,5 +13,6 @@ export function createApiSurface(validator: RequestHandler[]): Router {
   api.use('/', healthRouter);
   api.use('/auth', authRouter);
   api.use('/games', messagesRouter);
+  api.use('/games', playersRouter);
   return api;
 }
